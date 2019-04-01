@@ -1,0 +1,67 @@
+.dev-tools {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    width: 100px;
+    
+    a, img {
+        display: block;
+        float: right;
+    }
+}
+
+.npc-wrapper {
+    
+    position: relative;
+    overflow: hidden;
+    padding: 0 50px;
+    
+    li {
+        a {
+            display: inline-block;
+            
+            &:hover {
+                color: $darkGray;
+                text-decoration: underline;
+                font-style: italic;
+            }
+        }
+    }
+    
+    * + .list-wrapper {
+        margin-top: 1em;
+        margin-bottom: 1em;
+    }
+    
+    .list-wrapper {
+        float: left;
+        
+        ul {
+            padding: 0;
+            margin: 0;
+            list-style-type: none;
+        }
+        
+        li {
+            a {
+                padding: 5px;
+            }
+            
+            &.good {
+                background: rgba(0, 250, 0, 0.2);
+                
+                &+li {
+                    border-top: 1px solid rgba(0, 250, 0, 0.5);
+                }
+            }
+            
+            &.bad {
+                background: rgba(250, 0, 0, 0.2);
+                
+                &+li {
+                    border-top: 1px solid rgba(250, 0, 0, 0.3);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,168 @@
+.nav-wrapper {
+    background: linear-gradient(to bottom, #16222A, #3A6073);
+
+    .navbar {
+        list-style-type: none;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+
+        > li {
+            margin: 0;
+            padding: 0;
+            position: relative;
+            border-left: 1px solid rgba(0, 0, 0, 0.3);
+            border-right: 1px solid rgba(250, 250, 250, 0.3);
+            text-align: center;
+            display: flex;
+            align-items: flex-start;
+            width: 30%;
+
+            &:nth-child(3),
+            &:last-child {
+                border-right: 0;
+
+                > a {
+                    border-right: 0;
+                }
+            }
+
+            &:nth-child(4) {
+                border-left: 0;
+            }
+
+            @include mq('tablet-wide') {
+                width: auto;
+                flex: 1 1 auto;
+
+                &:nth-child(3),
+                &:last-child {
+                    border-right: 1px solid rgba(250, 250, 250, 0.3);
+
+                    > a {
+                        border-right: 1px solid rgba(0, 0, 0, 0.3);
+                    }
+                }
+
+                &:nth-child(4) {
+                    border-left: 1px solid rgba(0, 0, 0, 0.3);
+                }
+            }
+
+            &:hover {
+                .dropdown-menu {
+                    display: block;
+                    z-index: 100;
+                }
+            }
+
+            &:first-child {
+                border-left: 0;
+            }
+
+            > a {
+                padding: 15px 15px;
+                height: 50px;
+                text-decoration: none;
+                color: #fff;
+                text-transform: uppercase;
+                font-size: 13px;
+                border-right: 1px solid rgba(0, 0, 0, 0.3);
+                text-align: center;
+                width: 100%;
+                font-family: "Raleway";
+                font-weight: bold;
+
+                &:hover {
+                    background: $darkGray;
+                }
+            }
+
+            .dropdown-menu {
+                position: absolute;
+                width: 250px;
+                top: 50px;
+                display: none;
+                box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.2);
+                border-radius: 4px;
+                background: #fff;
+                list-style-type: none;
+                margin: 0;
+                padding: 10px;
+                z-index: 10;
+
+                li {
+                    text-align: left;
+                    border-left: 0;
+                    border-right: 0;
+                }
+
+                a {
+                    color: #000;
+                    text-align: left;
+
+                    &:hover {
+                        color: #fff;
+                        background: #333;
+                    }
+                }
+
+                form {
+                    height: 3.2rem;
+                    margin-bottom: 1rem;
+                    overflow: hidden;
+                    position: relative;
+
+                    li {
+                        margin-bottom: 10px;
+
+                        &:last-child {
+                            margin-bottom: 0;
+                        }
+                    }
+
+                    input {
+                        width: 100%;
+                        padding: 10px;
+
+                        &::placeholder {
+                            font-family: "Raleway";
+                        }
+
+                        &:focus {
+                            outline: none;
+                            font-weight: bold;
+
+                            &::placeholder {
+                                color: #fff;
+                            }
+                        }
+                    }
+
+                    .full-search {
+                        position: absolute;
+                        right: 10px;
+                        bottom: 10px;
+                        padding: 0;
+                        margin: 0;
+
+                        a {
+                            color: green;
+                            text-align: right;
+                            font-size: 13px;
+                            font-weight: 300;
+                            padding: 0;
+
+                            &:hover {
+                                text-decoration: none;
+                                background: none;
+                                color: black;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

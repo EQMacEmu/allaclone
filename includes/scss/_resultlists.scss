@@ -1,0 +1,190 @@
+.bestiary {
+    a {
+        text-decoration: underline;
+        padding: 10px 0;
+        
+        &:hover {
+            color: $darkGray;
+            font-style: italic;
+            background: rgba(40, 40, 40, 0.1);
+        }
+    }
+    
+    .lr td,
+    .dr td {
+        &:first-child {
+            a {
+                padding-left: 10px;
+            }
+        }
+    }
+    
+    .lr {
+        background: rgba(60, 60, 60, 0.05);
+    }
+}
+
+.table-wrapper {
+    overflow-x: scroll;
+    
+    table {
+        table-layout: fixed;
+    }
+    
+    thead {
+        background: white;
+        box-shadow: 0px 0px 5px #666;
+    }
+    
+    td, th {
+        overflow: hidden;
+        border-right: 1px solid rgba(40, 40, 40, 0.1);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    th,
+    .tab_title {
+        padding: 15px 0;
+        white-space: normal;
+        text-overflow:inherit;
+        font-weight: bold;
+        padding-left: 15px;
+    }
+    
+    tr:nth-child(even) {
+        background: rgba(60, 60, 60, 0.1);
+    }
+    
+    .short-name {
+        text-align: center;
+        display: none;
+        
+        @include mq('tablet-wide') {
+            display: table-cell;
+        }
+    }
+    
+    td[align=center] {
+        font-size: 2vw;
+        
+        @include mq('tablet-wide') {
+            font-size: 16px;
+        }
+    }
+    
+    a {
+        display: block;
+        width: 200px;
+        
+        &:hover {
+            color: black;
+            text-decoration: underline;
+        }
+    }
+}
+
+.expansion-list, 
+.zone-list {
+    
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    
+    li {
+        margin: 0;
+        text-align: center;
+        flex: 0 1 100%;
+        
+        @include mq('tablet-small') {
+            flex: 0 1 50%;
+        }
+        
+        @include mq('tablet-wide') {
+            flex: 0 1 33.3%;
+        }
+    }
+}
+
+.recipe-container {
+    display: flex;
+    
+    .recipe-search {
+        flex: 0 1 25%;
+        padding: 0 20px;
+    }
+}
+
+.recipe-results {
+    a {
+        display: inline;
+    }
+}
+
+.faction-search {
+    max-width: 255px;
+    margin: 0 auto;
+}
+
+.spell-search {
+    
+    form {
+        max-width: 375px;
+        margin: 0 auto;   
+    }
+    
+    input[type="text"],
+    select {
+        width: 100%;
+        max-width: 100%;
+        
+        + input[type="text"],
+        + select {
+            margin-top: 10px;
+        }
+    }
+    
+    input[type="radio"] {
+        width: 14%;
+    }
+    
+    input[type="submit"],
+    input[type="reset"] {
+        width: 45%;
+        margin-top: 20px;
+    }
+    
+    table {
+        margin: 0 auto;
+        border-spacing: 15px;
+        
+        a {
+            margin: 0;
+            padding: 0;
+        }
+        
+        tr {
+            + .level {
+                height: 70px;
+                vertical-align: bottom;
+            }
+        }
+        
+        td {
+            &.left {
+                text-align: left;
+            }
+            
+            &.center {
+                text-align: center;
+            }
+            
+            &.right {
+                text-align: right;
+            }
+        }
+    }
+}
