@@ -133,30 +133,87 @@ footer {
     margin: 0 auto;
 
     &.intro {
-
+        max-width: 100%;
         overflow: hidden;
-        min-height: 115px;
+        display: flex;
+        flex-direction: column;
 
-        img {
-            width: 350px;
-            height: auto;
-            display: block;
-            margin: 0 auto;
+        @include mq('phablet') {
+            height: 115px;
+            flex-direction: row;
+        }
+
+        > div {
+            display: flex;
+            align-content: center;
+            flex: 1 1 auto;
+        }
+
+        .logo {
+            order: 0;
+            @include mq('phablet') {
+                order: 1;
+                justify-content: right;
+            }
+
+            a {
+                margin: 0 auto;
+
+                @include mq('phablet') {
+                    margin: 0;
+                }
+            }
+
+            img {
+                width: 350px;
+                height: auto;
+            }
+        }
+
+        .quick-search {
+            order: 1;
+            flex-grow: 1;
+
+            @include mq('phablet') {
+                order: 0;
+            }
+
+            form {
+                align-self: center;
+                width: 75%;
+                margin: 0 auto;
+
+                @include mq('phablet') {
+                    width: 50%;
+                    margin: 0;
+                }
+
+                input {
+                    height: 40px;
+                    margin-left: 10px;
+                    width: 100%;
+                    border: 0;
+                    border-radius: 4px;
+                    padding: 5px 10px;
+                }
+            }
         }
     }
 }
 
-.logo {
-    width: auto;
-    height: 150px;
-    display: block;
-    margin: 0 auto;
-}
+#box-art {
 
-.page_title {
-    text-align: center;
-    font-size: 30px;
-    text-transform: uppercase;
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto 20px;
+
+    @include mq('phablet') {
+        width: 350px;
+        height: auto;
+        float: right;
+        margin-left: 50px;
+    }
 }
 
 

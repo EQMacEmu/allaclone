@@ -1,18 +1,20 @@
 <?php
 
-	include('./revision.php');
-	include('./includes/config.php');
-	include($includes_dir.'constantes.php');
+    include('./revision.php');
+    include('./includes/config.php');
+    include($includes_dir.'constantes.php');
 
-	include($includes_dir.'mysql.php');
-	include($includes_dir.'functions.php');
+    include($includes_dir.'mysql.php');
+    include($includes_dir.'functions.php');
+    include($includes_dir.'headers.php');
+    ?>
+<h2>The Al'Kabor Project Allaclone</h2>
+<p><img id="box-art"
+		src='<?php echo $root_url; ?>/images/eqmac.jpg' />
+	The Al'Kabor Project will eventually be an open source emulated EverQuest server. Specifically, it aims to replicate
+	EverQuest's Al'Kabor server, which was the server for the Macintosh version of the game. The Al'Kabor server was
+	perpetually stuck in the early Planes of Power expansion, receiving no content updates for the decade of its life.
+	Many bugs/quirks from this time period have been replicated which gives the server a certain charm</p>
 
-	$Title="Welcome to TAKP AllaClone!";
-	include($includes_dir.'headers.php');
-    echo'<img style="max-height:50%; margin:0 auto; display: block;" src="'. $root_url .'images/eqmac.jpg" />';
-
-
-	if (file_exists("design/index.html")) { include("design/index.html"); }
-	
-	include($includes_dir."footers.php");
-?>
+<?php
+    include($includes_dir."footers.php");

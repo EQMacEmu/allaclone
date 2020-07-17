@@ -6,12 +6,9 @@ include($includes_dir . 'headers.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 
-print "<p>The suggested levels are approximate based upon the levels of the majority of creatures found in the zone.</p>
-       <p>Except for the newbie zones, this assumes that you will hunt with a group.</p>
-       <p>Most zones also have higher and lower level roaming npcs, and are selectively hunted at different levels.</p>";
-if ($SortZoneLevelList == TRUE) {
-    print "<p>Zones are sorted following average npc's levels.</p>
-           <p>If a newbie zone contains high level friendly guards, they count in the average level and false the sort.</p>";
+print "<p>The suggested levels are approximate based upon the levels of the majority of creatures found in the zone. Except for the newbie zones, this assumes that you will hunt with a group. Most zones also have higher and lower level roaming npcs, and are selectively hunted at different levels.</p>";
+if ($SortZoneLevelList == true) {
+    print "<p>Zones are sorted following average npc's levels. If a newbie zone contains high level friendly guards, they count in the average level and false the sort.</p>";
 }
 print "<p>Follow the links to get more complete descriptions for the individual zones.</p>";
 // Tweak the second SQL query to your needs, if for example you added a field for trigger npcs, or guards, filter it !
@@ -23,7 +20,7 @@ for ($i = 0; $i <= ($ServerMaxNPCLevel / 5); $i++) {
     $LevelRange += 5;
     $levels[$i] = $LevelRange;
 }
-// Set $lowlimit to the minimum of NPCS signifying the zones is populated for that lvl. 
+// Set $lowlimit to the minimum of NPCS signifying the zones is populated for that lvl.
 // Ex : $lowlimit=5 => if a zone has less than 5 npcs of a level, they will be ignored
 $lowlimit      = 5;
 // $MinimumNpcLvl allows you to remove low lvl npcs, such as invisible men used for triggers, set to 0 if not used
@@ -32,7 +29,7 @@ $zones         = array();
 $query         = "SELECT $tbzones.*
         FROM $tbzones";
 $v             = "WHERE";
-foreach ($IgnoreZones AS $zid) {
+foreach ($IgnoreZones as $zid) {
     $query .= " $v $tbzones.short_name!='$zid'";
     $v = " AND ";
 }
@@ -49,7 +46,7 @@ while ($res = mysql_fetch_array($result)) {
           WHERE $tbspawn2.zone='" . $res["short_name"] . "'
           AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
           AND $tbspawnentry.npcID=$tbnpctypes.id";
-    if ($HideInvisibleMen == TRUE) {
+    if ($HideInvisibleMen == true) {
         $query .= " AND $tbnpctypes.race!=127 AND $tbnpctypes.race!=240";
     }
     $query .= " AND $tbnpctypes.level>$MinimumNpcLvl
@@ -64,12 +61,12 @@ while ($res = mysql_fetch_array($result)) {
 }
 
 // Edit config.php and put FALSE to that next variable if you don't want to sort the zones
-if ($SortZoneLevelList == TRUE) {
+if ($SortZoneLevelList == true) {
     for ($i = 0; $i < $cpt; $i++) {
         if ($zones[$i]["npcs"] > 0) { // populated
             $zones[$i]["val"] = 0;
             $nb               = 0;
-            foreach ($levels AS $lkey => $lval) {
+            foreach ($levels as $lkey => $lval) {
                 if ($zones[$i][$lkey] > $lowlimit) {
                     $zones[$i]["val"] += $levels[$lkey] * $zones[$i][$lkey];
                     $nb += $zones[$i][$lkey];
@@ -86,16 +83,16 @@ if ($SortZoneLevelList == TRUE) {
     $max = $cpt;
     do {
         $max--;
-        $end = TRUE;
+        $end = true;
         for ($z = 0; $z < $max; $z++) {
             if ($zones[$z]["val"] > $zones[$z + 1]["val"]) {
-                $end           = FALSE;
+                $end           = false;
                 $myzone        = $zones[$z];
                 $zones[$z]     = $zones[$z + 1];
                 $zones[$z + 1] = $myzone;
             }
         }
-    } while ($end == FALSE);
+    } while ($end == false);
 }
 
 
@@ -125,10 +122,10 @@ for ($i = 0; $i <= $cpt; $i++) {
             print "<tr>
                        <td class=tab_title width='10%'>Name</td>
                        <td class='tab_title short-name'>Short name</td>";
-            if ($SortZoneLevelList == TRUE) {
+            if ($SortZoneLevelList == true) {
                 print "<td class=tab_title>Avg Lvl</td>";
             }
-            foreach ($levels AS $key2 => $val2) {
+            foreach ($levels as $key2 => $val2) {
                 print "<td class=tab_title>$val2</td>";
             }
             print "</tr>";
@@ -136,13 +133,13 @@ for ($i = 0; $i <= $cpt; $i++) {
         print "<tr>
            <td width='200'><a href=zone.php?name=" . $zones[$i]["shortname"] . ">" . $zones[$i]["longname"] . "</a></td>
            <td class='short-name'>" . $zones[$i]["shortname"] . "</td>";
-        if ($SortZoneLevelList == TRUE) {
+        if ($SortZoneLevelList == true) {
             print "<td align=center>" . round($zones[$i]["val"]) . "</td>";
         }
-        foreach ($levels AS $lkey => $lval) {
+        foreach ($levels as $lkey => $lval) {
             print "<td class = ".$lkey." align=center width='4%'>";
             if ($zones[$i][$lkey] > $lowlimit) {
-                if ($ShowNPCNumberInZoneLevelList == TRUE) {
+                if ($ShowNPCNumberInZoneLevelList == true) {
                     print $zones[$i][$lkey];
                 } else {
                     print "x";
@@ -156,4 +153,3 @@ for ($i = 0; $i <= $cpt; $i++) {
 print "</td></tr></table></div>";
 
 include($includes_dir . "footers.php");
-?>
