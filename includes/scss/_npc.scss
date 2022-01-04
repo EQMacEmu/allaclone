@@ -15,6 +15,12 @@
     position: relative;
     overflow: hidden;
     padding: 0 50px;
+
+	a.external {
+		display: inline;
+		font-size: 50%;
+		vertical-align: top;
+	}
     
     li {
         a {

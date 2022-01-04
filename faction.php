@@ -16,10 +16,10 @@
 	 *  The top-level sort must be on the zone
 	 */
 	function PrintNpcsByZone($QueryResult) {
-        if(mysql_num_rows($QueryResult) > 0) {
+        if(mysqli_num_rows($QueryResult) > 0) {
             $CurrentZone = "";
             echo '<ul>';
-            while($row = mysql_fetch_array($QueryResult)) {
+            while($row = mysqli_fetch_array($QueryResult)) {
                 if($CurrentZone != $row["zone"]) {
                     if($CurrentZone != "")
                         print "<br/><br/>\n";
@@ -39,26 +39,26 @@
 	if($id != "" && is_numeric($id))
 	{
 		$Query = "SELECT id,name FROM $tbfactionlist WHERE id='".$id."'";
-		$QueryResult = mysql_query($Query) or message_die('faction.php','MYSQL_QUERY',$Query,mysql_error());
-		if(mysql_num_rows($QueryResult) == 0)
+		$QueryResult = mysqli_query($db, $Query) or message_die('faction.php','MYSQL_QUERY',$Query,mysqli_error($db));
+		if(mysqli_num_rows($QueryResult) == 0)
 		{ header("Location: factions.php");
 			exit();
 		}
-		$FactionRow=mysql_fetch_array($QueryResult);
+		$FactionRow=mysqli_fetch_array($QueryResult);
 		$name=$FactionRow["name"];
 	}
 	elseif($name != "")
 	{
 	$Query = "SELECT id,name FROM $tbfactionlist WHERE name like '$name'";
-		$QueryResult = mysql_query($Query) or message_die('faction.php','MYSQL_QUERY',$Query,mysql_error());
-		if(mysql_num_rows($QueryResult) == 0)
+		$QueryResult = mysqli_query($db, $Query) or message_die('faction.php','MYSQL_QUERY',$Query,mysqli_error($db));
+		if(mysqli_num_rows($QueryResult) == 0)
 		{
 			header("Location: factions.php?iname=".$name."&isearch=true");
 			exit();
 		}
 		else
 		{
-			$FactionRow = mysql_fetch_array($QueryResult);
+			$FactionRow = mysqli_fetch_array($QueryResult);
 			$id = $FactionRow["id"];
 			$name = $FactionRow["name"];
 		}
@@ -94,7 +94,7 @@
 			GROUP BY $tbnpctypes.id
 			ORDER BY $tbzones.long_name ASC
 			";       
-	$QueryResult = mysql_query($Query) or message_die('faction.php','MYSQL_QUERY',$query,mysql_error());
+	$QueryResult = mysqli_query($db, $Query) or message_die('faction.php','MYSQL_QUERY',$query,mysqli_error($db));
 	PrintNpcsByZone($QueryResult);
     echo '</div>';
 
@@ -111,7 +111,7 @@
 			GROUP BY $tbnpctypes.id
 			ORDER BY $tbzones.long_name ASC
 			";
-	$QueryResult = mysql_query($Query) or message_die('faction.php','MYSQL_QUERY',$query,mysql_error());
+	$QueryResult = mysqli_query($db, $Query) or message_die('faction.php','MYSQL_QUERY',$query,mysqli_error($db));
 	PrintNpcsByZone($QueryResult);
     echo '</div>';
     echo '</div>';

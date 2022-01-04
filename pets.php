@@ -61,10 +61,10 @@
 			$Query .= " AND ISNULL((SELECT spell_globals.spellid FROM spell_globals WHERE spell_globals.spellid = $tbspells.`id`))";
 		}
 		$Query .= " GROUP BY $tbspells.`teleport_zone` ORDER BY $tbspells.classes". $class;
-		$result = mysql_query($Query);
+		$result = mysqli_query($db, $Query);
 		if (!$result)
 		{
-			print 'Could not run query: ' . mysql_error();
+			print 'Could not run query: ' . mysqli_error($db);
 			exit;
 		}
 		$columns = mysql_num_fields($result);
@@ -86,7 +86,7 @@
 		
 		$RowClass = "lr";
 		print "</tr></thead><tbody>";
-		while($row = mysql_fetch_array($result))
+		while($row = mysqli_fetch_array($result))
 		{
 			print "<tr class='".$RowClass."'>";
 			print "<td>" . $row["classes". $class] . "</td>";

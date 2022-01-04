@@ -28,11 +28,11 @@
 				ORDER BY $tbfactionlist.name
 				LIMIT ".(LimitToUse($MaxFactionsReturned) + 1);
 
-		$QueryResult = mysql_query($Query) or message_die('factions.php','MYSQL_QUERY',$Query,mysql_error());
+		$QueryResult = mysqli_query($db, $Query) or message_die('factions.php','MYSQL_QUERY',$Query,mysqli_error($db));
 
-		if(mysql_num_rows($QueryResult) == 1)
+		if(mysqli_num_rows($QueryResult) == 1)
 		{
-			$row = mysql_fetch_array($QueryResult);
+			$row = mysqli_fetch_array($QueryResult);
 			header("Location: faction.php?id=".$row["id"]);
 			exit();
 		}

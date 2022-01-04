@@ -141,11 +141,11 @@
 		if($ireqlevel > 0) { $Query.=" $s ($tbitems.reqlevel<=$ireqlevel) "; $s="AND"; }
 		if($inodrop)       { $Query.=" $s ($tbitems.nodrop=1)";              $s="AND"; }
 		$Query.=" GROUP BY $tbitems.id ORDER BY $tbitems.Name LIMIT ".(LimitToUse($MaxItemsReturned) + 1);
-		$QueryResult = mysql_query($Query) or message_die('items.php','MYSQL_QUERY',$Query,mysql_error());
+		$QueryResult = mysqli_query($db, $Query);
 		//print $Query;
-		if(mysql_num_rows($QueryResult) == 1)
+		if(mysqli_num_rows($QueryResult) == 1)
 		{
-			$row = mysql_fetch_array($QueryResult);
+			$row = mysqli_fetch_array($QueryResult);
 			header("Location: item.php?id=".$row["id"]);
 			exit();
 		}
@@ -277,7 +277,7 @@
 
 		$Tableborder = 0;
 
-		$num_rows = mysql_num_rows($QueryResult);
+		$num_rows = mysqli_num_rows($QueryResult);
 		$total_row_count = $num_rows;
 		if($num_rows > LimitToUse($MaxItemsReturned))
 		{
@@ -314,7 +314,7 @@
 			for( $count = 1 ; $count <= $num_rows ; $count++ )
 			{
 				$TableData = "";
-				$row = mysql_fetch_array($QueryResult);
+				$row = mysqli_fetch_array($QueryResult);
 				$TableData .= "<tr valign='top' class='".$RowClass."'><td>";
 				if(file_exists(getcwd() . "/icons/item_" . $row["icon"] . ".gif"))
 				{

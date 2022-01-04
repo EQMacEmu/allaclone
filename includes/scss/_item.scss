@@ -30,11 +30,19 @@
             &.zone {
                 background: linear-gradient(to bottom, #16222A, #3A6073);
                 padding: 5px;
+				color: white;
+				font-weight: bold;
+				padding: 15px 15px 15px 10px;
                 
                 a {
                     color: white;
+					padding: 0;
                 }
             }
+
+			a {
+				display: inline-block;
+			}
         }
     }
 }

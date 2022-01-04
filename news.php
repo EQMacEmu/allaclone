@@ -14,9 +14,9 @@ if ($EnableNews==FALSE)
 $query="SELECT * 
         FROM $tbnews
         ORDER BY DATE desc";
-$result=mysql_query($query) or message_die('news.php','MYSQL_QUERY',$query,mysql_error());
+$result=mysqli_query($db, $query) or message_die('news.php','MYSQL_QUERY',$query,mysqli_error($db));
 
-while ($res=mysql_fetch_array($result))
+while ($res=mysqli_fetch_array($result))
 {
 	print "<article class='news'>";
     print "<h2>" . $res["title"] . "</h2>";

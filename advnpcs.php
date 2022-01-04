@@ -53,17 +53,17 @@
 		}
 		if ($HideInvisibleMen ) { $query.=" AND $tbnpctypes.race!=127"; }
 		$query.=" ORDER BY $tbnpctypes.name";
-		$result=mysql_query($query) or message_die('npcs.php','MYSQL_QUERY',$query,mysql_error());
-		$n=mysql_num_rows($result);
+		$result=mysqli_query($db, $query);
+		$n=mysqli_num_rows($result);
 		if ($n>$MaxNpcsReturned)
 		{
 			print "$n ncps found, showing the $MaxNpcsReturned first ones...";
 			$query.=" LIMIT $MaxNpcsReturned";
-			$result=mysql_query($query) or message_die('npcs.php','MYSQL_QUERY',$query,mysql_error());
+			$result=mysqli_query($db, $query);
 		}
-		if (mysql_num_rows($result)>0)
+		if (mysqli_num_rows($result)>0)
 		{
-			while ($row=mysql_fetch_array($result))
+			while ($row=mysqli_fetch_array($result))
 			{
 				print "<li><a href=npc.php?id=".$row["id"].">".ReadableNpcName($row["name"])."</a>";
 				if ($ishowlevel) { print " - level ".$row["level"]; }

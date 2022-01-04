@@ -75,7 +75,7 @@ $IgnoreZones=array("load","loading","load2","nektropos","arttest","apprentice","
 $ShowAccount=FALSE; // (not in use yet)
 $ShowCharacters=FALSE; // (not in use yet)
 
-$db=mysql_connect($dbhost,$dbuser,$dbpasswd) or die("Impossible to connect to $dbhost : ".mysql_error());
-mysql_select_db($dbname,$db) or die("Impossible to select $dbname : ".mysql_error());
+$db=mysql_connect($dbhost,$dbuser,$dbpasswd) or die("Impossible to connect to $dbhost : ".mysqli_error($db));
+mysql_select_db($dbname,$db) or die("Impossible to select $dbname : ".mysqli_error($db));
 
 ?>

@@ -17,7 +17,7 @@
 
 	$query.=" ORDER BY $tbzones.file_name ASC";
 
-	$result=mysql_query($query) or message_die('zones.php','MYSQL_QUERY',$query,mysql_error());
+	$result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
 	print '<center><table border=0 cellpadding="5" cellspacing="0"><tr>
 		<td class="menuh">Name</td>
 		<td class="menuh">Short Name</td>
@@ -26,7 +26,7 @@
 		';
 		
 	$RowClass = "lr";
-	while ($row=mysql_fetch_array($result))
+	while ($row=mysqli_fetch_array($result))
 	{
 		if (substr_count(strtolower($row["note"]), "disabled") == 0)
 		{

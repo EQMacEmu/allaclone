@@ -17,8 +17,8 @@ $query="SELECT $tbspawngroup.name AS sgname, $tbspawn2.*,
         WHERE $tbspawngroup.id=$id
           AND $tbspawn2.spawngroupID=$tbspawngroup.id
           AND $tbspawn2.zone=$tbzones.short_name";
-$result=mysql_query($query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysql_error());
-$spawn=mysql_fetch_array($result);
+$result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
+$spawn=mysqli_fetch_array($result);
 $Title=$spawn["sgname"]." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
 $x=floor($spawn["x"]);
 $y=floor($spawn["y"]);
@@ -35,10 +35,10 @@ $query="SELECT $tbspawnentry.chance,$tbnpctypes.name,$tbnpctypes.id
           AND $tbspawnentry.npcID=$tbnpctypes.id 
         ORDER BY $tbnpctypes.name ASC
         ";
-$result=mysql_query($query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysql_error());
+$result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 print "<b>NPCs composing that spawngroup :</b>";
-if (mysql_num_rows($result)>0) {
-  while ($row=mysql_fetch_array($result)) {
+if (mysqli_num_rows($result)>0) {
+  while ($row=mysqli_fetch_array($result)) {
     print "<li><a href=npc.php?id=".$row["id"].">".$row["name"]."</a> (".$row["chance"]."%)"; 
   }
 }
@@ -58,10 +58,10 @@ $query="SELECT $tbspawnentry.chance,$tbspawn2.x AS x, $tbspawn2.y AS y, $tbspawn
           AND $tbspawngroup.id!=$id
         ORDER BY sgid ASC, $tbnpctypes.name ASC
         ";
-$result=mysql_query($query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysql_error());
+$result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 $sg=0;
-if (mysql_num_rows($result)>0) {
-  while ($row=mysql_fetch_array($result)) {
+if (mysqli_num_rows($result)>0) {
+  while ($row=mysqli_fetch_array($result)) {
     if ($sg!=$row["sgid"]) {
       $sg=$row["sgid"];
       print "</ul><li><a href=$PHP_SELF?id=".$row["sgid"].">".$row["sgname"]."</a>, range=";

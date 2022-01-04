@@ -18,13 +18,13 @@ $name = (isset($_GET['name']) ? $_GET['name'] : '');
 if($id != "" && is_numeric($id)&& $DisplayTaskInfo==TRUE)
 {
 	$Query = "SELECT * FROM $tbtasks WHERE id='".$id."'";
-	$QueryResult = mysql_query($Query) or message_die('task.php','MYSQL_QUERY',$Query,mysql_error());
-	if(mysql_num_rows($QueryResult) == 0)
+	$QueryResult = mysqli_query($db, $Query) or message_die('task.php','MYSQL_QUERY',$Query,mysqli_error($db));
+	if(mysqli_num_rows($QueryResult) == 0)
 	{
 		header("Location: customzoneslist.php");
 		exit();
 	}
-	$task=mysql_fetch_array($QueryResult);
+	$task=mysqli_fetch_array($QueryResult);
 	$name=$task["title"];
 }
 else
@@ -103,12 +103,12 @@ if ($DisplayTaskActivities==TRUE)
 	print "<tr class='myline' height='6'><td colspan='2'></td></tr>\n";
 	print "<tr valign='top'>";
 	$Query = "SELECT * FROM $tbtaskactivities WHERE taskid='".$id."' ORDER BY activityid";
-	$QueryResult = mysql_query($Query) or message_die('task.php','MYSQL_QUERY',$Query,mysql_error());
+	$QueryResult = mysqli_query($db, $Query) or message_die('task.php','MYSQL_QUERY',$Query,mysqli_error($db));
 
-	if (mysql_num_rows($QueryResult) > 0)
+	if (mysqli_num_rows($QueryResult) > 0)
 	{
 		print "<tr><td><b>Task Activities</b></td></tr>";
-		while ($row=mysql_fetch_array($QueryResult))
+		while ($row=mysqli_fetch_array($QueryResult))
 		{
 			
 			
@@ -258,12 +258,12 @@ if ($DisplayTaskActivities==TRUE)
 			if ($GoalMethod == 1)
 			{
 				$Query2 = "SELECT * FROM goallists WHERE listid='".$GoalID."'";
-				$QueryResult2 = mysql_query($Query2) or message_die('task.php','MYSQL_QUERY',$Query2,mysql_error());
+				$QueryResult2 = mysqli_query($db, $Query2) or message_die('task.php','MYSQL_QUERY',$Query2,mysqli_error($db));
 				$GoalListString = "";
-				if (mysql_num_rows($QueryResult2) > 0)
+				if (mysqli_num_rows($QueryResult2) > 0)
 				{
 					
-					while ($row2=mysql_fetch_array($QueryResult2))
+					while ($row2=mysqli_fetch_array($QueryResult2))
 					{
 						
 						if ($GoalType == "NPCID" && $row2["entry"])

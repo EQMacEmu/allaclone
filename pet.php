@@ -16,8 +16,8 @@ if (!isset($name)) { print "<script>document.location=\"index.php\";</script>"; 
 $query="SELECT $tbnpctypes.*
         FROM $tbnpctypes
         WHERE $tbnpctypes.name = '$name' LIMIT 1";
-$result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-$npc=mysql_fetch_array($result);
+$result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+$npc=mysqli_fetch_array($result);
 
 print "<table border=0 width=0%><tr valign=top><td width=100%>\n";
 if (file_exists($npcs_dir.$id.".jpg")) {
@@ -64,9 +64,9 @@ print "<tr valign=top>";
 
 if ($npc["npc_spells_id"]>0) {
   $query="SELECT * FROM $tbnpcspells WHERE id=".$npc["npc_spells_id"];
-  $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-  if (mysql_num_rows($result)>0) {
-    $g=mysql_fetch_array($result);
+  $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+  if (mysqli_num_rows($result)>0) {
+    $g=mysqli_fetch_array($result);
     print "<td><table border=0><tr><td colspan=2 nowrap><b>This pet casts the following spells : </b><p>";
     $query="SELECT $tbnpcspellsentries.spellid
             FROM $tbnpcspellsentries
@@ -75,12 +75,12 @@ if ($npc["npc_spells_id"]>0) {
               AND $tbnpcspellsentries.maxlevel>=".$npc["level"]."
             ORDER BY $tbnpcspellsentries.priority DESC
             ";
-    $result2=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-    if (mysql_num_rows($result2)>0) {
+    $result2=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+    if (mysqli_num_rows($result2)>0) {
       print "</ul><li><b>Listname : </b>".$g["name"];
       if ($g["attack_proc"]==1) { print " (Procs)"; }
       print "<ul>";
-      while ($row=mysql_fetch_array($result2)) {
+      while ($row=mysqli_fetch_array($result2)) {
         $spell=getspell($row["spellid"]);
         print "<li><a href=spell.php?id=".$row["spellid"].">".$spell["name"]."</a>";
       }

@@ -27,10 +27,10 @@
 	$query="SELECT id,name from $tbfactionlist order by name ASC";
 	// Limits for pagination
 	$query.=" LIMIT $start, $MaxResultsPerPage";
-	$result=mysql_query($query) or message_die('item.php', 'MYSQL_QUERY', $query,mysql_error());
+	$result=mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query,mysqli_error($db));
 	$RowClass = "lr";
 	
-	while ($row=mysql_fetch_array($result)) {
+	while ($row=mysqli_fetch_array($result)) {
 		echo '<tr class="'.$RowClass.'"><td>';
 		echo "<li><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a>";
 		echo '</td></tr>';

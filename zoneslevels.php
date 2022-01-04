@@ -34,9 +34,9 @@ foreach ($IgnoreZones as $zid) {
     $v = " AND ";
 }
 $query .= " ORDER BY $tbzones.long_name ASC";
-$result = mysql_query($query) or message_die('zoneslevels.php', 'MYSQL_QUERY', $query, mysql_error());
+$result = mysqli_query($db, $query) or message_die('zoneslevels.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 $cpt = 0;
-while ($res = mysql_fetch_array($result)) {
+while ($res = mysqli_fetch_array($result)) {
     $zones[$cpt]["shortname"] = $res["short_name"];
     $zones[$cpt]["longname"]  = $res["long_name"];
     $zones[$cpt]["npcs"]      = 0;
@@ -51,8 +51,8 @@ while ($res = mysql_fetch_array($result)) {
     }
     $query .= " AND $tbnpctypes.level>$MinimumNpcLvl
           GROUP BY $tbnpctypes.id";
-    $result2 = mysql_query($query) or message_die('zoneslevels.php', 'MYSQL_QUERY', $query, mysql_error());
-    while ($row = mysql_fetch_array($result2)) {
+    $result2 = mysqli_query($db, $query) or message_die('zoneslevels.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+    while ($row = mysqli_fetch_array($result2)) {
         $lvl = floor($row["level"] / 5);
         $zones[$cpt][$lvl]++;
         $zones[$cpt]["npcs"]++;

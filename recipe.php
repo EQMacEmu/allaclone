@@ -21,8 +21,8 @@
 			FROM $tbtradeskillrecipe
 			WHERE id=$id";
 			
-	$result=mysql_query($query) or message_die('recipe.php','MYSQL_QUERY',$query,mysql_error());
-	$recipe=mysql_fetch_array($result);
+	$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
+	$recipe=mysqli_fetch_array($result);
 	print "<table border=0 width=0%>";
 	print "<tr><td nowrap><b>Recipe : </b></td><td nowrap>".ucfirstwords(str_replace('_',' ',$recipe["name"]))."</td></tr>";
 	print "<tr><td nowrap><b>Tradeskill : </b></td><td nowrap>".ucfirstwords($dbskills[$recipe["tradeskill"]])."</td></tr>";
@@ -47,14 +47,14 @@
 			  AND $tbtradeskillrecipeentries.item_id=$tbitems.id
 			  AND $tbtradeskillrecipeentries.iscontainer=1";
 			  
-	$result=mysql_query($query) or message_die('recipe.php','MYSQL_QUERY',$query,mysql_error());
+	$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
 	
-	if (mysql_num_rows($result)>0)
+	if (mysqli_num_rows($result)>0)
 	{
 		print "<tr class=myline height=6><td colspan=2></td><tr>";
 		print "<tr><td nowrap><b>Containers needed for the combine </b>";
 		print "<ul>";
-		while ($row=mysql_fetch_array($result))
+		while ($row=mysqli_fetch_array($result))
 		{
 			
 			print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
@@ -77,12 +77,12 @@
 			  AND $tbtradeskillrecipeentries.item_id=$tbitems.id
 			  AND $tbtradeskillrecipeentries.successcount>0";
 			  
-	$result=mysql_query($query) or message_die('recipe.php','MYSQL_QUERY',$query,mysql_error());
-	if (mysql_num_rows($result)>0)
+	$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
+	if (mysqli_num_rows($result)>0)
 	{
 		print "<tr class=myline height=6><td colspan=2></td><tr>";
 		print "<tr><td nowrap><b>Items resulting of a <FONT COLOR='#FFFF00'> successfull combine </FONT></b><ul>";
-		while ($row=mysql_fetch_array($result))
+		while ($row=mysqli_fetch_array($result))
 		{
 			
 			print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
@@ -102,12 +102,12 @@
 				  AND $tbtradeskillrecipeentries.item_id=$tbitems.id
 				  AND $tbtradeskillrecipeentries.failcount>0";
 				  
-		$result=mysql_query($query) or message_die('recipe.php','MYSQL_QUERY',$query,mysql_error());
-		if (mysql_num_rows($result)>0)
+		$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
+		if (mysqli_num_rows($result)>0)
 		{
 			print "<tr class=myline height=6><td colspan=2></td><tr>";
 			print "<tr><td nowrap><b>Items resulting of a <FONT COLOR='#FF0000'> failed combine </FONT></b><ul>";
-			while ($row=mysql_fetch_array($result))
+			while ($row=mysqli_fetch_array($result))
 			{
 				
 				print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
@@ -127,13 +127,13 @@
 			AND $tbtradeskillrecipeentries.iscontainer=0
 			AND $tbtradeskillrecipeentries.componentcount>0";
 			
-	$result=mysql_query($query) or message_die('recipe.php','MYSQL_QUERY',$query,mysql_error());
-	if (mysql_num_rows($result)>0)
+	$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
+	if (mysqli_num_rows($result)>0)
 	{
 		print "<tr class=myline height=6><td colspan=2></td><tr>";
 		print "<tr><td nowrap><b>Components needed : </b><ul>";
 
-			while ($row=mysql_fetch_array($result))
+			while ($row=mysqli_fetch_array($result))
 			{
 				
 				print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" . "<a href=item.php?id=".$row["item_id"]." id=".($row["item_id"] * 100).">".

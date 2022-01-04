@@ -45,7 +45,7 @@
 		if ($minskill>0) { $query.=" $s $tbtradeskillrecipe.trivial>=$minskill"; $s="AND"; }
 		if ($maxskill>0) { $query.=" $s $tbtradeskillrecipe.trivial<=$maxskill"; $s="AND"; }
 		$query.=" ORDER BY $tbtradeskillrecipe.name";
-		$result=mysql_query($query) or message_die('recipes.php','MYSQL_QUERY',$query,mysql_error());
+		$result=mysqli_query($db, $query) or message_die('recipes.php','MYSQL_QUERY',$query,mysqli_error($db));
 
 		if(isset($result))
 		{

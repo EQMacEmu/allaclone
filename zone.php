@@ -28,8 +28,8 @@ $ZoneDebug = FALSE; // this is new in 0.5.3 but undocumented, it is for world bu
 
 
 $query = "SELECT $tbzones.* FROM $tbzones WHERE $tbzones.short_name='$name'";
-$result = mysql_query($query) or message_die('zones.php', 'MYSQL_QUERY', $query, mysql_error());
-$zone = mysql_fetch_array($result);
+$result = mysqli_query($db, $query) or message_die('zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+$zone = mysqli_fetch_array($result);
 
 if ($mode == "npcs") {
     $query = "SELECT $tbnpctypes.id,$tbnpctypes.class,$tbnpctypes.level,$tbnpctypes.maxlevel,$tbnpctypes.race,$tbnpctypes.name,$tbnpctypes.maxlevel,$tbnpctypes.loottable_id
@@ -48,9 +48,9 @@ if ($mode == "npcs") {
         $query .= " GROUP BY $tbnpctypes.id";
     }
     $query .= " ORDER BY $order";
-    $result = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+    $result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
     
-    if (mysql_num_rows($result) > 0) {
+    if (mysqli_num_rows($result) > 0) {
         print "<h2>Bestiary</h2><div class='left-col'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
         if ($ZoneDebug == TRUE) {
             print "<td class='menuh'><b><a href=$PHP_SELF?name=$name&order=id>Id</a></b></td>";
@@ -64,7 +64,7 @@ if ($mode == "npcs") {
         print "<td align='left' class='menuh'><b>Type</b></td>";
         
         $RowClass = "lr";
-        while ($row = mysql_fetch_array($result)) {
+        while ($row = mysqli_fetch_array($result)) {
             if ((ReadableNpcName($row["name"])) != '') {
                 print "<tr class='" . $RowClass . "'>";
                 if ($ZoneDebug == TRUE) {
@@ -121,10 +121,10 @@ if ($mode == "items") {
     }
     $query .= " GROUP BY $tbnpctypes.id";
     
-    $result = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+    $result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
     $ItemsData = array();
     $RowClass  = "lr";
-    while ($row = mysql_fetch_array($result)) {
+    while ($row = mysqli_fetch_array($result)) {
         //# For each NPC in the zone...
         $query = "SELECT $tbitems.*";
         $query .= " FROM $tbitems,$tbloottableentries,$tbnpctypes,$tblootdropentries";
@@ -140,13 +140,13 @@ if ($mode == "items") {
         }
         $query .= " GROUP BY $tbitems.id ORDER BY $tbitems.name";
         
-        $result2 = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+        $result2 = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
         
-        if (mysql_num_rows($result2) > 0) {
-            $ItemsFound = mysql_num_rows($result2);
+        if (mysqli_num_rows($result2) > 0) {
+            $ItemsFound = mysqli_num_rows($result2);
         }
         
-        while ($res = mysql_fetch_array($result2)) {
+        while ($res = mysqli_fetch_array($result2)) {
             $ItemsData[$res["id"]] = $res;
         }
     }
@@ -207,18 +207,18 @@ if ($mode == "spawngroups") {
             WHERE $tbspawn2.zone='$name'
             AND $tbspawngroup.id=$tbspawn2.spawngroupID
             ORDER BY $tbspawngroup.name ASC";
-        $result = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+        $result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
         
-        if (mysql_num_rows($result) > 0) {
-            while ($row = mysql_fetch_array($result)) {
+        if (mysqli_num_rows($result) > 0) {
+            while ($row = mysqli_fetch_array($result)) {
                 print "<li><a href=spawngroup.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . floor($row["y"]) . " / " . floor($row["x"]) . " / " . floor($row["z"]) . ") (respawn time : " . translate_time($row["respawntime"]) . ")<ul>";
                 $query = "SELECT $tbspawnentry.npcID,$tbnpctypes.name,$tbspawnentry.chance,$tbnpctypes.level
                     FROM $tbspawnentry,$tbnpctypes
                     WHERE $tbspawnentry.npcID=$tbnpctypes.id
                     AND $tbspawnentry.spawngroupID=" . $row["id"] . "
                     ORDER BY $tbnpctypes.name ASC";
-                $result2 = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
-                while ($res = mysql_fetch_array($result2)) {
+                $result2 = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+                while ($res = mysqli_fetch_array($result2)) {
                     print "<li><a href=npc.php?id=" . $res["npcID"] . ">" . $res["name"] . "</a>, chance " . $res["chance"] . "%";
                     print " (level " . $res["level"] . ")";
                 }
@@ -233,11 +233,11 @@ if ($mode == "spawngroups") {
 
 if ($mode == "forage") {
     $query = "SELECT $tbitems.Name,$tbitems.id FROM $tbitems,$tbforage,$tbzones WHERE $tbitems.id=$tbforage.itemid AND $tbforage.zoneid=$tbzones.zoneidnumber AND $tbzones.short_name='$name' ORDER BY $tbitems.Name ASC";
-    $result = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+    $result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
     
-    if (mysql_num_rows($result) > 0) {
+    if (mysqli_num_rows($result) > 0) {
         print "<p>Forageable Items<p><ul>";
-        while ($row = mysql_fetch_array($result)) {
+        while ($row = mysqli_fetch_array($result)) {
             print "<li><a href=item.php?id=" . $row["id"] . ">" . $row["Name"] . "</a></li>";
         }
         print "</ul>";
@@ -255,9 +255,9 @@ if ($mode == "tasks") {
             WHERE $tbtasks.startzone=$ZoneID
             ORDER BY $tbtasks.id ASC";
         
-        $result = mysql_query($query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysql_error());
+        $result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
         print "<center>";
-        if (mysql_num_rows($result) > 0) {
+        if (mysqli_num_rows($result) > 0) {
             print "<table border=0 width=100% cellpadding='5' cellspacing='0'><tr valign=top><td width=100%>";
             print "<center><table border=0 cellpadding='5' cellspacing='0'><tr>
                 <td class='menuh'>Task Name</td>
@@ -268,7 +268,7 @@ if ($mode == "tasks") {
                 ";
             
             $RowClass = "lr";
-            while ($row = mysql_fetch_array($result)) {
+            while ($row = mysqli_fetch_array($result)) {
                 $Reward = $row["reward"];
                 if ($row["rewardmethod"] == 0) {
                     if ($row["rewardid"] > 0) {

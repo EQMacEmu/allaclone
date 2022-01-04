@@ -39,10 +39,10 @@ foreach ($npcs as $id) {
             AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
             AND $tbspawn2.zone='$name'
             AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
-  $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-  if (mysql_num_rows($result)>0) {
+  $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+  if (mysqli_num_rows($result)>0) {
     $cpt=0;
-    while ($row=mysql_fetch_array($result)) {
+    while ($row=mysqli_fetch_array($result)) {
       $spawns[$cpt]=floor($row["y"])." / ".floor($row["x"])." / ".floor($row["z"]);
       $spawns[$cpt].=" (".translate_time($row["respawntime"]).")";
       $cpt++;
@@ -57,10 +57,10 @@ foreach ($npcs as $id) {
             WHERE $tbloottableentries.loottable_id=".$mymob["loottable_id"]."
               AND $tbloottableentries.lootdrop_id=$tblootdropentries.lootdrop_id
               AND $tblootdropentries.item_id=$tbitems.id";
-    $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-    if (mysql_num_rows($result)>0) {
+    $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+    if (mysqli_num_rows($result)>0) {
       $cpt=0;
-      while ($row=mysql_fetch_array($result)) {
+      while ($row=mysqli_fetch_array($result)) {
         $loots[$cpt]=$row["Name"];
         $loots[$cpt].=" (".$dbitypes[$row["itemtype"]].")";
         $cpt++;

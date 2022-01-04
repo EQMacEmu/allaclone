@@ -32,7 +32,7 @@ $Query="SELECT $tbfactionlist.id,$tbfactionlist.name
         WHERE $Where
         ORDER BY $tbfactionlist.name,$tbfactionlist.id
         LIMIT ".(LimitToUse($MaxFactionsReturned) + 1);
-$FoundFactions = mysql_query($Query) or message_die('fullsearch.php','MYSQL_QUERY',$Query,mysql_error());
+$FoundFactions = mysqli_query($db, $Query);
 
 // Query for Items
 if ($DiscoveredItemsOnly==TRUE)
@@ -53,7 +53,7 @@ else
 		ORDER BY $tbitems.name,$tbitems.id
 		LIMIT ".(LimitToUse($MaxItemsReturned) + 1);
 }
-$FoundItems = mysql_query($Query) or message_die('fullsearch.php','MYSQL_QUERY',$Query,mysql_error());
+$FoundItems = mysqli_query($db, $Query);
 
 // Query for NPCs
 $Query="SELECT $tbnpctypes.id,$tbnpctypes.name
@@ -61,33 +61,33 @@ $Query="SELECT $tbnpctypes.id,$tbnpctypes.name
         WHERE $Where
         ORDER BY $tbnpctypes.name,$tbnpctypes.id
         LIMIT ".(LimitToUse($MaxNpcsReturned) + 1);
-$FoundNpcs = mysql_query($Query) or message_die('fullsearch.php','MYSQL_QUERY',$Query,mysql_error());
+$FoundNpcs = mysqli_query($db, $Query);
 
 
 // In case only one object is found, redirect to its page
-if(     mysql_num_rows($FoundFactions) == 1
-    and mysql_num_rows($FoundItems)    == 0
-    and mysql_num_rows($FoundNpcs)     == 0
+if(     mysqli_num_rows($FoundFactions) == 1
+    and mysqli_num_rows($FoundItems)    == 0
+    and mysqli_num_rows($FoundNpcs)     == 0
   )
-{ $FactionRow = mysql_fetch_array($FoundFactions);
+{ $FactionRow = mysqli_fetch_array($FoundFactions);
    header("Location: faction.php?id=".$FactionRow["id"]);
   exit();
 }
 
-if(     mysql_num_rows($FoundFactions) == 0
-    and mysql_num_rows($FoundItems)    == 1
-    and mysql_num_rows($FoundNpcs)     == 0
+if(     mysqli_num_rows($FoundFactions) == 0
+    and mysqli_num_rows($FoundItems)    == 1
+    and mysqli_num_rows($FoundNpcs)     == 0
   )
-{ $ItemRow = mysql_fetch_array($FoundItems);
+{ $ItemRow = mysqli_fetch_array($FoundItems);
    header("Location: item.php?id=".$ItemRow["id"]);
   exit();
 }
 
-if(     mysql_num_rows($FoundFactions) == 0
-    and mysql_num_rows($FoundItems)    == 0
-    and mysql_num_rows($FoundNpcs)     == 1
+if(     mysqli_num_rows($FoundFactions) == 0
+    and mysqli_num_rows($FoundItems)    == 0
+    and mysqli_num_rows($FoundNpcs)     == 1
   )
-{ $NpcRow = mysql_fetch_array($FoundNpcs);
+{ $NpcRow = mysqli_fetch_array($FoundNpcs);
    header("Location: npc.php?id=".$NpcRow["id"]);
   exit();
 }

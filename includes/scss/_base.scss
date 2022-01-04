@@ -8,10 +8,27 @@ html {
     height: 100%;
 }
 
+body {
+	height: 100%;
+}
+
+#site-wrapper {
+	display: grid;
+	gap: 1rem;
+	grid-template-rows: auto 1fr auto;
+	grid-template-columns: auto 480px 480px auto;
+	grid-template-areas:"header header header header"
+						"leftSidebar mainContent mainContent rightSidebar"
+						"footer footer footer footer";
+	min-height: 100%;
+
+}
+
 header {
     background: url(https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg) top left no-repeat;
     background-size: cover;
     background-attachment: fixed;
+	grid-area: header;
 }
 
 a {
@@ -28,55 +45,13 @@ a {
     }
 }
 
-.left-col {
-
-    margin-bottom: 10px;
-    clear: both;
-
-    @include mq('tablet') {
-        float: left;
-        clear: none;
-        width: calc(100% - 450px);
-    }
-}
-
-.right-col {
-
-    padding: 20px;
-    background: rgba(220, 220, 220, 0.5);
-    box-shadow: 0px 2px 5px #666;
-    margin-bottom: 10px;
-    clear: both;
-    overflow: hidden;
-
-    @include mq('tablet') {
-        float: right;
-        clear: none;
-        width: 450px;
-    }
-
-    img {
-        display: block;
-        margin: 0 auto;
-    }
-
-    .list-wrapper {
-        max-width: 100%;
-        width: 100%;
-        float: none;
-    }
-}
-
 footer {
     clear: both;
+	grid-area: footer;
 }
 
 #main {
-    min-height: 60vh;
-    padding: 20px;
-    position: relative;
-    max-width: 1200px;
-    margin: 0 auto;
+	grid-area: mainContent;
 
     h2 {
         margin-top: 0;
@@ -200,22 +175,6 @@ footer {
         }
     }
 }
-
-#box-art {
-
-    width: 100%;
-    height: auto;
-    display: block;
-    margin: 0 auto 20px;
-
-    @include mq('phablet') {
-        width: 350px;
-        height: auto;
-        float: right;
-        margin-left: 50px;
-    }
-}
-
 
 footer {
     text-align: center;

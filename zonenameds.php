@@ -28,8 +28,8 @@ print "<table border=0 width=100%><tr valign=top><td width=100%>";
 $query="SELECT $tbzones.*
         FROM $tbzones
         WHERE $tbzones.short_name='$name'";
-$result=mysql_query($query) or message_die('zones.php','MYSQL_QUERY',$query,mysql_error());
-$zone=mysql_fetch_array($result);
+$result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
+$zone=mysqli_fetch_array($result);
 print "<center><table border=0 width=0%><tr valign=top><td>";
 print "<p><b>Succor point : </b>".floor($zone["safe_x"])." / ".floor($zone["safe_y"])." / ".floor($zone["safe_z"]);
 if ($zone["minium_level"]>0) { print "<br><b>Minimum level : </b>".floor($zone["minium_level"]); }
@@ -81,9 +81,9 @@ if (isset($submitDetailMaps)) {
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
-    $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-    if (mysql_num_rows($result)>0) {
-      while ($row=mysql_fetch_array($result)) {
+    $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+    if (mysqli_num_rows($result)>0) {
+      while ($row=mysqli_fetch_array($result)) {
        //    P 195.0000, 210.0000, 94.8135,  0, 0, 0,  3,  Gruppip_(Wizard_Spells)
         print $v."P ".round($row["x"],2).", ".round($row["y"],2).", ".round($row["z"],2).",0,0,0,3,".str_replace(" ","_",$mymob["name"]);
         $v="<br>\n"; 
@@ -124,11 +124,11 @@ if (isset($submitDetail)) {
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
-    $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-    if (mysql_num_rows($result)>0) {
+    $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+    if (mysqli_num_rows($result)>0) {
       print "<td nowrap>"; 
       $sep="";
-      while ($row=mysql_fetch_array($result)) {
+      while ($row=mysqli_fetch_array($result)) {
         print "$sep".floor($row["y"])." / ".floor($row["x"])." / ".floor($row["z"]);
         print ", ".translate_time($row["respawntime"]);
         $sep="<br>";
@@ -146,11 +146,11 @@ if (isset($submitDetail)) {
                 AND $tbloottableentries.lootdrop_id=$tblootdropentries.lootdrop_id
               AND $tblootdropentries.item_id=$tbitems.id
              ";
-      $result=mysql_query($query) or message_die('npc.php','MYSQL_QUERY',$query,mysql_error());
-      if (mysql_num_rows($result)>0) {
+      $result=mysqli_query($db, $query) or message_die('npc.php','MYSQL_QUERY',$query,mysqli_error($db));
+      if (mysqli_num_rows($result)>0) {
         print "<td nowrap>";
         $sep="";
-        while ($row=mysql_fetch_array($result)) {
+        while ($row=mysqli_fetch_array($result)) {
           print "$sep<a href=item.php?id=".$row["id"].">".$row["Name"]."</a>";
           print ", ".$dbitypes[$row["itemtype"]];
           $sep="<br>";
@@ -176,7 +176,7 @@ if ($mode=="npcs") {
   if ($GroupNpcsByName==TRUE) { $query.=" GROUP BY $tbnpctypes.name"; }
   else { $query.=" GROUP BY $tbnpctypes.id"; }
   $query.=" ORDER BY $order";
-  $result=mysql_query($query) or message_die('zone.php','MYSQL_QUERY',$query,mysql_error());
+  $result=mysqli_query($db, $query) or message_die('zone.php','MYSQL_QUERY',$query,mysqli_error($db));
   print "<p><b>Bestiary</b><p><table border=1><tr>";
   print "<form method=POST action=$PHP_SELF>";
   print "<input type=submit name=submitDetail value=\"Detailled List\" class=form>";
@@ -191,7 +191,7 @@ if ($mode=="npcs") {
          <td class=tab_title><a href=$PHP_SELF?name=$name&order=race>Race</a></td>
          <td class=tab_title><a href=$PHP_SELF?name=$name&order=level>Level</a></td>
          ";
-  while ($row=mysql_fetch_array($result)) {
+  while ($row=mysqli_fetch_array($result)) {
     print "<tr>";
     if ($ZoneDebug==TRUE) { print "<td>".$row["id"]."</td>"; }
     print "<td align=center><input type=checkbox name=npc[] value=".$row["id"].(isChecked($row["id"])?" checked":"")." class=form></td>";

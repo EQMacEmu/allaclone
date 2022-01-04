@@ -18,8 +18,8 @@ foreach ($IgnoreZones AS $zid) {
   $v=" AND ";
 }          
 $query.=" ORDER BY long_name ASC";
-$result=mysql_query($query);
-while ($row=mysql_fetch_array($result)) {
+$result=mysqli_query($db, $query);
+while ($row=mysqli_fetch_array($result)) {
   
   print "<option value=\"".$row["short_name"]."\"";
   if ($row["short_name"]==$aZone) { print " selected"; }

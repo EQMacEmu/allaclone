@@ -19,7 +19,7 @@ $query="SELECT $tbzones.short_name AS short_name,
 */          
 $query.=" GROUP BY $tbspawn2.zone
         ORDER BY $tbzones.long_name ASC";
-$result=mysql_query($query) or message_die('zones.php','MYSQL_QUERY',$query,mysql_error());
+$result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
 print "<div class='table-wrapper'><table width='100%' class='sticky-header'><thead><tr>
        <td class=tab_title>Name</td>
        <td class='tab_title short-name'>Short name</td>
@@ -28,7 +28,7 @@ print "<div class='table-wrapper'><table width='100%' class='sticky-header'><the
        </tr>
        </thead>
        ";
-while ($row=mysql_fetch_array($result)) {
+while ($row=mysqli_fetch_array($result)) {
   print "<tr>
          <td><a href=zone.php?name=".$row["short_name"].">".$row["long_name"]."</a></td>
          <td class='short-name'>".$row["short_name"]."</td>

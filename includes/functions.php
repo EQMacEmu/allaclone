@@ -19,7 +19,7 @@ function PrintQueryResults(
     $ExtraSkill
 ) {
     global $dbskills;
-    $ObjectsToShow = mysql_num_rows($FoundObjects);
+    $ObjectsToShow = mysqli_num_rows($FoundObjects);
     if ($ObjectsToShow > LimitToUse($MaxObjectsReturned)) {
         $ObjectsToShow = LimitToUse($MaxObjectsReturned);
         $MoreObjectsExist = true;
@@ -37,7 +37,7 @@ function PrintQueryResults(
         echo  "</h3>\n";
         echo  "<ul>";
         for ($j = 1 ; $j <= $ObjectsToShow ; $j ++) {
-            $row = mysql_fetch_array($FoundObjects);
+            $row = mysqli_fetch_array($FoundObjects);
             $PrintString = " <li><a href='".$OpenObjectByIdPage."?id=".$row[$IdAttribute]."'>";
             if ($ObjectDescription == "npc") {
                 // Clean up the name for NPCs
@@ -238,7 +238,7 @@ function getsize($val)
 }
 function getspell($id)
 {
-    global $tbspells,$tbspellglobals,$UseSpellGlobals;
+    global $tbspells,$tbspellglobals,$UseSpellGlobals, $db;
     if ($UseSpellGlobals==true) {
         $query="SELECT ".$tbspells.".* FROM ".$tbspells." WHERE ".$tbspells.".id=".$id."
 			AND ISNULL((SELECT ".$tbspellglobals.".spellid FROM ".$tbspellglobals."
@@ -246,8 +246,8 @@ function getspell($id)
     } else {
         $query="SELECT * FROM $tbspells WHERE id=$id";
     }
-    $result=mysql_query($query) or message_die('functions.php', 'getspell', $query, mysql_error());
-    $s=mysql_fetch_array($result);
+    $result=mysqli_query($db, $query) or message_die('functions.php', 'getspell', $query, mysqli_error($db));
+    $s=mysqli_fetch_array($result);
     return $s;
 }
 function gedeities($val)
@@ -536,7 +536,7 @@ function GetItemStatsString($name, $stat, $stat2, $stat2color)
             }
         }
     } else {
-        if (ereg_replace("[^0-9]", "", $stat) > 0) {
+        if (preg_replace("[^0-9]", "", $stat) > 0) {
             $PrintString .= $name.": ".$stat;
         }
     }
@@ -787,9 +787,9 @@ function CanThisNPCDoubleAttack($class, $level)
 // Automatically format and populate the table based on the query
 function AutoDataTable($Query)
 {
-    $result = mysql_query($Query);
+    $result = mysqli_query($db, $Query);
     if (!$result) {
-        echo 'Could not run query: ' . mysql_error();
+        echo 'Could not run query: ' . mysqli_error($db);
         exit;
     }
     $columns = mysql_num_fields($result);
@@ -800,7 +800,7 @@ function AutoDataTable($Query)
         echo "<th class='menuh'>". ucfirstwords(str_replace('_', ' ', mysql_field_name($result, $i))) . " </th>";
     }
     echo "</tr></thead><tbody>";
-    while ($row = mysql_fetch_array($result)) {
+    while ($row = mysqli_fetch_array($result)) {
         echo "<tr class='".$RowClass."'>";
         for ($i = 0; $i < $columns; $i++) {
             echo "<td>" . $row[$i] . "</td>";

@@ -31,11 +31,11 @@ else { $query.=" ORDER BY name"; }
 
 header("Content-type: application/vnd.ms-excel");
 header("Content-disposition: attachment; filename=spells.csv"); 
-$result=mysql_query($query) or message_die('spells.php','MYSQL_QUERY',$query,mysql_error());
-if (mysql_num_rows($result)>0) {
+$result=mysqli_query($db, $query) or message_die('spells.php','MYSQL_QUERY',$query,mysqli_error($db));
+if (mysqli_num_rows($result)>0) {
   $content=""; $l=0;
   if (!($iclass>0)) { print "Spell name,Mana,Duration/Effects,Casting Time,Target\n"; }
-  while ($row=mysql_fetch_array($result)) {
+  while ($row=mysqli_fetch_array($result)) {
     if (($iclass>0) AND ($l!=$row["level$iclass"])) { 
       print "\nLevel ".$row["level$iclass"]."\n";
       print "Spell name,Mana,Duration/Effects,Casting Time,Target\n";
