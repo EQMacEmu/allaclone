@@ -22,7 +22,7 @@ if ($id != "" && is_numeric($id)) {
 		$Query = "SELECT * FROM $tbitems WHERE id='" . $id . "'";
 	}
 	foreach ($hide_item_id as $hideme) {
-		$Query .= " AND $tbitems.id != $hideme"; // Blcok by ID set in config
+		$Query .= " AND $tbitems.id != $hideme"; // Block by ID set in config
 	}
 	$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
 	if (mysqli_num_rows($QueryResult) == 0) {
