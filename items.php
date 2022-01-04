@@ -140,6 +140,11 @@
 		if($iminlevel > 0) { $Query.=" $s ($tbitems.reqlevel>=$iminlevel) "; $s="AND"; }
 		if($ireqlevel > 0) { $Query.=" $s ($tbitems.reqlevel<=$ireqlevel) "; $s="AND"; }
 		if($inodrop)       { $Query.=" $s ($tbitems.nodrop=1)";              $s="AND"; }
+		
+		foreach ($hide_item_id as $hideme) {
+			$Query .= " $s ($tbitems.id != $hideme)"; $s="AND"; // Blcok by ID set in config
+		}
+
 		$Query.=" GROUP BY $tbitems.id ORDER BY $tbitems.Name LIMIT ".(LimitToUse($MaxItemsReturned) + 1);
 		$QueryResult = mysqli_query($db, $Query);
 		//print $Query;
@@ -362,5 +367,3 @@
 	}
 
 	include($includes_dir."footers.php");
-
-?>

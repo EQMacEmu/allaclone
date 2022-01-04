@@ -35,6 +35,9 @@ if($isearch != "")
 	{
 		$Query .= " AND $tbnpctypes.race != 127 AND $tbnpctypes.race != 240";
 	}
+	foreach($hide_npc_id AS $hideme) {
+		$Query .= " AND $tbnpctypes.id != $hideme"; // Block by ID set in config
+	}
 	$Query.=" ORDER BY $tbnpctypes.Name, $tbnpctypes.id LIMIT ".(LimitToUse($MaxNpcsReturned) + 1);
 
 	$QueryResult = mysqli_query($db, $Query) or message_die('npcs.php','MYSQL_QUERY',$Query,mysqli_error($db));
@@ -70,4 +73,3 @@ if(isset($QueryResult)) {
 }
 
 include($includes_dir."footers.php");
-?>

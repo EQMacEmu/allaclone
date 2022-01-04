@@ -16,8 +16,11 @@ include($includes_dir . 'mysql.php');
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
 
-if ($id != "" && is_numeric($id)) {
+if ($id != "" && !in_array($id, $hide_npc_id) && is_numeric($id)) {
 	$Query = "SELECT * FROM $tbnpctypes WHERE id='" . $id . "'";
+	foreach ($hide_npc_id as $hideme) {
+		$Query .= " AND $tbnpctypes.id != $hideme"; // Block by ID set in config
+	}
 	$QueryResult = mysqli_query($db, $Query) or message_die('npc.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
 	if (mysqli_num_rows($QueryResult) == 0) {
 		header("Location: npcs.php");

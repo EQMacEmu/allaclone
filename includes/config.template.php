@@ -31,6 +31,16 @@ $charbrowser_url=""; // Set to "" to disable CharBrowser links for character nam
 $DefaultCSS = "2017";
 $CssStyle = $DefaultCSS;
 
+// NPC and Loot IDs to hide from searches in the case of server secrets
+$hide_npc_id=array(
+    // 1=>"11111",
+    // 2=>"22222"
+);
+$hide_item_id=array(
+    // 1=>"0001",
+    // 2=>"0002"
+);
+
 // OPTIONS
 $ServerMaxLevel=60; // Max Level for Characters on the Server
 $ServerMaxNPCLevel=65; // Max Level for any NPCs on the Server
@@ -77,5 +87,3 @@ $ShowCharacters=FALSE; // (not in use yet)
 
 $db=mysql_connect($dbhost,$dbuser,$dbpasswd) or die("Impossible to connect to $dbhost : ".mysqli_error($db));
 mysql_select_db($dbname,$db) or die("Impossible to select $dbname : ".mysqli_error($db));
-
-?>
