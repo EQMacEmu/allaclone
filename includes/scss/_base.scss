@@ -76,6 +76,7 @@ a {
 		display: grid;
 		align-items: center;
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		height: 15rem;
 
 		.quick-search input {
 			padding: .5rem;
