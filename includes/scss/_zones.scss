@@ -12,6 +12,11 @@
 .zone-information {
 	display: flex;
 	justify-content: space-between;
+	flex-wrap: wrap;
+
+	@include mq('tablet-wide') {
+		flex-wrap: nowrap;
+	}
 }
 
 .zone-resources {

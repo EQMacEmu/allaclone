@@ -111,6 +111,7 @@
 
 .recipe-container {
     display: flex;
+	flex-wrap: wrap;
     
     .recipe-search {
         flex: 0 1 25%;
@@ -192,6 +193,7 @@
 .fullsearch {
 	display: flex;
 	justify-content: space-between;
+	flex-wrap: wrap;
 
 	ul {
 		list-style-type: none;
