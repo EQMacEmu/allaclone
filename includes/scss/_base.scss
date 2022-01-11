@@ -37,6 +37,11 @@ body {
 							 "contentFooter";
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 		grid-template-rows: auto 1fr auto;
+		padding: 0 1.5rem;
+
+		@include mq('tablet-wide') {
+			padding: 0;
+		}
 	
 		h2 {
 			margin-top: 0;
@@ -71,9 +76,16 @@ a {
 		display: grid;
 		align-items: center;
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+
+		.quick-search input {
+			padding: .5rem;
+			border-radius: 4px;
+			border: 0;
+		}
     }
 
-	&.fullsearch {
+	&.fullsearch,
+	&.home {
 		grid-area: pageContent;
 	}
 }

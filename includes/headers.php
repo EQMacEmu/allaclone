@@ -16,7 +16,7 @@
 				<div class="quick-search">
 					<form name="fullsearch" method="GET" action="fullsearch.php">
 						<input name="isearchtype" value="" type="hidden">
-						<input onfocus="if(this.value == 'Quick Item Search...') { this.value = ''; }" onkeypress="var key=event.keyCode || event.which; if(key==13){ this.form.isearchtype.value = 'name'; this.form.submit(); } else {return true;}" name="iname" placeholder="Quick Item Search..." type="text">
+						<input onfocus="if(this.value == 'Quick Search...') { this.value = ''; }" onkeypress="var key=event.keyCode || event.which; if(key==13){ this.form.isearchtype.value = 'name'; this.form.submit(); } else {return true;}" name="iname" placeholder="Quick Search..." type="text">
 					</form>
 				</div>
 				<div class="logo">
