@@ -192,4 +192,19 @@
 .fullsearch {
 	display: flex;
 	justify-content: space-between;
+
+	ul {
+		list-style-type: none;
+	}
+
+	.results {
+		li:nth-child(even) {
+			background: #eee;
+		}
+
+		a {
+			display: block;
+			padding: .5rem;
+		}
+	}
 }
