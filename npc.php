@@ -59,6 +59,7 @@ if ((ReadableNpcName($npc["name"])) == '') {
 include($includes_dir . 'headers.php');
 
 print "<div class='npc-wrapper'>";
+print "<div class='npc-info'>";
 
 print "<div class='left-col'><h2>" . ReadableNpcName($npc["name"]) . "</h2>";
 
@@ -289,6 +290,6 @@ if (mysqli_num_rows($result) > 0) {
 }
 print "</ul></div>";
 
-print "</div></div></div>";
+print "</div></div></div></div>";
 
 include($includes_dir . "footers.php");

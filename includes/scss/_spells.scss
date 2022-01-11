@@ -1,3 +1,26 @@
+.spell-search {
+	grid-area: pageContent;
+
+	ul {
+		display: block;
+		text-align: left;
+		margin: 1rem 2rem;
+		font-size: 80%;
+	}
+
+	table {
+		tr {
+			&:odd {
+				background: #ccc;
+			}
+		}
+	}
+}
+
+.spell-details {
+	grid-area: pageContent;
+}
+
 .spell-information {
 		
 	dt {

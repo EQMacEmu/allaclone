@@ -1,0 +1,10 @@
+.factions,
+.faction-details {
+	grid-area: pageContent;
+
+	.faction-list {
+		display: grid;
+		gap: 1rem;
+		grid-template-columns: repeat(auto-fit, minmax(610px, 1fr));
+	}
+}

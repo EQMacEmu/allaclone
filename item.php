@@ -62,9 +62,11 @@ include($includes_dir . 'headers.php');
 $item = $ItemRow;
 $Tableborder = 0;
 
-echo "<div class='item-column'>";
+
+echo "<div class='item-content'>";
+echo "<div class='item-columns'>";
 echo "<div class='item-wrapper'>";
-echo "<a class='hidden' href='http://lucy.allakhazam.com/item.html?id=" . $id . "'><img src='" . $images_url . "lucy.png' align='right'/></a>";
+echo "<div class='item-info'>";
 echo "<strong>" . $item["Name"] . "</strong>";
 
 if ($item["lore"] != "") {
@@ -88,7 +90,7 @@ $result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $q
 $TradeskillResults = "";
 
 if (mysqli_num_rows($result) > 0) {
-	$TradeskillResults .= "<p>This item is used in the following tradeskill recipes : </p><ul>";
+	$TradeskillResults .= "<ul><li class='zone'>This item is used in the following tradeskill recipes:</li> ";
 	while ($row = mysqli_fetch_array($result)) {
 		$TradeskillResults .= "<li><a href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . ucfirstwords($dbskills[$row["tradeskill"]]) . ")</li>";
 	}
@@ -178,8 +180,8 @@ if ($ItemFoundInfo) {
 		// ";
 
 		$query = "
-			SELECT $tbnpctypes.id, $tbnpctypes.name, $tbnpctypes.level, $tblootdropentries.chance, lootdrop.name
-			AS lootdropname, $tbloottableentries.probability, items.name
+			SELECT $tbnpctypes.id, $tbnpctypes.name, lootdrop.name
+			AS lootdropname, items.name
 			AS itemname
 			FROM $tblootdropentries
 			INNER JOIN $tbloottableentries on $tblootdropentries.lootdrop_id = $tbloottableentries.lootdrop_id
@@ -188,14 +190,6 @@ if ($ItemFoundInfo) {
 			INNER JOIN items on items.id = $tblootdropentries.item_id
 			WHERE items.id = $id
 		";
-
-		// if ($MerchantsDontDropStuff) {
-		// 	$query .= " AND $tbnpctypes.merchant_id=0";
-		// }
-
-		// foreach ($IgnoreZones as $zid) {
-		// 	$query .= " AND $tbzones.short_name!='$zid'";
-		// }
 
 		$query .= "
 				ORDER BY $tbnpctypes.id
@@ -280,7 +274,6 @@ if (mysqli_num_rows($result) > 0) {
 	echo "</ul>\n";
 }
 
-echo "</div>";
-echo "</div>";
+echo "</div></div></div></div>";
 
 include($includes_dir . "footers.php");

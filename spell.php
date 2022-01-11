@@ -70,7 +70,7 @@ function OutputItems() {
 $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buffduration"]);
 ?>
 
-<div class="container">
+<div class="container spell-details">
 	<div class="spell-information">
 		<dl class="spell-details">
 			<dt class="spell-name">

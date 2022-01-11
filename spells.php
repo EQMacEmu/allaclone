@@ -39,7 +39,7 @@ if ($opt == 1) {
 }
 
 /* Display Spell Form */
-echo '<div class="spell-search">
+echo '<div class="container spell-search">
 			<form name="f" action="">
             <input type="text" name="name" size="40" value="' . $namestring . '" /></td></tr>
             <select name="type">
@@ -129,11 +129,11 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 		$DBSkill = $dbskills[$row["skill"]];
 		if ($LevelCheck != $row[$Class]) {
 			$LevelCheck = $row[$Class];
-			echo '<tr class="level"><td colspan="4"><b>Level: ' . $row['classes' . $type] . '</b></td></tr>';
+			echo '<tr class="level"><td colspan="4"><h3>Level: ' . $row['classes' . $type] . '</h3></td></tr>';
 			echo '<tr>
                         <td colspan=2>Name</td>
                         <td class="left">Class</td>
-                        <td class="center">Effect(s)</td>
+                        <td>Effect(s)</td>
                         <td class="center">Mana</td>
                         <td class="center">Skill</td>
                         <td class="right">Target</td>
@@ -147,11 +147,11 @@ if (($type != 0 && $level != 0) || $namestring != '') {
                         <a href="spell.php?id=' . $row['id'] . '">' . $row['name'] . '</a>
                     </td>
 					<td width="10%">' . $ClassName . " " . $LevelCheck . '</td>
-					<td width="40%" class="center"><small>';
+					<td width="40%"><ul>';
 		for ($n = 1; $n <= 12; $n++) {
 			SpellDescription($row, $n);
 		}
-		echo '</small></td>
+		echo '</ul></td>
 					<td width="5%" class="center">' . $row['mana'] . '</td>
 					<td width="10%" class="center">' . ucwords(strtolower($DBSkill)) . '</td>
 					<td width="10%" class="right">';

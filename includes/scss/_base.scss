@@ -16,167 +16,70 @@ body {
 	display: grid;
 	gap: 1rem;
 	grid-template-rows: auto 1fr auto;
-	grid-template-columns: auto 480px 480px auto;
-	grid-template-areas:"header header header header"
-						"leftSidebar mainContent mainContent rightSidebar"
-						"footer footer footer footer";
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	grid-template-areas:"header"
+						"mainContent"
+						"footer";
 	min-height: 100%;
 
-}
+	header {
+		background: url(https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg) top left no-repeat;
+		background-size: cover;
+		background-attachment: fixed;
+		grid-area: header;
+	}
 
-header {
-    background: url(https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg) top left no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-	grid-area: header;
+	#main {
+		grid-area: mainContent;
+		display: grid;
+		grid-template-areas: "contentHeader"
+							 "pageContent"
+							 "contentFooter";
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		grid-template-rows: auto 1fr auto;
+	
+		h2 {
+			margin-top: 0;
+		}
+
+		.page_title {
+			grid-area: contentHeader;
+			width: 100%;
+			max-width: 1260px;
+			margin: 2rem auto;
+		}
+	}
 }
 
 a {
-    display: block;
-    padding: 15px;
-    text-decoration: none;
-    color: $darkGray;
-    font-family: "Raleway";
-    font-weight: bold;
-    transition: all 0.1s ease-in;
+	text-decoration: none;
+	color: $darkGray;
+	font-family: "Raleway";
+	font-weight: bold;
 
-    &:hover {
-        text-decoration: underline;
-    }
-}
-
-footer {
-    clear: both;
-	grid-area: footer;
-}
-
-#main {
-	grid-area: mainContent;
-
-    h2 {
-        margin-top: 0;
-    }
-
-    .flex {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-
-        .column {
-            flex: 1 1 100%;
-            text-align: center;
-
-            @include mq('tablet') {
-                flex: 1 1 50%;
-            }
-
-            @include mq('desktop') {
-                flex: 1 1 33.3%;
-            }
-
-            a.zone {
-                background: #333;
-                color: #fff;
-            }
-
-            ul {
-                list-style-type: none;
-                padding: 0;
-                margin: 0;
-
-                li {
-                    &:nth-child(even) {
-                        background: #eee;
-                    }
-                }
-
-                a {
-                    display: block;
-                    padding: 10px;
-
-                    @include mq('desktop') {
-                        margin-bottom: 0;
-                    }
-                }
-            }
-        }
-    }
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .container {
-    max-width: 960px;
+	width: 100%;
+    max-width: 1260px;
     margin: 0 auto;
 
     &.intro {
-        max-width: 100%;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
-
-        @include mq('phablet') {
-            height: 115px;
-            flex-direction: row;
-        }
-
-        > div {
-            display: flex;
-            align-content: center;
-            flex: 1 1 auto;
-        }
-
-        .logo {
-            order: 0;
-            @include mq('phablet') {
-                order: 1;
-                justify-content: right;
-            }
-
-            a {
-                margin: 0 auto;
-
-                @include mq('phablet') {
-                    margin: 0;
-                }
-            }
-
-            img {
-                width: 350px;
-                height: auto;
-            }
-        }
-
-        .quick-search {
-            order: 1;
-            flex-grow: 1;
-
-            @include mq('phablet') {
-                order: 0;
-            }
-
-            form {
-                align-self: center;
-                width: 75%;
-                margin: 0 auto;
-
-                @include mq('phablet') {
-                    width: 50%;
-                    margin: 0;
-                }
-
-                input {
-                    height: 40px;
-                    margin-left: 10px;
-                    width: 100%;
-                    border: 0;
-                    border-radius: 4px;
-                    padding: 5px 10px;
-                }
-            }
-        }
+		display: grid;
+		align-items: center;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
+
+	&.fullsearch {
+		grid-area: pageContent;
+	}
 }
 
 footer {
+	grid-area: footer;
     text-align: center;
     padding: 10px;
     color: #fff;
@@ -185,6 +88,6 @@ footer {
     background: url(https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg) bottom left no-repeat;
     background-attachment: fixed;
     background-size: cover;
-    margin-top: 50px;
     width: 100%;
+	grid-area: footer;
 }

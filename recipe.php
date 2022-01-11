@@ -23,6 +23,8 @@
 			
 	$result=mysqli_query($db, $query) or message_die('recipe.php','MYSQL_QUERY',$query,mysqli_error($db));
 	$recipe=mysqli_fetch_array($result);
+
+	print "<div class='container recipes'>";
 	print "<table border=0 width=0%>";
 	print "<tr><td nowrap><b>Recipe : </b></td><td nowrap>".ucfirstwords(str_replace('_',' ',$recipe["name"]))."</td></tr>";
 	print "<tr><td nowrap><b>Tradeskill : </b></td><td nowrap>".ucfirstwords($dbskills[$recipe["tradeskill"]])."</td></tr>";
@@ -141,7 +143,6 @@
 			}
 		print "</td></tr>";
 	}
-	print "</table>";
+	print "</table></div>";
 
 	include($includes_dir."footers.php");
-?>

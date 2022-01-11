@@ -1,20 +1,14 @@
-.dev-tools {
-    position: absolute;
-    right: 10px;
-    top: 10px;
-    width: 100px;
-    
-    a, img {
-        display: block;
-        float: right;
-    }
-}
 
 .npc-wrapper {
-    
-    position: relative;
-    overflow: hidden;
-    padding: 0 50px;
+	grid-area: pageContent;
+	width: 100%;
+	max-width: 1260px;
+	margin: 0 auto;
+
+	.npc-info {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(630px, 1fr));
+	}
 
 	a.external {
 		display: inline;
@@ -40,7 +34,6 @@
     }
     
     .list-wrapper {
-        float: left;
         
         ul {
             padding: 0;

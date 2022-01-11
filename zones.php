@@ -20,6 +20,7 @@ $query="SELECT $tbzones.short_name AS short_name,
 $query.=" GROUP BY $tbspawn2.zone
         ORDER BY $tbzones.long_name ASC";
 $result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
+print "<div class='container zones-populated'>";
 print "<div class='table-wrapper'><table width='100%' class='sticky-header'><thead><tr>
        <td class=tab_title>Name</td>
        <td class='tab_title short-name'>Short name</td>
@@ -36,7 +37,6 @@ while ($row=mysqli_fetch_array($result)) {
          <td align=center>".$row["spawns"]."</td>
          </tr>";
 }
-print "</table></div>";
+print "</table></div></div>";
 
 include($includes_dir."footers.php");
-?>

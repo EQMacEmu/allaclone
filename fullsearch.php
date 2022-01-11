@@ -104,11 +104,10 @@ $XhtmlCompliant = TRUE;
 include($includes_dir.'headers.php');
 
 // Display found objects
-echo '<div class="flex">';
+echo '<div class="container fullsearch">';
 PrintQueryResults($FoundItems,       $MaxItemsReturned,    "item.php",    "item",    "items", "id", "name");
 PrintQueryResults($FoundNpcs,         $MaxNpcsReturned,     "npc.php",     "NPC",     "NPCs", "id", "name");
 PrintQueryResults($FoundFactions, $MaxFactionsReturned, "faction.php", "faction", "factions", "id", "name");
 echo '</div>';
 
 include($includes_dir."footers.php");
-?>

@@ -18,6 +18,7 @@
 	if (!ctype_digit($minskill)) { $minskill=0; }
 	if ($minskill>$maxskill) { $tempskill=$minskill; $minskill=$maxskill; $maxskill=$tempskill; }
 
+	echo "<div class='container recipes'>";
 	echo "<form method='GET' action=$PHP_SELF>";
     echo "<div class='recipe-container'>";
 	echo "<div class='recipe-search'><b>Name : </b><input type=text value=\"$iname\" size=30 name=iname></div>";
@@ -52,8 +53,6 @@
 			PrintQueryResults($result, $MaxItemsReturned, "recipe.php", "recipe", "recipes", "id", "name", "trivial", "trivial at level", "tradeskill");
 		}
 	}
-    echo "</div>";
+    echo "</div></div>";
 
 	include($includes_dir."footers.php");
-
-?>

@@ -2,22 +2,64 @@
     display: none;
 }
 
-.item-column {
-    
-    @include mq('tablet-wide') {
-        float: left;
-        padding-right: 10px;
-        width: 50%;   
-    }
+.item-content {
+    grid-area: pageContent;
+	width: 100%;
+	max-width: 1260px;
+	margin: 0 auto;
+
+	.item-columns {
+		display: grid;
+		grid-gap: 1rem;
+		grid-template-columns: repeat(auto-fill, minmax(620px, 1fr));
+
+		.item-wrapper {
+			display: block;
+			width: 100%;
+			max-width: 500px;
+			color: white;
+			padding: 2px;
+			position: relative;
+			margin: 0 auto;
+
+			.item-info {
+			
+				> strong {
+					display: block;
+					background: linear-gradient(to bottom, #16222A, #3A6073);
+					padding: 5px 10px;
+				}
+				
+				img {
+					position: absolute;
+					right: 20px;
+					top: 70px;
+				}
+				
+				.item-stats {
+					background: #111;
+					color: white;
+					max-width: 500px;
+					padding: 5px 60px 5px 10px;
+					
+					p {
+						margin: 0;
+					}
+					
+					a {
+						display: inline;
+						padding: 0;
+						margin: 0;
+						color: white;
+						text-decoration: none;
+					}
+				}
+			}
+		}
+	}
 }
 
 .drop-information {
-    
-    @include mq('tablet-wide') {
-        float: right;
-        padding-left: 10px;
-        width: 50%;   
-    }
     
     ul {
         list-style-type: none;
@@ -42,49 +84,8 @@
 
 			a {
 				display: inline-block;
+				padding: 10px 0;
 			}
-        }
-    }
-}
-
-.item-wrapper {
-    background: blue;
-    display: block;
-    max-width: 500px;
-    color: white;
-    padding: 2px;
-    margin: 0 auto 30px;
-    position: relative;
-    background: #3A6073;
-    
-    > strong {
-        display: block;
-        background: linear-gradient(to bottom, #16222A, #3A6073);
-        padding: 5px 10px;
-    }
-    
-    > img {
-        position: absolute;
-        right: 20px;
-        top: 70px;
-    }
-    
-    .item-stats {
-        background: #111;
-        color: white;
-        max-width: 500px;
-        padding: 5px 60px 5px 10px;
-        
-        p {
-            margin: 0;
-        }
-        
-        a {
-            display: inline;
-            padding: 0;
-            margin: 0;
-            color: white;
-            text-decoration: none;
         }
     }
 }

@@ -1,3 +1,19 @@
+.zonelist,
+.zone,
+.zone-levels,
+.zones-populated {
+	grid-area: pageContent;
+}
+
+.zone-levels {
+	max-width: 100%;
+}
+
+.zone-information {
+	display: flex;
+	justify-content: space-between;
+}
+
 .zone-resources {
     padding: 20px;
     background: rgba(220, 220, 220, 0.5);

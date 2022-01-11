@@ -1,12 +1,12 @@
 .bestiary {
     a {
         text-decoration: underline;
+		display: block;
         padding: 10px 0;
         
         &:hover {
             color: $darkGray;
             font-style: italic;
-            background: rgba(40, 40, 40, 0.1);
         }
     }
     

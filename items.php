@@ -178,6 +178,7 @@ $Title = "Item Search";
 $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
+echo "<div class='container items'>";
 echo "<form class='item-refine' method='GET' action='" . $PHP_SELF . "'>";
 echo "<input type='text' value=\"$iname\" name='iname' placeholder='Item Name' />";
 echo "<div class='select-wrapper onethird'>";
@@ -300,22 +301,22 @@ if (isset($QueryResult)) {
 	} else {
 		$OutOf = "";
 		if ($total_row_count > $num_rows) {
-			$OutOf = " (Searches are limited to 100 Max Results)";
+			$OutOf = "Searches are limited to 100 results";
 		}
-		echo "<strong>" . $num_rows . " " . ($num_rows == 1 ? "item" : "items") . " displayed</strong>" . $OutOf . "<br>";
+		echo "<p><strong>" . $OutOf . "</strong></p>";
 		echo "</div>";
 
 		echo "<div class='search-item-list'><table border='$Tableborder' cellpadding='5' width='100%'>";
 		echo "<tr>
-					<th class='menuh'>Icon</th>
-					<th class='menuh'>Item Name</th>
-					<th class='menuh'>Item Type</th>
-					<th class='menuh'>AC</th>
-					<th class='menuh'>HPs</th>
-					<th class='menuh'>Mana</th>
-					<th class='menuh'>Damage</th>
-					<th class='menuh'>Delay</th>
-					<th class='menuh'>Item ID</th>
+					<th class='menuh iicon'>&nbsp;</th>
+					<th class='menuh iname'>&nbsp;</th>
+					<th class='menuh itype'>Type</th>
+					<th class='menuh iac'>AC</th>
+					<th class='menuh ihp'>HP</th>
+					<th class='menuh imana'>Mana</th>
+					<th class='menuh idmg'>Damage</th>
+					<th class='menuh idly'>Delay</th>
+					<th class='menuh iid'>ID</th>
 					</tr>";
 		$RowClass = "lr";
 		for ($count = 1; $count <= $num_rows; $count++) {
@@ -357,8 +358,10 @@ if (isset($QueryResult)) {
 
 			print $TableData;
 		}
-		echo "</table></div>";
+		echo "</table></div></div>";
 	}
 }
+
+echo "</div>";
 
 include($includes_dir . "footers.php");

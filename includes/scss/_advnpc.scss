@@ -1,0 +1,17 @@
+.advnpc {
+	grid-area: pageContent;
+
+	.form-control {
+		display: flex;
+		margin-bottom: 1rem;
+		align-content: center;
+
+		strong {
+			margin-right: 1rem;
+		}
+	}
+
+	.level-select {
+		flex: 0 1 7rem;
+	}
+}
