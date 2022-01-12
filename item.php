@@ -150,91 +150,53 @@ if ($ItemFoundInfo) {
 	$IsDropped = GetFieldByQuery("item_id", "SELECT item_id FROM $tblootdropentries WHERE item_id=$id LIMIT 1");
 
 	if ($IsDropped) {
-		// npcs dropping this (Very Heavy Query)
-		// Old query, didn't correctly show drops from triggered enemies
-		// $query = "
-		// 		SELECT
-		// 			$tbnpctypes.id,
-		// 			$tbnpctypes.name,
-		// 			$tbspawn2.zone,
-		// 			$tbzones.long_name
-		// 		FROM
-		// 			$tbnpctypes,
-		// 			$tbspawn2,
-		// 			$tbspawnentry,
-		// 			$tbloottableentries,
-		// 			$tblootdropentries,
-		// 			$tbzones
-		// 		WHERE
-		// 			$tbnpctypes.id=$tbspawnentry.npcID
-		// 		AND 
-		// 			$tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
-		// 		AND 
-		// 			$tbnpctypes.loottable_id=$tbloottableentries.loottable_id
-		// 		AND 
-		// 			$tbloottableentries.lootdrop_id=$tblootdropentries.lootdrop_id
-		// 		AND 
-		// 			$tblootdropentries.item_id=$id
-		// 		AND 
-		// 			$tbzones.short_name=$tbspawn2.zone
-		// ";
 
 		$query = "
-			SELECT
-				$tbnpctypes.id,
-				$tbnpctypes.name,
-				lootdrop.name
-			AS
-				lootdropname, items.name
-			AS
-				itemname
-			FROM
-				$tblootdropentries
-			INNER JOIN
-				$tbloottableentries on $tblootdropentries.lootdrop_id = $tbloottableentries.lootdrop_id
-			INNER JOIN
-				lootdrop on $tbloottableentries.lootdrop_id = lootdrop.id
-			INNER JOIN
-				$tbnpctypes on $tbnpctypes.loottable_id = $tbloottableentries.loottable_id
-			INNER JOIN
-				items on items.id = $tblootdropentries.item_id
-			WHERE
-				items.id = $id
+			SELECT 
+				npct.id,
+				npct.name,
+				ld.name AS lootdropname,
+				item.name AS itemname,
+				sp2.`zone` AS 'shortname',
+				z.long_name AS 'zone'
+			FROM lootdrop_entries as lde
+			INNER JOIN $tbloottableentries as lte on lde.lootdrop_id = lte.lootdrop_id
+			INNER JOIN lootdrop as ld on lte.lootdrop_id = ld.id
+			INNER JOIN $tbnpctypes as npct on npct.loottable_id = lte.loottable_id
+			INNER JOIN items as item on item.id = lde.item_id
+			INNER JOIN $tbspawnentry as se on se.npcID = npct.id 
+			INNER JOIN $tbspawn2 as sp2 on sp2.spawngroupID = se.spawngroupID 
+			INNER JOIN `zone` as z on z.short_name = sp2.`zone` 
+			WHERE item.id = $id
 		";
 
 		$query .= "
-				ORDER BY $tbnpctypes.id
+				ORDER BY npct.id
 				ASC
 		";
 
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
-
-		// Example $row output:
-		// array (size=8)
-		// 	0 => string '209016' (length=6)
-		// 	'id' => string '209016' (length=6)
-		// 	1 => string 'Brynju_Thunderclap' (length=18)
-		// 	'name' => string 'Brynju_Thunderclap' (length=18)
-		// 	2 => string '3237_PoP_Spells_Boss' (length=20)
-		// 	'lootdropname' => string '3237_PoP_Spells_Boss' (length=20)
-		// 	3 => string 'Glyphed Rune Word' (length=17)
-		// 	'itemname' => string 'Glyphed Rune Word' (length=17)
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
+			$CurrentNPC = "";
 			$DroppedList = "<ul>";
-			$DroppedList .= "<li class='zone'>Dropped By:</li>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
 				if ($CurrentZone != $row["zone"]) {
-					$DroppedList .= "<li class='zone'>
-										<a href='zone.php?name=" . $row["zone"] . "'>" . $row["long_name"] . "</a>
-									</li>";
+					$DroppedList .= "
+						<li class='zone'>
+							<a href='zone.php?name=" . $row["shortname"] . "'>" . $row["zone"] . "</a>
+						</li>";
 					$CurrentZone = $row["zone"];
 				}
-				$DroppedList .= "<li>
-									<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . "</a>
-								</li>";
+				if ($CurrentNPC != $row["name"]) {
+					$DroppedList .= "
+						<li>
+							<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . "</a>
+						</li>";
+					$CurrentNPC = $row["name"];
+				}
 			}
 			$DroppedList .= "</ul>";
 			echo $DroppedList;
