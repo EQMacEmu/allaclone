@@ -180,15 +180,26 @@ if ($ItemFoundInfo) {
 		// ";
 
 		$query = "
-			SELECT $tbnpctypes.id, $tbnpctypes.name, lootdrop.name
-			AS lootdropname, items.name
-			AS itemname
-			FROM $tblootdropentries
-			INNER JOIN $tbloottableentries on $tblootdropentries.lootdrop_id = $tbloottableentries.lootdrop_id
-			INNER JOIN lootdrop on $tbloottableentries.lootdrop_id = lootdrop.id
-			INNER JOIN $tbnpctypes on $tbnpctypes.loottable_id = $tbloottableentries.loottable_id
-			INNER JOIN items on items.id = $tblootdropentries.item_id
-			WHERE items.id = $id
+			SELECT
+				$tbnpctypes.id,
+				$tbnpctypes.name,
+				lootdrop.name
+			AS
+				lootdropname, items.name
+			AS
+				itemname
+			FROM
+				$tblootdropentries
+			INNER JOIN
+				$tbloottableentries on $tblootdropentries.lootdrop_id = $tbloottableentries.lootdrop_id
+			INNER JOIN
+				lootdrop on $tbloottableentries.lootdrop_id = lootdrop.id
+			INNER JOIN
+				$tbnpctypes on $tbnpctypes.loottable_id = $tbloottableentries.loottable_id
+			INNER JOIN
+				items on items.id = $tblootdropentries.item_id
+			WHERE
+				items.id = $id
 		";
 
 		$query .= "
@@ -198,11 +209,23 @@ if ($ItemFoundInfo) {
 
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
+
+		// Example $row output:
+		// array (size=8)
+		// 	0 => string '209016' (length=6)
+		// 	'id' => string '209016' (length=6)
+		// 	1 => string 'Brynju_Thunderclap' (length=18)
+		// 	'name' => string 'Brynju_Thunderclap' (length=18)
+		// 	2 => string '3237_PoP_Spells_Boss' (length=20)
+		// 	'lootdropname' => string '3237_PoP_Spells_Boss' (length=20)
+		// 	3 => string 'Glyphed Rune Word' (length=17)
+		// 	'itemname' => string 'Glyphed Rune Word' (length=17)
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
 			$DroppedList = "<ul>";
 			$DroppedList .= "<li class='zone'>Dropped By:</li>";
 			while ($row = mysqli_fetch_array($result)) {
+				// var_dump($row);
 				if ($CurrentZone != $row["zone"]) {
 					$DroppedList .= "<li class='zone'>
 										<a href='zone.php?name=" . $row["zone"] . "'>" . $row["long_name"] . "</a>

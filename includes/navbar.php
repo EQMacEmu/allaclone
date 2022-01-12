@@ -1,5 +1,5 @@
 <div class="nav-wrapper">
-	<ul class="navbar">
+	<ul class="navbar" role="navigation" aria-label="Main">
 		<li><a href="items.php">Items</a></li>
 		<li><a href="spells.php">Spells</a></li>
 		<li><a href="factions.php">Factions</a></li>

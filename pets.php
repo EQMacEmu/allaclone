@@ -13,7 +13,7 @@ if (!is_numeric($class)) {
 	exit();
 }
 
-$Title = "Pets Statistics";
+$Title = "Class Pet Information";
 include($includes_dir . 'headers.php');
 
 print "<div class='container pets'>";
