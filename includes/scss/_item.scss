@@ -16,11 +16,11 @@
 		.item-wrapper {
 			display: block;
 			width: 100%;
-			max-width: 500px;
 			color: white;
 			padding: 2px;
 			position: relative;
-			margin: 0 auto;
+			margin: 0 auto auto;
+			background: #111;
 
 			.item-info {
 			
@@ -37,7 +37,6 @@
 				}
 				
 				.item-stats {
-					background: #111;
 					color: white;
 					max-width: 500px;
 					padding: 5px 60px 5px 10px;
