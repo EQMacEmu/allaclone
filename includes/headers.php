@@ -16,7 +16,7 @@
 				"@type": "SearchAction",
 				"target": {
 					"@type": "EntryPoint",
-					"urlTemplate": "https://www.takproject.net/allaclone/fullsearch.php?isearchtype=name&iname=={search_term_string}"
+					"urlTemplate": "https://www.takproject.net/allaclone/fullsearch.php?isearchtype=name&iname={search_term_string}"
 				},
 				"query-input": "required name=search_term_string"
 			}
