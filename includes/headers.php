@@ -7,6 +7,22 @@
 	</title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
 	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css" type="text/css" />
+	<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "WebSite",
+			"url": "https://www.takproject.net/allaclone/",
+			"potentialAction": {
+				"@type": "SearchAction",
+				"target": {
+					"@type": "EntryPoint",
+					"urlTemplate": "https://www.takproject.net/allaclone/fullsearch.php?isearchtype=name&iname=={search_term_string}"
+				},
+				"query-input": "required name=search_term_string"
+			}
+		}
+	</script>
+
 </head>
 
 <body>
