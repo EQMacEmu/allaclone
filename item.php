@@ -151,27 +151,39 @@ if ($ItemFoundInfo) {
 
 	if ($IsDropped) {
 
+		// OLD
+		// Shows all correct enemies but not zones
+		// $query = "
+		// 	SELECT
+		// 		npct.id,
+		// 		npct.name,
+		// 		lootdrop.name AS lootdropname,
+		// 		item.name AS itemname
+		// 	FROM $tblootdropentries as lde
+		// 	INNER JOIN $tbloottableentries as lte on lde.lootdrop_id = lte.lootdrop_id
+		// 	INNER JOIN lootdrop on lte.lootdrop_id = lootdrop.id
+		// 	INNER JOIN $tbnpctypes as npct on npct.loottable_id = lte.loottable_id
+		// 	INNER JOIN items as item on item.id = lde.item_id
+		// 	WHERE item.id = $id
+		// ";
+
+		// NEW
+		// Shows ZONES but not all enemies
 		$query = "
-			SELECT 
-				npct.id,
-				npct.name,
-				ld.name AS lootdropname,
-				item.name AS itemname,
-				sp2.`zone` AS 'shortname',
-				z.long_name AS 'zone'
-			FROM lootdrop_entries as lde
-			INNER JOIN $tbloottableentries as lte on lde.lootdrop_id = lte.lootdrop_id
-			INNER JOIN lootdrop as ld on lte.lootdrop_id = ld.id
-			INNER JOIN $tbnpctypes as npct on npct.loottable_id = lte.loottable_id
-			INNER JOIN items as item on item.id = lde.item_id
-			INNER JOIN $tbspawnentry as se on se.npcID = npct.id 
-			INNER JOIN $tbspawn2 as sp2 on sp2.spawngroupID = se.spawngroupID 
-			INNER JOIN `zone` as z on z.short_name = sp2.`zone` 
-			WHERE item.id = $id
+		SELECT nt.id
+			, nt.`name`
+			, z.short_name
+			, z.long_name 
+		FROM $tbnpctypes nt 
+		JOIN $tbzones z ON z.zoneidnumber = LEFT(nt.id, LENGTH(nt.id) - 3)
+		WHERE loottable_id IN
+			(SELECT loottable_Id FROM loottable_entries WHERE lootdrop_id IN
+				(SELECT lootdrop_id FROM lootdrop_entries WHERE item_id = $id)
+			)
 		";
 
 		$query .= "
-				ORDER BY npct.id
+				ORDER BY nt.id
 				ASC
 		";
 
@@ -183,12 +195,12 @@ if ($ItemFoundInfo) {
 			$DroppedList = "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
-				if ($CurrentZone != $row["zone"]) {
+				if ($CurrentZone != $row["short_name"]) {
 					$DroppedList .= "
 						<li class='zone'>
-							<a href='zone.php?name=" . $row["shortname"] . "'>" . $row["zone"] . "</a>
+							<a href='zone.php?name=" . $row["short_name"] . "'>" . $row["long_name"] . "</a>
 						</li>";
-					$CurrentZone = $row["zone"];
+					$CurrentZone = $row["short_name"];
 				}
 				if ($CurrentNPC != $row["name"]) {
 					$DroppedList .= "
