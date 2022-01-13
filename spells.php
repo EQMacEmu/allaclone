@@ -163,5 +163,6 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 	echo '</table>';
 }
 echo '</div>';
+echo '</div>';
 
 include($includes_dir . "footers.php");

@@ -14,6 +14,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=airplane>Plane of Air</a></li>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

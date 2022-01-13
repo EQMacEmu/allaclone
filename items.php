@@ -363,5 +363,6 @@ if (isset($QueryResult)) {
 }
 
 echo "</div>";
+echo "</div>";
 
 include($includes_dir . "footers.php");

@@ -55,5 +55,6 @@ if (isset($QueryResult)) {
 	echo '</div>';
 }
 print "</div>";
+print "</div>";
 
 include($includes_dir . "footers.php");

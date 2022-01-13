@@ -30,6 +30,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=westwastes>Western Wastes</a></li>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

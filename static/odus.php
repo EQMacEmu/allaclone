@@ -19,6 +19,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=warrens>The Warrens</a>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

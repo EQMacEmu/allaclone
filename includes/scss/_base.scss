@@ -10,6 +10,7 @@ html {
 
 body {
 	height: 100%;
+	background: #222;
 }
 
 #site-wrapper {
@@ -21,6 +22,12 @@ body {
 						"mainContent"
 						"footer";
 	min-height: 100%;
+	max-width: 1300px;
+	margin: 0 auto;
+	background: #fff;
+	box-shadow: 0 0 1rem 0 #ccc;
+	border-left: 2px solid #000;
+	border-right: 2px solid #000;
 
 	header {
 		background: url(https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg) top left no-repeat;

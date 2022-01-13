@@ -18,5 +18,6 @@ include($includes_dir . 'functions.php'); ?>
 		<li><a href="static/power.php">The Planes of Power</a></li>
 	</ul>
 </div>
+</div>
 
 <?php include($includes_dir . "footers.php"); ?>

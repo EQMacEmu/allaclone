@@ -108,6 +108,6 @@ if (isset($class) && $class != 0) {
 	print "</tbody></table></center>";
 }
 
-print "</td></tr></table></div>";
+print "</td></tr></table></div></div>";
 
 include($includes_dir . "footers.php");

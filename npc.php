@@ -200,11 +200,12 @@ if ($npc["npc_spells_id"] > 0) {
 			print "<ul>";
 			while ($row = mysqli_fetch_array($result2)) {
 				$spell = getspell($row["spellid"]);
-				print "<li><a href='spell.php?id=" . $row["spellid"] . "'>" . $spell["name"] . "</a>";
+				print "<li><a href='spell.php?id=" . $row["spellid"] . "'>" . $spell["name"] . "</a></li>";
 				print " (" . $dbspelltypes[$row["type"]] . ")";
 				if ($DebugNpc) {
 					print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
 				}
+				print "</li>";
 			}
 		}
 		print "</ul></div>";
@@ -240,10 +241,11 @@ if (mysqli_num_rows($result) > 0) {
 					print "<br/><a href='" . $root_url . "quests/index.php?npc=" . str_replace("#", "", $npc["name"]) . "&zone=" . $z . "&amp;npcid=" . $id . "'>Quest(s) for that NPC</a>";
 				}
 			}
+			print "</li>";
 		}
 		if ($DisplaySpawnGroupInfo == TRUE) {
 			print "<li><a href='spawngroup.php?id=" . $row["spawngroupID"] . "'>" . $row["spawngroup"] . "</a> : " . floor($row["y"]) . " / " . floor($row["x"]) . " / " . floor($row["z"]);
-			print "<br/>Spawns every " . translate_time($row["respawntime"]);
+			print "<br/>Spawns every " . translate_time($row["respawntime"]) . "</li>";
 		}
 	}
 	print "</ul></div>";
@@ -262,13 +264,14 @@ if (mysqli_num_rows($result) > 0) {
 	print "<div class='list-wrapper'><p><strong>Killing this NPC lowers factions with : </strong><ul>";
 	while ($row = mysqli_fetch_array($result)) {
 		if ($ShowNPCFactionHits == TRUE) {
-			print "<li class='bad'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . $row["value"] . ")";
+			print "<li class='bad'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . $row["value"] . ")</li>";
 		} else {
-			print "<li class='bad'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a>";
+			print "<li class='bad'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a></li>";
 		}
 	}
+	print "</ul>";
+	print "</div>";
 }
-print "</ul></div>";
 $query = "SELECT $tbfactionlist.name,
 			$tbfactionlist.id,
 			$tbnpcfactionentries.value
@@ -282,14 +285,17 @@ if (mysqli_num_rows($result) > 0) {
 	print "<div class='list-wrapper'><p><strong>Killing this NPC raises factions with : </strong><ul>";
 	while ($row = mysqli_fetch_array($result)) {
 		if ($ShowNPCFactionHits == TRUE) {
-			print "<li class='good'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . $row["value"] . ")";
+			print "<li class='good'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . $row["value"] . ")</li>";
 		} else {
-			print "<li class='good'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a>";
+			print "<li class='good'><a href=faction.php?id=" . $row["id"] . ">" . $row["name"] . "</a></li>";
 		}
 	}
+	print "</ul>";
+	print "</div>";
 }
-print "</ul></div>";
-
-print "</div></div></div></div>";
+print "</div>";
+print "</div>";
+print "</div>";
+print "</div>";
 
 include($includes_dir . "footers.php");

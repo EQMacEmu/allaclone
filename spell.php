@@ -147,7 +147,7 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 		</dl>
 	</div>
 </div>
-
+</div>
 
 <?php
 include($includes_dir . "footers.php");

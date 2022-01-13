@@ -109,5 +109,6 @@ PrintNpcsByZone($QueryResult);
 echo '</div>';
 echo '</div>';
 echo '</div>';
+echo '</div>';
 
 include($includes_dir . "footers.php");

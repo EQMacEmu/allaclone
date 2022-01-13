@@ -1,12 +1,12 @@
 <?php
-$Title="Populated Zones List";
+$Title = "Populated Zones List";
 include('./includes/config.php');
-include($includes_dir.'constantes.php');
-include($includes_dir.'headers.php');
-include($includes_dir.'mysql.php');
-include($includes_dir.'functions.php');
+include($includes_dir . 'constantes.php');
+include($includes_dir . 'headers.php');
+include($includes_dir . 'mysql.php');
+include($includes_dir . 'functions.php');
 
-$query="SELECT $tbzones.short_name AS short_name,
+$query = "SELECT $tbzones.short_name AS short_name,
                $tbzones.long_name AS long_name,
                COUNT($tbspawn2.id) AS spawns,
                $tbzones.zoneidnumber AS zoneidnumber
@@ -16,10 +16,10 @@ $query="SELECT $tbzones.short_name AS short_name,
 /*foreach ($IgnoreZones AS $zid) {
   $query.=" AND $tbzones.short_name!='$zid'";
 }
-*/          
-$query.=" GROUP BY $tbspawn2.zone
+*/
+$query .= " GROUP BY $tbspawn2.zone
         ORDER BY $tbzones.long_name ASC";
-$result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
+$result = mysqli_query($db, $query) or message_die('zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 print "<div class='container zones-populated'>";
 print "<div class='table-wrapper'><table width='100%' class='sticky-header'><thead><tr>
        <td class=tab_title>Name</td>
@@ -29,14 +29,14 @@ print "<div class='table-wrapper'><table width='100%' class='sticky-header'><the
        </tr>
        </thead>
        ";
-while ($row=mysqli_fetch_array($result)) {
-  print "<tr>
-         <td><a href=zone.php?name=".$row["short_name"].">".$row["long_name"]."</a></td>
-         <td class='short-name'>".$row["short_name"]."</td>
-         <td align=center>".$row["zoneidnumber"]."</td>
-         <td align=center>".$row["spawns"]."</td>
+while ($row = mysqli_fetch_array($result)) {
+	print "<tr>
+         <td><a href=zone.php?name=" . $row["short_name"] . ">" . $row["long_name"] . "</a></td>
+         <td class='short-name'>" . $row["short_name"] . "</td>
+         <td align=center>" . $row["zoneidnumber"] . "</td>
+         <td align=center>" . $row["spawns"] . "</td>
          </tr>";
 }
-print "</table></div></div>";
+print "</table></div></div></div>";
 
-include($includes_dir."footers.php");
+include($includes_dir . "footers.php");

@@ -92,6 +92,6 @@ if (isset($isearch) && $isearch != '') {
 	}
 }
 
-print "</div>";
+print "</div></div>";
 
 include($includes_dir . "footers.php");

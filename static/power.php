@@ -32,6 +32,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=poeartha>Vegarlson, the Earthen Badlands</a></li>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

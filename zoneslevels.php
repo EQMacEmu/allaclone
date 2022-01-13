@@ -151,6 +151,6 @@ for ($i = 0; $i <= $cpt; $i++) {
 	}
 }
 
-print "</td></tr></table></div></div>";
+print "</td></tr></table></div></div></div>";
 
 include($includes_dir . "footers.php");

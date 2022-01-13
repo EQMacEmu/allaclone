@@ -25,6 +25,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=unrest>Unrest</a>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

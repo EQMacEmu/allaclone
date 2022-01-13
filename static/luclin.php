@@ -39,6 +39,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=vexthal>Vex Thal</a>
 	</ul>
 </div>
+</div>
 <?
 include('../includes/footers.php');
 ?>

@@ -15,4 +15,5 @@ include($includes_dir . 'headers.php');
 	<p>This website is a tool for you to look up items, spells, NPC entities, recipes, etc.</p>
 	<img id="box-art" src='<?php echo $root_url; ?>/images/eqmac.jpg' />
 </div>
+</div>
 <?php include($includes_dir . "footers.php");

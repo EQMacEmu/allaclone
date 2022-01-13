@@ -1,4 +1,5 @@
 <?php
+
 /** If no proper query is specified (see below), redirects to the item search page (error).
  *  If the parameter 'isearchtype' equals 'id' and 'iid' is set then queries for objects with exactly this ID and displays them.
  *  If the parameter 'isearchtype' equals 'name' and 'iname' is set then queries for objects with approximately this name and displays them.
@@ -6,90 +7,89 @@
  */
 include('./includes/constantes.php');
 include('./includes/config.php');
-include($includes_dir.'mysql.php');
-include($includes_dir.'functions.php');
+include($includes_dir . 'mysql.php');
+include($includes_dir . 'functions.php');
 
-$iid         = (isset($_GET[        'iid']) ? addslashes($_GET[        'iid']) : '');
-$iname       = (isset($_GET[      'iname']) ? addslashes($_GET[      'iname']) : '');
+$iid         = (isset($_GET['iid']) ? addslashes($_GET['iid']) : '');
+$iname       = (isset($_GET['iname']) ? addslashes($_GET['iname']) : '');
 $isearchtype = (isset($_GET['isearchtype']) ? addslashes($_GET['isearchtype']) : '');
 
 // Build the WHERE caluse
 $Where = "";
-if($isearchtype == 'id' and $iid != "")
-  $Where = "id='".$iid."'";
-if($isearchtype == 'name' and $iname != "")
-  $Where = "name like '%".str_replace('`', '%', str_replace('_', '%', str_replace(' ', '%', $iname)))."%'";
+if ($isearchtype == 'id' and $iid != "")
+	$Where = "id='" . $iid . "'";
+if ($isearchtype == 'name' and $iname != "")
+	$Where = "name like '%" . str_replace('`', '%', str_replace('_', '%', str_replace(' ', '%', $iname))) . "%'";
 
-if($Where == "")
-{
+if ($Where == "") {
 	header("Location: items.php");
 	exit();
 }
 
 // Query for factions
-$Query="SELECT $tbfactionlist.id,$tbfactionlist.name
+$Query = "SELECT $tbfactionlist.id,$tbfactionlist.name
         FROM $tbfactionlist
         WHERE $Where
         ORDER BY $tbfactionlist.name,$tbfactionlist.id
-        LIMIT ".(LimitToUse($MaxFactionsReturned) + 1);
+        LIMIT " . (LimitToUse($MaxFactionsReturned) + 1);
 $FoundFactions = mysqli_query($db, $Query);
 
 // Query for Items
-if ($DiscoveredItemsOnly==TRUE)
-{
-		$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='".$id."' AND discovered_items.item_id=$tbitems.id";
-	$Query="SELECT $tbitems.id,$tbitems.name
+if ($DiscoveredItemsOnly == TRUE) {
+	$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='" . $id . "' AND discovered_items.item_id=$tbitems.id";
+	$Query = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems, discovered_items
 		WHERE $Where
 		AND discovered_items.item_id=$tbitems.id 
 		ORDER BY $tbitems.name,$tbitems.id
-		LIMIT ".(LimitToUse($MaxItemsReturned) + 1);
-}
-else
-{
-	$Query="SELECT $tbitems.id,$tbitems.name
+		LIMIT " . (LimitToUse($MaxItemsReturned) + 1);
+} else {
+	$Query = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems
 		WHERE $Where
 		ORDER BY $tbitems.name,$tbitems.id
-		LIMIT ".(LimitToUse($MaxItemsReturned) + 1);
+		LIMIT " . (LimitToUse($MaxItemsReturned) + 1);
 }
 $FoundItems = mysqli_query($db, $Query);
 
 // Query for NPCs
-$Query="SELECT $tbnpctypes.id,$tbnpctypes.name
+$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name
         FROM $tbnpctypes
         WHERE $Where
         ORDER BY $tbnpctypes.name,$tbnpctypes.id
-        LIMIT ".(LimitToUse($MaxNpcsReturned) + 1);
+        LIMIT " . (LimitToUse($MaxNpcsReturned) + 1);
 $FoundNpcs = mysqli_query($db, $Query);
 
 
 // In case only one object is found, redirect to its page
-if(     mysqli_num_rows($FoundFactions) == 1
-    and mysqli_num_rows($FoundItems)    == 0
-    and mysqli_num_rows($FoundNpcs)     == 0
-  )
-{ $FactionRow = mysqli_fetch_array($FoundFactions);
-   header("Location: faction.php?id=".$FactionRow["id"]);
-  exit();
+if (
+	mysqli_num_rows($FoundFactions) == 1
+	and mysqli_num_rows($FoundItems)    == 0
+	and mysqli_num_rows($FoundNpcs)     == 0
+) {
+	$FactionRow = mysqli_fetch_array($FoundFactions);
+	header("Location: faction.php?id=" . $FactionRow["id"]);
+	exit();
 }
 
-if(     mysqli_num_rows($FoundFactions) == 0
-    and mysqli_num_rows($FoundItems)    == 1
-    and mysqli_num_rows($FoundNpcs)     == 0
-  )
-{ $ItemRow = mysqli_fetch_array($FoundItems);
-   header("Location: item.php?id=".$ItemRow["id"]);
-  exit();
+if (
+	mysqli_num_rows($FoundFactions) == 0
+	and mysqli_num_rows($FoundItems)    == 1
+	and mysqli_num_rows($FoundNpcs)     == 0
+) {
+	$ItemRow = mysqli_fetch_array($FoundItems);
+	header("Location: item.php?id=" . $ItemRow["id"]);
+	exit();
 }
 
-if(     mysqli_num_rows($FoundFactions) == 0
-    and mysqli_num_rows($FoundItems)    == 0
-    and mysqli_num_rows($FoundNpcs)     == 1
-  )
-{ $NpcRow = mysqli_fetch_array($FoundNpcs);
-   header("Location: npc.php?id=".$NpcRow["id"]);
-  exit();
+if (
+	mysqli_num_rows($FoundFactions) == 0
+	and mysqli_num_rows($FoundItems)    == 0
+	and mysqli_num_rows($FoundNpcs)     == 1
+) {
+	$NpcRow = mysqli_fetch_array($FoundNpcs);
+	header("Location: npc.php?id=" . $NpcRow["id"]);
+	exit();
 }
 
 
@@ -99,9 +99,9 @@ if(     mysqli_num_rows($FoundFactions) == 0
  *    $FoundNpcs     : NPCs     found
  */
 
-$Title="Search Results";
+$Title = "Search Results";
 $XhtmlCompliant = TRUE;
-include($includes_dir.'headers.php');
+include($includes_dir . 'headers.php');
 
 // Display found objects
 echo '<div class="container fullsearch">';
@@ -109,5 +109,6 @@ PrintQueryResults($FoundItems,       $MaxItemsReturned,    "item.php",    "item"
 PrintQueryResults($FoundNpcs,         $MaxNpcsReturned,     "npc.php",     "NPC",     "NPCs", "id", "name");
 PrintQueryResults($FoundFactions, $MaxFactionsReturned, "faction.php", "faction", "factions", "id", "name");
 echo '</div>';
+echo '</div>';
 
-include($includes_dir."footers.php");
+include($includes_dir . "footers.php");

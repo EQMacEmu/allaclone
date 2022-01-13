@@ -66,6 +66,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=qey2hh1>Western Plains of Karana</a>
 	</ul>
 </div>
+</div>
 <?php
 include('../includes/footers.php');
 ?>

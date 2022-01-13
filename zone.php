@@ -322,5 +322,6 @@ if ($AllowQuestsNPC == TRUE) {
 print "</ul></div>";
 print "</div>"; // end left-col
 print "</div>";
+print "</div>";
 
 include($includes_dir . "footers.php");

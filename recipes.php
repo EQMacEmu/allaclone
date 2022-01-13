@@ -76,6 +76,6 @@ if (isset($isearch) && $isearch != "") {
 		PrintQueryResults($result, $MaxItemsReturned, "recipe.php", "recipe", "recipes", "id", "name", "trivial", "trivial at level", "tradeskill");
 	}
 }
-echo "</div></div>";
+echo "</div></div></div>";
 
 include($includes_dir . "footers.php");

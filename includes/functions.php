@@ -14,9 +14,9 @@ function PrintQueryResults(
 	$ObjectsDescription,
 	$IdAttribute,
 	$NameAttribute,
-	$ExtraField,
-	$ExtraFieldDescription,
-	$ExtraSkill
+	$ExtraField = null,
+	$ExtraFieldDescription = null,
+	$ExtraSkill = null
 ) {
 	global $dbskills;
 	$ObjectsToShow = mysqli_num_rows($FoundObjects);

@@ -2469,6 +2469,7 @@ html {
 
 body {
   height: 100%;
+  background: #222;
 }
 
 #site-wrapper {
@@ -2480,6 +2481,13 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       grid-template-areas: "header" "mainContent" "footer";
   min-height: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  background: #fff;
+  -webkit-box-shadow: 0 0 1rem 0 #ccc;
+          box-shadow: 0 0 1rem 0 #ccc;
+  border-left: 2px solid #000;
+  border-right: 2px solid #000;
 }
 #site-wrapper header {
   -ms-grid-row: 1;
@@ -3509,7 +3517,7 @@ form.item-refine div .checkbox input:checked + span::after {
   display: flex;
   -ms-flex-wrap: nowrap;
       flex-wrap: nowrap;
-  margin-bottom: 0.4rem;
+  margin: 0 0 0.4rem;
 }
 .spell-information dd strong {
   text-align: right;
