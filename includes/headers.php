@@ -6,7 +6,7 @@
 	<title><?php echo $SiteTitle . ' ' . ($Title != "" ? " :: $Title" : "") ?>
 	</title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
-	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css" type="text/css" />
+	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css?v=<?php echo date("ymd-Gi", filemtime('includes/2022.css')) ?>" type="text/css" />
 	<script type="application/ld+json">
 		{
 			"@context": "https://schema.org",
