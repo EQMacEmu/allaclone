@@ -174,13 +174,33 @@ if ($ItemFoundInfo) {
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
 			$CurrentNPC = "";
+			$displayName = "";
 			$DroppedList = "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
 				if ($CurrentZone != $row["short_name"]) {
+					switch ($row["short_name"]) {
+						case "poair":
+							$displayName = "Eryslai, the Kingdom of Wind";
+							break;
+						case "poearth":
+							$displayName = "Vergarlson, the Earthen Badlands";
+							break;
+						case "poearthb":
+							$displayName = "Ragrax, Stronghold of the Twelve";
+							break;
+						case "pofire":
+							$displayName = "Doomfire, the Burning Lands";
+							break;
+						case "powater":
+							$displayName = "Reef of Coirnav";
+							break;
+						default:
+							$displayName = $row['long_name'];
+					}
 					$DroppedList .= "
 						<li class='zone'>
-							<a href='zone.php?name=" . $row["short_name"] . "'>" . $row["long_name"] . "</a>
+							<a href='zone.php?name=" . $row["short_name"] . "'>" . $displayName . "</a>
 						</li>";
 					$CurrentZone = $row["short_name"];
 				}
