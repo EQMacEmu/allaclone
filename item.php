@@ -151,24 +151,6 @@ if ($ItemFoundInfo) {
 
 	if ($IsDropped) {
 
-		// OLD
-		// Shows all correct enemies but not zones
-		// $query = "
-		// 	SELECT
-		// 		npct.id,
-		// 		npct.name,
-		// 		lootdrop.name AS lootdropname,
-		// 		item.name AS itemname
-		// 	FROM $tblootdropentries as lde
-		// 	INNER JOIN $tbloottableentries as lte on lde.lootdrop_id = lte.lootdrop_id
-		// 	INNER JOIN lootdrop on lte.lootdrop_id = lootdrop.id
-		// 	INNER JOIN $tbnpctypes as npct on npct.loottable_id = lte.loottable_id
-		// 	INNER JOIN items as item on item.id = lde.item_id
-		// 	WHERE item.id = $id
-		// ";
-
-		// NEW
-		// Shows ZONES but not all enemies
 		$query = "
 		SELECT nt.id
 			, nt.`name`

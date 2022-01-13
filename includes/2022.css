@@ -2503,7 +2503,7 @@ body {
 }
 @media only screen and (min-width: 1024px) {
   #site-wrapper #main {
-    padding: 0;
+    padding: 0 0 4rem;
   }
 }
 #site-wrapper #main h2 {
@@ -3569,6 +3569,7 @@ form.item-refine div .checkbox input:checked + span::after {
     float: right;
     clear: none;
     width: 450px;
+    margin-bottom: auto;
   }
 }
 .zone-resources img {
