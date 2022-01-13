@@ -3426,6 +3426,12 @@ form.item-refine div .checkbox input:checked + span::after {
   margin: 0 auto auto;
   background: #111;
 }
+@media only screen and (min-width: 1248px) {
+  .item-content .item-columns .item-wrapper {
+    position: sticky;
+    top: 1rem;
+  }
+}
 .item-content .item-columns .item-wrapper .item-info > strong {
   display: block;
   background: -webkit-gradient(linear, left top, left bottom, from(#16222A), to(#3A6073));

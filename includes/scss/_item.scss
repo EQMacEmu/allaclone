@@ -22,6 +22,11 @@
 			margin: 0 auto auto;
 			background: #111;
 
+			@include mq('desktop') {
+				position: sticky;
+				top: 1rem;
+			}
+
 			.item-info {
 			
 				> strong {
