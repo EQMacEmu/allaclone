@@ -3453,6 +3453,9 @@ form.item-refine div .checkbox input:checked + span::after {
 .drop-information ul li {
   padding-left: 20px;
 }
+.drop-information ul li:nth-child(even) {
+  background: #efefef;
+}
 .drop-information ul li.zone {
   background: -webkit-gradient(linear, left top, left bottom, from(#16222A), to(#3A6073));
   background: linear-gradient(to bottom, #16222A, #3A6073);
@@ -3465,9 +3468,17 @@ form.item-refine div .checkbox input:checked + span::after {
   color: white;
   padding: 0;
 }
+.drop-information ul li.zone:not(:first-child) {
+  margin-top: 1rem;
+}
 .drop-information ul li a {
-  display: inline-block;
+  display: block;
   padding: 10px 0;
+}
+@media only screen and (min-width: 1248px) {
+  .drop-information ul li a {
+    padding: 2px 0;
+  }
 }
 
 .spell-search {

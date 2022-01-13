@@ -67,6 +67,10 @@
         
         li {
             padding-left: 20px;
+
+			&:nth-child(even) {
+				background: #efefef;
+			}
             
             &.zone {
                 background: linear-gradient(to bottom, #16222A, #3A6073);
@@ -79,11 +83,19 @@
                     color: white;
 					padding: 0;
                 }
+
+				&:not(:first-child) {
+					margin-top: 1rem;
+				}
             }
 
 			a {
-				display: inline-block;
+				display: block;
 				padding: 10px 0;
+
+				@include mq('desktop') {
+					padding: 2px 0;
+				}
 			}
         }
     }
