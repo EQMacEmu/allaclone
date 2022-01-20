@@ -9,7 +9,7 @@ $id = $_GET["id"];
 $spell = getspell($id);
 $minlvl = 70;
 
-if (!$spell) {
+if (!$spell || in_array($id, $hide_spell_id)) {
 	header("Location: spells.php");
 	exit();
 }
