@@ -125,40 +125,44 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 	$RowClass = "lr";
 
 	while ($row = mysqli_fetch_array($result)) {
-		/* This will only come through when the Level Changes */
-		$DBSkill = $dbskills[$row["skill"]];
-		if ($LevelCheck != $row[$Class]) {
-			$LevelCheck = $row[$Class];
-			echo '<tr class="level"><td colspan="4"><h3>Level: ' . $row['classes' . $type] . '</h3></td></tr>';
+
+		// Do not show any results that are present in the hidden spell array
+		if ( !in_array($row['id'], $hide_spell_id) ) {
+			/* This will only come through when the Level Changes */
+			$DBSkill = $dbskills[$row["skill"]];
+			if ($LevelCheck != $row[$Class]) {
+				$LevelCheck = $row[$Class];
+				echo '<tr class="level"><td colspan="4"><h3>Level: ' . $row['classes' . $type] . '</h3></td></tr>';
+				echo '<tr>
+							<td colspan=2>Name</td>
+							<td class="left">Class</td>
+							<td>Effect(s)</td>
+							<td class="center">Mana</td>
+							<td class="center">Skill</td>
+							<td class="right">Target</td>
+						</tr>';
+			}
 			echo '<tr>
-                        <td colspan=2>Name</td>
-                        <td class="left">Class</td>
-                        <td>Effect(s)</td>
-                        <td class="center">Mana</td>
-                        <td class="center">Skill</td>
-                        <td class="right">Target</td>
-                      </tr>';
+						<td width="5%">
+							<a href="spell.php?id=' . $row['id'] . '"><img src="' . $icons_url . $row['new_icon'] . '.gif" align="center" border="1"></a>
+						</td>
+						<td width="20%">
+							<a href="spell.php?id=' . $row['id'] . '">' . $row['name'] . '</a>
+						</td>
+						<td width="10%">' . $ClassName . " " . $LevelCheck . '</td>
+						<td width="40%"><ul>';
+			for ($n = 1; $n <= 12; $n++) {
+				SpellDescription($row, $n);
+			}
+			echo '</ul></td>
+						<td width="5%" class="center">' . $row['mana'] . '</td>
+						<td width="10%" class="center">' . ucwords(strtolower($DBSkill)) . '</td>
+						<td width="10%" class="right">';
+			if ($dbspelltargets[$row["targettype"]] != "") {
+				print $dbspelltargets[$row["targettype"]];
+			}
+			echo '</td></tr>';
 		}
-		echo '<tr>
-					<td width="5%">
-                        <a href="spell.php?id=' . $row['id'] . '"><img src="' . $icons_url . $row['new_icon'] . '.gif" align="center" border="1"></a>
-                    </td>
-					<td width="20%">
-                        <a href="spell.php?id=' . $row['id'] . '">' . $row['name'] . '</a>
-                    </td>
-					<td width="10%">' . $ClassName . " " . $LevelCheck . '</td>
-					<td width="40%"><ul>';
-		for ($n = 1; $n <= 12; $n++) {
-			SpellDescription($row, $n);
-		}
-		echo '</ul></td>
-					<td width="5%" class="center">' . $row['mana'] . '</td>
-					<td width="10%" class="center">' . ucwords(strtolower($DBSkill)) . '</td>
-					<td width="10%" class="right">';
-		if ($dbspelltargets[$row["targettype"]] != "") {
-			print $dbspelltargets[$row["targettype"]];
-		}
-		echo '</td></tr>';
 	}
 	echo '</table>';
 }
