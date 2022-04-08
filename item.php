@@ -90,9 +90,10 @@ $result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $q
 $TradeskillResults = "";
 
 if (mysqli_num_rows($result) > 0) {
-	$TradeskillResults .= "<ul><li class='zone'>This item is used in the following tradeskill recipes:</li> ";
+  $TradeskillResults .= "<h3>Used in:</h3>";
+	$TradeskillResults .= "<ul> ";
 	while ($row = mysqli_fetch_array($result)) {
-		$TradeskillResults .= "<li><a href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . ucfirstwords($dbskills[$row["tradeskill"]]) . ")</li>";
+		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . ucfirstwords($dbskills[$row["tradeskill"]]) . ")</li>";
 	}
 	$TradeskillResults .= "</ul>";
 }
@@ -104,12 +105,11 @@ $result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $q
 $TradeskillResults = "";
 
 if (mysqli_num_rows($result) > 0) {
-	$TradeskillResults .= "<tr class='myline' height='6'><td colspan='2'></td><tr>";
-	$TradeskillResults .= "<tr><td nowrap='1'><b>This item is the result of the following tradeskill recipes : </b><ul>";
+	$TradeskillResults .= "<h3>Result of: </h3><ul>";
 	while ($row = mysqli_fetch_array($result)) {
-		$TradeskillResults .= "<li><a href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . $dbskills[$row["tradeskill"]] . ")</li>";
+		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . $dbskills[$row["tradeskill"]] . ")</li>";
 	}
-	$TradeskillResults .= "</ul></td></tr>";
+	$TradeskillResults .= "</ul>";
 }
 echo $TradeskillResults;
 
@@ -175,7 +175,8 @@ if ($ItemFoundInfo) {
 			$CurrentZone = "";
 			$CurrentNPC = "";
 			$displayName = "";
-			$DroppedList = "<ul>";
+      $DroppedList = "<h3>Dropped by:</h3>";
+			$DroppedList .= "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
 				if ($CurrentZone != $row["short_name"]) {
@@ -229,16 +230,25 @@ if ($ItemFoundInfo) {
 					AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
 					AND $tbmerchantlist.merchantid=$tbnpctypes.merchant_id
 					AND $tbzones.short_name=$tbspawn2.zone";
+          
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 		if (mysqli_num_rows($result) > 0) {
 			$MerchantList = "";
 			$MerchantList .= $Separator;
 			$Separator = "<hr />";
+			$MerchantList .= "<h3>Sold by:</h3>";
 			$MerchantList .= "<ul>";
-			$MerchantList .= "<li class='zone'>This item is sold by:</li>";
 			$CurrentZone = "";
-			while ($row = mysqli_fetch_array($result)) {
-				$MerchantList .= "<li><a href='npc.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a>";
+      while ($row = mysqli_fetch_array($result)) {
+        // var_dump($row);
+        if ($CurrentZone != $row["zone"]) {
+          $MerchantList .= "
+            <li class='zone'>
+              <a href='zone.php?name=" . $row["zone"] . "'>" . $row["long_name"] . "</a>
+            </li>";
+          $CurrentZone = $row["zone"];
+        }
+				$MerchantList .= "<li><a style='display: inline;' href='npc.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a>";
 				$MerchantList .= " (" . price($item["price"]) . ")";
 				$MerchantList .= "</li>";
 			}
