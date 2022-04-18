@@ -3459,6 +3459,9 @@ form.item-refine div .checkbox input:checked + span::after {
   text-decoration: none;
 }
 
+.drop-information > h3 {
+  margin-top: 0;
+}
 .drop-information ul {
   list-style-type: none;
   padding: 0;
@@ -3493,6 +3496,9 @@ form.item-refine div .checkbox input:checked + span::after {
   .drop-information ul li a {
     padding: 2px 0;
   }
+}
+.drop-information ul + h3 {
+  margin-top: 1rem;
 }
 
 .spell-search {
