@@ -289,10 +289,9 @@ $ownerQuery = "SELECT DISTINCT ci.id,cd.name FROM character_inventory ci JOIN ch
 $ownerResult = mysqli_query($db, $ownerQuery) or message_die('item.php', 'MYSQL_QUERY', $ownerQuery, mysqli_error($db));
 if (mysqli_num_rows($ownerResult) < 30) {
   $ownerOutput = "<div id='player-owners' style='margin-top:1rem;'><fieldset><legend>Owners</legend>";
-
   $index = 0;
   while ($row = mysqli_fetch_array($ownerResult)) {
-    var_dump($row);
+    echo json_encode($row);
     $ownerOutput .= "<a style='display: inline;' target='_blank' href='" . $charbrowser_url . "character.php?char=" . $row['name'] . "'>";
     $ownerOutput .= $row['name'];
     $ownerOutput .= "</a>";
