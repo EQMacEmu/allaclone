@@ -77,6 +77,10 @@ if ($item["lore"] != "") {
 
 echo BuildItemStats($item, 0);
 
+// echo '<pre>';
+// print_r($item);
+// echo '</pre>';
+
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
 	echo "<img src='" . $icons_url . "item_" . $item["icon"] . ".gif' />";
 }

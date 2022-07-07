@@ -177,6 +177,8 @@ function modulo($d, $v) {
 function getslots($val) {
 	global $dbslots;
 	reset($dbslots);
+  $Result = '';
+  $v = '';
 	do {
 		$key = key($dbslots);
 		if ($key <= $val) {
@@ -190,28 +192,32 @@ function getslots($val) {
 function getclasses($val) {
 	global $dbiclasses;
 	reset($dbiclasses);
+  $Result = '';
+  $v = '';
 	do {
 		$key = key($dbiclasses);
 		if ($key <= $val) {
 			$val -= $key;
-			$res .= $v . current($dbiclasses);
+			$Result .= $v . current($dbiclasses);
 			$v = ", ";
 		}
 	} while (next($dbiclasses));
-	return $res;
+	return $Result;
 }
 function getraces($val) {
 	global $dbraces;
 	reset($dbraces);
+  $Result = '';
+  $v = '';
 	do {
 		$key = key($dbraces);
 		if ($key <= $val) {
 			$val -= $key;
-			$res .= $v . current($dbraces);
+			$Result .= $v . current($dbraces);
 			$v = ", ";
 		}
 	} while (next($dbraces));
-	return $res;
+	return $Result;
 }
 function getsize($val) {
 	switch ($val) {
@@ -251,15 +257,17 @@ function getspell($id) {
 function gedeities($val) {
 	global $dbideities;
 	reset($dbideities);
+  $Result = '';
+  $v = '';
 	do {
 		$key = key($dbideities);
 		if ($key <= $val) {
 			$val -= $key;
-			$res .= $v . current($dbideities);
+			$Result .= $v . current($dbideities);
 			$v = ", ";
 		}
 	} while (next($dbideities));
-	return $res;
+	return $Result;
 }
 function SelectClass($name, $selected) {
 	global $dbclasses;
@@ -442,7 +450,7 @@ function SelectStats($name, $stat) {
 	WriteIt("enduranceregen", "Endurance Regen", $stat);
 	print "</select>\n";
 }
-function SelectHeroicStats($name, $heroic) {
+function SelectHeroicStats($name, $stat, $heroic) {
 	print "<select name=\"$name\">\n";
 	print "  <option value=''>H. Stat</option>\n";
 	WriteIt("heroic_agi", "Heroic Agility", $stat);
@@ -524,7 +532,7 @@ function GetItemStatsString($name, $stat, $stat2, $stat2color) {
 }
 
 // spell_effects.cpp int Mob::CalcSpellEffectValue_formula(int formula, int base, int max, int caster_level, int16 spell_id)
-function CalcSpellEffectValue($form, $base, $max, $lvl) {
+function CalcSpellEffectValue($form, $base, $max, $lvl = 65) {
 	// print " (base=$base form=$form max=$max, lvl=$lvl)";
 	$sign = 1;
 	$ubase = abs($base);
@@ -673,79 +681,80 @@ function SpecialAttacks($att) {
 	$data = '';
 	$v = '';
 	// from mobs.h
-	for ($i = 0; $i < strlen($att); $i++) {
-		switch ($att{
-			$i}) {
-			case 'A':
-				$data .= $v . " Immune to melee";
-				$v = ', ';
-				break;
-			case 'B':
-				$data .= $v . " Immune to magic";
-				$v = ', ';
-				break;
-			case 'C':
-				$data .= $v . " Uncharmable";
-				$v = ', ';
-				break;
-			case 'D':
-				$data .= $v . " Unfearable";
-				$v = ', ';
-				break;
-			case 'E':
-				$data .= $v . " Enrage";
-				$v = ', ';
-				break;
-			case 'F':
-				$data .= $v . " Flurry";
-				$v = ', ';
-				break;
-			case 'f':
-				$data .= $v . " Immune to fleeing";
-				$v = ', ';
-				break;
-			case 'I':
-				$data .= $v . " Unsnarable";
-				$v = ', ';
-				break;
-			case 'M':
-				$data .= $v . " Unmezzable";
-				$v = ', ';
-				break;
-			case 'N':
-				$data .= $v . " Unstunable";
-				$v = ', ';
-				break;
-			case 'O':
-				$data .= $v . " Immune to melee except bane";
-				$v = ', ';
-				break;
-			case 'Q':
-				$data .= $v . " Quadruple Attack";
-				$v = ', ';
-				break;
-			case 'R':
-				$data .= $v . " Rampage";
-				$v = ', ';
-				break;
-			case 'S':
-				$data .= $v . " Summon";
-				$v = ', ';
-				break;
-			case 'T':
-				$data .= $v . " Triple Attack";
-				$v = ', ';
-				break;
-			case 'U':
-				$data .= $v . " Unslowable";
-				$v = ', ';
-				break;
-			case 'W':
-				$data .= $v . " Immune to melee except magical";
-				$v = ', ';
-				break;
-		}
-	}
+  //TODO: Update Syntax here
+	// for ($i = 0; $i < strlen($att); $i++) {
+	// 	switch ($att{
+	// 		$i}) {
+	// 		case 'A':
+	// 			$data .= $v . " Immune to melee";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'B':
+	// 			$data .= $v . " Immune to magic";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'C':
+	// 			$data .= $v . " Uncharmable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'D':
+	// 			$data .= $v . " Unfearable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'E':
+	// 			$data .= $v . " Enrage";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'F':
+	// 			$data .= $v . " Flurry";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'f':
+	// 			$data .= $v . " Immune to fleeing";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'I':
+	// 			$data .= $v . " Unsnarable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'M':
+	// 			$data .= $v . " Unmezzable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'N':
+	// 			$data .= $v . " Unstunable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'O':
+	// 			$data .= $v . " Immune to melee except bane";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'Q':
+	// 			$data .= $v . " Quadruple Attack";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'R':
+	// 			$data .= $v . " Rampage";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'S':
+	// 			$data .= $v . " Summon";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'T':
+	// 			$data .= $v . " Triple Attack";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'U':
+	// 			$data .= $v . " Unslowable";
+	// 			$v = ', ';
+	// 			break;
+	// 		case 'W':
+	// 			$data .= $v . " Immune to melee except magical";
+	// 			$v = ', ';
+	// 			break;
+	// 	}
+	// }
 	return $data;
 }
 function price($price) {
@@ -829,17 +838,18 @@ function CanThisNPCDoubleAttack($class, $level) { // mob.cpp
 
 // Automatically format and populate the table based on the query
 function AutoDataTable($Query) {
+  global $db;
 	$result = mysqli_query($db, $Query);
 	if (!$result) {
 		echo 'Could not run query: ' . mysqli_error($db);
 		exit;
 	}
-	$columns = mysql_num_fields($result);
+	$columns = mysqli_num_fields($result);
 	echo "<table border=0 width=100%><thead>";
 	$RowClass = "lr";
 	###Automatically Generate the column names from the Table
 	for ($i = 0; $i < $columns; $i++) {
-		echo "<th class='menuh'>" . ucfirstwords(str_replace('_', ' ', mysql_field_name($result, $i))) . " </th>";
+		echo "<th class='menuh'>" . ucfirstwords(str_replace('_', ' ', mysqli_field_name($result, $i))) . " </th>";
 	}
 	echo "</tr></thead><tbody>";
 	while ($row = mysqli_fetch_array($result)) {
@@ -1030,18 +1040,18 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 		$html_string .= "This can hold " . strtoupper(getsize($item["bagsize"])) . " and smaller items.";
 	}
-	$html_string .= GetItemStatsString(" Haste", $item["haste" . "%"]);
+	$html_string .= GetItemStatsString(" Haste", $item["haste" . "%"], null, null);
 
 	if (($item["banedmgrace"] > 0) && ($item["banedmgamt"] != 0)) {
 		$html_string .= " Bane Damage (";
 		$html_string .= $dbiracenames[$item["banedmgrace"]];
 		$html_string .= ")" . sign($item["banedmgamt"]) . "";
 	}
-	$html_string .= GetItemStatsString(ucfirstwords($dbbodytypes[$item["banedmgbody"]]), $item["banedmgamt"]);
-	$html_string .= GetItemStatsString(" Backstab Damage", $item["backstabdmg"]);
-	$html_string .= GetItemStatsString(" Atk Delay", $item["delay"]);
+	$html_string .= GetItemStatsString(ucfirstwords($dbbodytypes[$item["banedmgbody"]]), $item["banedmgamt"], null, null);
+	$html_string .= GetItemStatsString(" Backstab Damage", $item["backstabdmg"], null, null);
+	$html_string .= GetItemStatsString(" Atk Delay", $item["delay"], null, null);
 	$html_string .= "<br />";
-	$html_string .= GetItemStatsString(" DMG", $item["damage"]);
+	$html_string .= GetItemStatsString(" DMG", $item["damage"], null, null);
 	if ($item["damage"] > 0) {
 		switch ($item["itemtype"]) {
 			case 0: // 1HS
@@ -1059,41 +1069,41 @@ function BuildItemStats($item, $show_name_icon) {
 				break;
 		}
 	}
-	$html_string .= GetItemStatsString(" AC", $item["ac"]);
+	$html_string .= GetItemStatsString(" AC", $item["ac"], null, null);
 	$html_string .= "<br />";
 	if ($dbelements[$item["elemdmgtype"]] != 'Unknown') {
-		$html_string .= GetItemStatsString(ucfirstwords($dbelements[$item["elemdmgtype"]]) . " DMG", $item["elemdmgamt"]);
+		$html_string .= GetItemStatsString(ucfirstwords($dbelements[$item["elemdmgtype"]]) . " DMG", $item["elemdmgamt"], null, null);
 		$html_string .= "<br />";
 	}
-	$html_string .= GetItemStatsString(" Range", $item["range"]);
-	$html_string .= GetItemStatsString(" STR", $item["astr"]);
-	$html_string .= GetItemStatsString(" DEX", $item["adex"]);
-	$html_string .= GetItemStatsString(" STA", $item["asta"]);
-	$html_string .= GetItemStatsString(" CHA", $item["acha"]);
-	$html_string .= GetItemStatsString(" WIS", $item["awis"]);
-	$html_string .= GetItemStatsString(" INT", $item["aint"]);
-	$html_string .= GetItemStatsString(" AGI", $item["aagi"]);
-	$html_string .= GetItemStatsString(" HP", $item["hp"]);
-	$html_string .= GetItemStatsString(" MANA", $item["mana"]);
+	$html_string .= GetItemStatsString(" Range", $item["range"], null, null);
+	$html_string .= GetItemStatsString(" STR", $item["astr"], null, null);
+	$html_string .= GetItemStatsString(" DEX", $item["adex"], null, null);
+	$html_string .= GetItemStatsString(" STA", $item["asta"], null, null);
+	$html_string .= GetItemStatsString(" CHA", $item["acha"], null, null);
+	$html_string .= GetItemStatsString(" WIS", $item["awis"], null, null);
+	$html_string .= GetItemStatsString(" INT", $item["aint"], null, null);
+	$html_string .= GetItemStatsString(" AGI", $item["aagi"], null, null);
+	$html_string .= GetItemStatsString(" HP", $item["hp"], null, null);
+	$html_string .= GetItemStatsString(" MANA", $item["mana"], null, null);
 	$html_string .= "<br />";
-	$html_string .= GetItemStatsString(" SV FIRE", $item["fr"]);
-	$html_string .= GetItemStatsString(" SV DISEASE", $item["dr"]);
-	$html_string .= GetItemStatsString(" SV COLD", $item["cr"]);
-	$html_string .= GetItemStatsString(" SV MAGIC", $item["mr"]);
-	$html_string .= GetItemStatsString(" SV POISON", $item["pr"]);
+	$html_string .= GetItemStatsString(" SV FIRE", $item["fr"], null, null);
+	$html_string .= GetItemStatsString(" SV DISEASE", $item["dr"], null, null);
+	$html_string .= GetItemStatsString(" SV COLD", $item["cr"], null, null);
+	$html_string .= GetItemStatsString(" SV MAGIC", $item["mr"], null, null);
+	$html_string .= GetItemStatsString(" SV POISON", $item["pr"], null, null);
 	$html_string .= "<br />";
-	$html_string .= GetItemStatsString(" Atk", $item["attack"]);
-	$html_string .= GetItemStatsString(" Regen", $item["regen"]);
-	$html_string .= GetItemStatsString(" Flowing Thought", $item["manaregen"]);
-	$html_string .= GetItemStatsString(" Spell Shielding", $item["spellshield"]);
-	$html_string .= GetItemStatsString(" Combat Effects", $item["combateffects"]);
-	$html_string .= GetItemStatsString(" Shielding", $item["shielding"]);
-	$html_string .= GetItemStatsString(" DoT Shielding", $item["dotshielding"]);
-	$html_string .= GetItemStatsString(" Avoidance", $item["avoidance"]);
-	$html_string .= GetItemStatsString(" Accuracy", $item["accuracy"]);
-	$html_string .= GetItemStatsString(" Stun Resist", $item["stunresist"]);
-	$html_string .= GetItemStatsString(" Strikethrough", $item["strikethrough"]);
-	$html_string .= GetItemStatsString(" Damage Shield", $item["damageshield"]);
+	$html_string .= GetItemStatsString(" Atk", $item["attack"], null, null);
+	$html_string .= GetItemStatsString(" Regen", $item["regen"], null, null);
+	$html_string .= GetItemStatsString(" Flowing Thought", $item["manaregen"], null, null);
+	$html_string .= GetItemStatsString(" Spell Shielding", $item["spellshield"], null, null);
+	$html_string .= GetItemStatsString(" Combat Effects", $item["combateffects"], null, null);
+	$html_string .= GetItemStatsString(" Shielding", $item["shielding"], null, null);
+	$html_string .= GetItemStatsString(" DoT Shielding", $item["dotshielding"], null, null);
+	$html_string .= GetItemStatsString(" Avoidance", $item["avoidance"], null, null);
+	$html_string .= GetItemStatsString(" Accuracy", $item["accuracy"], null, null);
+	$html_string .= GetItemStatsString(" Stun Resist", $item["stunresist"], null, null);
+	$html_string .= GetItemStatsString(" Strikethrough", $item["strikethrough"], null, null);
+	$html_string .= GetItemStatsString(" Damage Shield", $item["damageshield"], null, null);
 
 	if ($item["extradmgamt"] > 0) {
 		$html_string .= ucfirstwords($dbskills[$item["extradmgskill"]]) . " Damage: " . sign($item["extradmgamt"]);
@@ -1103,14 +1113,14 @@ function BuildItemStats($item, $show_name_icon) {
 		$html_string .= " Skill Mod: " . ucfirstwords($dbskills[$item["skillmodtype"]]) . ": " . sign($item["skillmodvalue"]) . "%";
 	}
 
-	$html_string .= GetItemStatsString(" Recommended level", $item["reclevel"]);
-	$html_string .= GetItemStatsString(" Required level", $item["reqlevel"]);
+	$html_string .= GetItemStatsString(" <br />Recommended level", $item["reclevel"], null, null);
+	$html_string .= GetItemStatsString(" <br />Required level", $item["reqlevel"], null, null);
 
 	if (($item["proceffect"] > 0) && ($item["proceffect"] < 65535)) {
 		$html_string .= " <br />Effect: <a href='spell.php?id=" . $item["proceffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["proceffect"]) . "</a> (Combat)";
-		// if ($item["proclevel2"] > 0) {
-		//     $html_string .= "<br />Level for effect: " . $item["proclevel2"];
-		// }
+		if ($item["proclevel2"] > 0) {
+		    $html_string .= " (Lvl: " . $item["proclevel2"] . ")";
+		}
 	}
 
 	if (($item["worneffect"] > 0) && ($item["worneffect"] < 65535)) {
@@ -1126,32 +1136,32 @@ function BuildItemStats($item, $show_name_icon) {
 	}
 
 	if (($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
-		$html_string .= " Focus Effect: <a href='spell.php?id=" . $item["focuseffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]) . "</a>";
+		$html_string .= " <br />Focus Effect: <a href='spell.php?id=" . $item["focuseffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]) . "</a>";
 		// if ($item["focuslevel"] > 0) {
 		//     $html_string .= "<br />Level for effect: " . $item["focuslevel"];
 		// }
 	}
 
 	if (($item["clickeffect"] > 0) && ($item["clickeffect"] < 65535)) {
-		$html_string .= " Click Effect: <a href='spell.php?id=" . $item["clickeffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["clickeffect"]) . "</a> (";
+		$html_string .= " <br />Click Effect: <a href='spell.php?id=" . $item["clickeffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["clickeffect"]) . "</a> (";
 
 		if ($item["clicktype"] == 4) {
-			$html_string .= " Must Equip. ";
+			$html_string .= "Must Equip: ";
 		}
 
 		if ($item["casttime"] > 0) {
-			$html_string .= " Casting time: " . ($item["casttime"] / 1000) . " sec";
+			$html_string .= ($item["casttime"] / 1000) . " sec,";
 		} else {
-			$html_string .= " Casting time: Instant";
+			$html_string .= " Instant,";
 		}
-		$html_string .= ")";
-
-		// if ($item["clicklevel"] > 0) {
-		//     $html_string .= "<br />Level for effect: </b>" . $item["clicklevel"];
-		// }
+    
+		if ($item["clicklevel"] > 0) {
+      $html_string .= " Lvl " . $item["clicklevel"];
+		}
+    $html_string .= ")";
 	}
 
-	$html_string .= GetItemStatsString("<br />WT", ($item["weight"] / 10));
+	$html_string .= GetItemStatsString("<br />WT", ($item["weight"] / 10), null, null);
 	$html_string .= " Size: " . strtoupper(getsize($item["size"]));
 
 	if (($item["scrolleffect"] > 0) && ($item["scrolleffect"] < 65535)) {
