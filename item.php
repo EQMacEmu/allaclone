@@ -290,23 +290,23 @@ if (mysqli_num_rows($result) > 0) {
 echo "</div></div>";
 // NOT READY
 // Query for players that own the item
-// $ownerQuery = "SELECT DISTINCT ci.id,cd.name FROM character_inventory ci JOIN character_data cd ON cd.id = ci.id WHERE cd.anon = 0 AND ci.itemid = $id LIMIT 30";
-// $ownerResult = mysqli_query($db, $ownerQuery) or message_die('item.php', 'MYSQL_QUERY', $ownerQuery, mysqli_error($db));
-// if (!! mysqli_num_rows($ownerResult) && mysqli_num_rows($ownerResult) < 30) {
-//   $ownerOutput = "<div id='player-owners' style='margin-top:1rem;'><fieldset><legend>Owners</legend>";
-//   $index = 0;
-//   while ($row = mysqli_fetch_array($ownerResult)) {
-//     $ownerOutput .= "<a style='display: inline;' target='_blank' href='" . $charbrowser_url . "character.php?char=" . $row['name'] . "'>";
-//     $ownerOutput .= $row['name'];
-//     $ownerOutput .= "</a>";
-//     $index++;
-//     if ($index < mysqli_num_rows($ownerResult) ) {
-//       $ownerOutput .= ", ";
-//     }
-//   }
+$ownerQuery = "SELECT DISTINCT ci.id,cd.name FROM character_inventory ci JOIN character_data cd ON cd.id = ci.id WHERE cd.anon = 0 AND ci.itemid = $id LIMIT 30";
+$ownerResult = mysqli_query($db, $ownerQuery) or message_die('item.php', 'MYSQL_QUERY', $ownerQuery, mysqli_error($db));
+if (!! mysqli_num_rows($ownerResult) && mysqli_num_rows($ownerResult) < 30) {
+  $ownerOutput = "<div id='player-owners' style='margin-top:1rem;'><fieldset><legend>Owners</legend>";
+  $index = 0;
+  while ($row = mysqli_fetch_array($ownerResult)) {
+    $ownerOutput .= "<a style='display: inline;' target='_blank' href='" . $charbrowser_url . "character.php?char=" . $row['name'] . "'>";
+    $ownerOutput .= $row['name'];
+    $ownerOutput .= "</a>";
+    $index++;
+    if ($index < mysqli_num_rows($ownerResult) ) {
+      $ownerOutput .= ", ";
+    }
+  }
 
-//   echo $ownerOutput . "</fieldset></div>";
-// }
+  echo $ownerOutput . "</fieldset></div>";
+}
 echo "</div></div>";
 
 include($includes_dir . "footers.php");
