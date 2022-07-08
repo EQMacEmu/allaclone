@@ -72,7 +72,7 @@ function LimitToUse($MaxObjects) {
 /* Returns the "readable" name of an NPC from its database-encoded '$DbName'. */
 function ReadableNpcName($DbName) {
 	$Result = str_replace('-', '`', str_replace('_', ' ', str_replace('#', '', str_replace('!', '', str_replace('~', '', $DbName)))));
-	for ($i = 0; $i < 10; $i++) {
+	for ($i = 0; $i < 100; $i++) {
 		$Result = str_replace($i, '', $Result);
 	}
 	return $Result;

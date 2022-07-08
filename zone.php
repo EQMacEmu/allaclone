@@ -53,29 +53,20 @@ if ($mode == "npcs") {
 	$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 	if (mysqli_num_rows($result) > 0) {
-		print "<h2>Bestiary</h2><div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
-		if ($ZoneDebug == TRUE) {
-			print "<td class='menuh'><b><a href=$PHP_SELF?name=$name&order=id>Id</a></b></td>";
-		}
+		print "<h2>Bestiary</h2>";
+    print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=name>Name</a></b></td>";
-		if ($ZoneDebug == TRUE) {
-			print "<td class='menuh' align='left'><b><a href=$PHP_SELF?name=$name&order=loottable_id>Loottable</a></b></td>";
-		}
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=level>Level Range</a></b></td>";
 		print "<td align='left' class='menuh'><b><a href=$PHP_SELF?name=$name&order=race>Race</a></b></td>";
 		print "<td align='left' class='menuh'><b>Type</b></td>";
 
 		$RowClass = "lr";
+    $uniqueNPCs = [];
 		while ($row = mysqli_fetch_array($result)) {
-			if ((ReadableNpcName($row["name"])) != '') {
+			if ( !in_array($row["id"], $uniqueNPCs, true ) ) {
+        array_push($uniqueNPCs, $row["id"]);
 				print "<tr class='" . $RowClass . "'>";
-				if ($ZoneDebug == TRUE) {
-					print "<td>" . $row["id"] . "</td>";
-				}
 				print "<td><a href=npc.php?id=" . $row["id"] . ">" . ReadableNpcName($row["name"]) . "</a>";
-				if ($ZoneDebug == TRUE) {
-					print "</td><td>" . $row["loottable_id"];
-				}
 
 				if ($row['maxlevel'] == 0) {
 					$MaxLevel = $row['level'];
@@ -92,11 +83,15 @@ if ($mode == "npcs") {
 				} else {
 					$RowClass = "lr";
 				}
+        
+        // print"<tr><td><pre>";
+        // var_dump($row);
+        // print "</pre></td></tr>";
 			}
 		}
 		print "</table>";
 	} else {
-		print "<br><b>No NPCs Found</b>";
+		print "<br /><b>No NPCs Found</b>";
 	}
 } // end npcs
 
