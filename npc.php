@@ -108,30 +108,19 @@ if (($npc["loottable_id"] > 0) and ((!in_array($npc["class"], $dbmerchants)) or 
 	}
 	$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 	if (mysqli_num_rows($result) > 0) {
+    $ldid = 0;
+    $loot = [];
 		print "<div class='list-wrapper'>";
-		if ($ShowNpcDropChances == TRUE) {
-			print "<p><strong>When killed, this NPC drops: </strong></p>";
-		} else {
-			print "<p><strong>When killed, this NPC can drop: </strong></p>";
-		}
-		$ldid = 0;
-		print "<ul>";
-		while ($row = mysqli_fetch_array($result)) {
-			if ($ShowNpcDropChances == TRUE) {
-				if ($ldid != $row["lootdrop_id"]) {
-					print "</ol><li>With a probability of " . $row["probability"] . "% (multiplier : " . $row["multiplier"] . "): </li><ol>";
-					$ldid = $row["lootdrop_id"];
-				}
-			}
-			print "<li><a href='item.php?id=" . $row["id"] . "'>" . $row["Name"] . "</a>";
-			print " (" . $dbitypes[$row["itemtype"]] . ")";
-			if ($ShowNpcDropChances == TRUE) {
-				print " - " . $row["chance"] . "%";
-				print " (" . ($row["chance"] * $row["probability"] / 100) . "% global)";
-			}
-			print "</li>";
-		}
-		print "</ul></div>";
+      print "<p><strong>When killed, this NPC can drop: </strong></p>";
+      print "<ul>";
+        while ($row = mysqli_fetch_array($result)) {
+          if ( !in_array($row["id"], $loot, true) ) {
+            print "<li><a href='item.php?id=" . $row["id"] . "'>" . $row["Name"] . "</a> (" . $dbitypes[$row["itemtype"]] . ")</li>";
+            $loot[] = $row["id"];
+          }
+        }
+      print "</ul>";
+    print "</div>";
 	} else {
 		print "<p><strong>No item drops found.</strong></p>";
 	}
@@ -200,8 +189,7 @@ if ($npc["npc_spells_id"] > 0) {
 			print "<ul>";
 			while ($row = mysqli_fetch_array($result2)) {
 				$spell = getspell($row["spellid"]);
-				print "<li><a href='spell.php?id=" . $row["spellid"] . "'>" . $spell["name"] . "</a></li>";
-				print " (" . $dbspelltypes[$row["type"]] . ")";
+				print "<li><a href='spell.php?id=" . $row["spellid"] . "'>" . $spell["name"] . "</a> (" . $dbspelltypes[$row["type"]] . ")</li>";
 				if ($DebugNpc) {
 					print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
 				}
