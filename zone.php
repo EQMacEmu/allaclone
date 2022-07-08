@@ -61,10 +61,8 @@ if ($mode == "npcs") {
 		print "<td align='left' class='menuh'><b>Type</b></td>";
 
 		$RowClass = "lr";
-    $uniqueNPCs = [];
 		while ($row = mysqli_fetch_array($result)) {
-			if ( !in_array($row["id"], $uniqueNPCs, true ) ) {
-        array_push($uniqueNPCs, $row["id"]);
+			if ((ReadableNpcName($row["name"])) != '') {
 				print "<tr class='" . $RowClass . "'>";
 				print "<td><a href=npc.php?id=" . $row["id"] . ">" . ReadableNpcName($row["name"]) . "</a>";
 
