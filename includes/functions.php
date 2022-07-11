@@ -1120,7 +1120,9 @@ function BuildItemStats($item, $show_name_icon) {
 		$html_string .= " <br />Effect: <a href='spell.php?id=" . $item["proceffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["proceffect"]) . "</a> (Combat)";
 		if ($item["proclevel2"] > 0) {
 		    $html_string .= " (Lvl: " . $item["proclevel2"] . ")";
-		}
+		} else {
+        $html_string .= " (Lvl: 1)";
+    }
 	}
 
 	if (($item["worneffect"] > 0) && ($item["worneffect"] < 65535)) {
@@ -1157,9 +1159,7 @@ function BuildItemStats($item, $show_name_icon) {
     
 		if ($item["clicklevel"] > 0) {
       $html_string .= " Lvl " . $item["clicklevel"];
-		} else {
-      $html_string .= " Lvl 1";
-    }
+		}
     $html_string .= ")";
 	}
 
