@@ -1157,7 +1157,9 @@ function BuildItemStats($item, $show_name_icon) {
     
 		if ($item["clicklevel"] > 0) {
       $html_string .= " Lvl " . $item["clicklevel"];
-		}
+		} else {
+      $html_string .= " Lvl 1";
+    }
     $html_string .= ")";
 	}
 
