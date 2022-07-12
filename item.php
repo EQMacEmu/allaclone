@@ -77,10 +77,6 @@ if ($item["lore"] != "") {
 
 echo BuildItemStats($item, 0);
 
-// echo '<pre>';
-// print_r($item);
-// echo '</pre>';
-
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
 	echo "<img src='" . $icons_url . "item_" . $item["icon"] . ".gif' />";
 }
@@ -117,33 +113,13 @@ if (mysqli_num_rows($result) > 0) {
 }
 echo $TradeskillResults;
 
-if ($AllowQuestsNPC == true) {
-	// npcs that use that give that item as reward
-	$query = "SELECT * FROM $tbquestitems WHERE item_id=$id AND rewarded>0";
-	$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-	if (mysqli_num_rows($result) > 0) {
-		echo "<tr class='myline' height='6'><td colspan='2'></td><tr>";
-		echo "<tr><td nowrap='1'><b>This item is the result of a quest.</b></b><ul>";
-		while ($res = mysqli_fetch_array($result)) {
-			echo "<li><a href='" . $root_url . "quests/index.php?zone=" . $res["zone"] . "&amp;npc=" . $res["npc"] . "'>" . str_replace("_", " ", $res["npc"]) . "</a>";
-			echo ", <a href=$root_url" . "zone.php?name=" . $res["zone"] . ">";
-			echo GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='" . $res["zone"] . "'") . "</a></li>";
-		}
-		echo "</ul></td></tr>";
-	}
+if ($ItemQuestSource) {
 
-	// npcs that use that give that item as quest item
-	$query = "SELECT * FROM $tbquestitems WHERE item_id=$id AND handed>0";
+	$query = "SELECT * FROM $tbquestitems WHERE item_id=$id AND rewarded > 0";
 	$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+
 	if (mysqli_num_rows($result) > 0) {
-		echo "<tr class='myline' height='6'><td colspan='2'></td><tr>";
-		echo "<tr><td nowrap='1'><b>This item is used in quests.</b></b><ul>";
-		while ($res = mysqli_fetch_array($result)) {
-			echo "<li><a href='" . $root_url . "quests/index.php?zone=" . $res["zone"] . "&amp;npc=" . $res["npc"] . "'>" . str_replace("_", " ", $res["npc"]) . "</a>";
-			echo ", <a href=$root_url" . "zone.php?name=" . $res["zone"] . ">";
-			echo GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='" . $res["zone"] . "'") . "</a></li>";
-		}
-		echo "</ul></td></tr>";
+		echo "<p>This item is the result of a quest.</p>";
 	}
 }
 
@@ -307,6 +283,10 @@ echo "</div></div>";
 
 //   echo $ownerOutput . "</fieldset></div>";
 // }
+
+// echo '<pre>';
+// print_r($item);
+// echo '</pre>';
 echo "</div></div>";
 
 include($includes_dir . "footers.php");
