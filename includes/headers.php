@@ -2,13 +2,18 @@
 <html>
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1" />
-  <meta property="og:title" content="<?php echo $name; ?>">
-  <meta property="og:type" content="article">
-  <meta property="og:url" content="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
   <meta property="og:site_name" content="TAKP AllaClone">
-  <meta property="og:description" content="Item Information for <?php echo $name; ?>">
-  <link rel="canonical" href="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
-  <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
+  <meta property="og:type" content="article">
+  <?php if ($name) { ?>
+    <meta property="og:title" content="<?php echo $name; ?>">
+    <meta property="og:description" content="Item Information for <?php echo $name; ?>">
+    <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
+    <?php if ($id) { ?>
+      <meta property="og:url" content="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
+      <link rel="canonical" href="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
+    <?php
+    }
+  } ?>
 	<title><?php echo $SiteTitle . ' ' . ($Title != "" ? " :: $Title" : "");
       if ($name) {
         echo " :: $name";
