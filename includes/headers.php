@@ -1,27 +1,21 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1" />
-	<title><?php echo $SiteTitle . ' ' . ($Title != "" ? " :: $Title" : "") ?>
-	</title>
+  <meta property="og:title" content="<?php echo $name; ?>">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
+  <meta property="og:site_name" content="TAKP AllaClone">
+  <meta property="og:description" content="Item Information for <?php echo $name; ?>">
+  <link rel="canonical" href="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
+  <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
+	<title><?php echo $SiteTitle . ' ' . ($Title != "" ? " :: $Title" : "");
+      if ($name) {
+        echo " :: $name";
+      }
+    ?></title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
 	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css?v=<?php echo date("ymd-Gi", filemtime('includes/2022.css')) ?>" type="text/css" />
-	<script type="application/ld+json">
-		{
-			"@context": "https://schema.org",
-			"@type": "WebSite",
-			"url": "https://www.takproject.net/allaclone/",
-			"potentialAction": {
-				"@type": "SearchAction",
-				"target": {
-					"@type": "EntryPoint",
-					"urlTemplate": "https://www.takproject.net/allaclone/fullsearch.php?isearchtype=name&iname={search_term_string}"
-				},
-				"query-input": "required name=search_term_string"
-			}
-		}
-	</script>
 </head>
 
 <body>

@@ -57,11 +57,17 @@ if ($id != "" && is_numeric($id)) {
  *    $ItemRow : row of the item to display extracted from the database
  *    The item actually exists
  */
+
+if ( $name == "" ) {
+  $name = $ItemRow["Name"];
+}
+
 $XhtmlCompliant = true;
+
 include($includes_dir . 'headers.php');
+
 $item = $ItemRow;
 $Tableborder = 0;
-
 
 echo "<div class='item-content'>";
 echo "<div class='item-columns'>";
