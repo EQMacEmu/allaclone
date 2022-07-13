@@ -62,6 +62,10 @@ if ( $name == "" ) {
   $name = $ItemRow["Name"];
 }
 
+if ( $item_icon == "" ) {
+  $item_icon = $icons_url . "item_" . $ItemRow["icon"] . ".gif";
+}
+
 $XhtmlCompliant = true;
 
 include($includes_dir . 'headers.php');

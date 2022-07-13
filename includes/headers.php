@@ -8,6 +8,9 @@
     <meta property="og:title" content="<?php echo $name; ?>">
     <meta property="og:description" content="Item Information for <?php echo $name; ?>">
     <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
+    <?php if ($item_icon) { ?>
+      <meta property="og:image" content="<?php echo $item_icon; ?>">
+    <?php } ?>
     <?php if ($id) { ?>
       <meta property="og:url" content="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
       <link rel="canonical" href="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
