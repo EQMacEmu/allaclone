@@ -3,10 +3,13 @@ function SpellDescription($spell, $n, $csv = false) {
 	global $dbspelleffects, $tbitems, $dbiracenames, $tbspells, $ServerMaxLevel, $dbspelltargets;
 	$minlvl = 70;
 	$duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buffduration"]);
-	if (($spell["effectid$n"] != 254) and ($spell["effectid$n"] != 10)) {
+	// "spacer" effects use the same effectid as CHA (10), have a base
+	// value of 0 and a formula of 100
+	$is_spacer = ($spell["effectid$n"] == 10 && $spell["effect_base_value$n"] == 0 && $spell["formula$n"] == 100);
+	if (($spell["effectid$n"] != 254) and !$is_spacer) {
 		$maxlvl = $spell["effect_base_value$n"];
 		$minlvl = $ServerMaxLevel;
-		for ($i = 1; $i <= 16; $i++) {
+		for ($i = 1; $i < 16; $i++) {
 			if ($spell["classes" . $i] < $minlvl) {
 				$minlvl = $spell["classes" . $i];
 			}
@@ -27,7 +30,7 @@ function SpellDescription($spell, $n, $csv = false) {
 		if ($csv == true) {
 			print ",,";
 		} else {
-			print "<li>";
+			print "<li>$n: ";
 		}
 		switch ($spell["effectid$n"]) {
 			case 3: // Increase Movement (% / 0)
@@ -197,24 +200,35 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 105: // Anti-Gate
 			case 115: // Food/Water
 			case 117: // Make Weapons Magical
-			case 135: // Limit: Resist(Magic allowed)
+			case 135: // Limit: Resist(XXX allowed)
+				switch($spell["effect_base_value$n"])
+				{
+				    case 1:
+					$type = "Magic";
+					break;
+				    case 2:
+					$type = "Fire";
+					break;
+				    case 3:
+					$type = "Cold";
+					break;
+				}
+				print $dbspelleffects[$spell["effectid$n"]] . "($type allowed)";
+				break;
 			case 137: // Limit: Effect
 				print $dbspelleffects[$spell["effectid$n"]];
 				$id = abs($spell["effect_base_value$n"]);
 				if (!$id) {
 					print " (Hitpoints allowed)";
-				} else if ($id === 147) {
+				} else {
 					$name = $dbspelleffects[$id];
 					print " ({$name} excluded)";
 				}
 				break;
 			case 138: // Limit: Spell Type
 				print $dbspelleffects[$spell["effectid$n"]];
-				if ($dbspelleffects[$spell["goodEffect"]] !== 1) {
-					print " (Beneficial only)";
-				} else {
-					print " (Detrimental only)";
-				}
+				$type = $spell["effect_base_value$n"] ? "Beneficial" : "Detrimental";
+				print " ($type only)";
 				break;
 			case 139: // Limit: Spell
 				print $dbspelleffects[$spell["effectid$n"]];
@@ -353,11 +367,19 @@ function SpellDescription($spell, $n, $csv = false) {
 				break;
 			case 148: // Stacking: Overwrite existing spell
 				print $dbspelleffects[$spell["effectid$n"]];
-				print " if slot " . ($spell["effectid$n"] - 200) . " is effect '" . $dbspelleffects[$spell["effect_base_value$n"]] . "' and <" . $spell["effect_limit_value$n"];
+				$blocked_effect_slot = $spell["formula$n"];
+				// TAKP code is 0 based, we are 1 based
+				if ($blocked_effect_slot > 199)
+					$blocked_effect_slot -= 200;
+				print " if slot $blocked_effect_slot is effect '" . $dbspelleffects[$spell["effect_base_value$n"]] . "' and <" . $spell["max$n"];
 				break;
 			case 149: // Stacking: Overwrite existing spell
 				print $dbspelleffects[$spell["effectid$n"]];
-				print " if slot " . ($spell["effectid$n"] - 200) . " is effect '" . $dbspelleffects[$spell["effect_base_value$n"]] . "' and <" . $spell["effect_limit_value$n"];
+				$overwrite_effect_slot = $spell["formula$n"];
+				// TAKP code is 0 based, we are 1 based
+				if ($overwrite_effect_slot > 199)
+					$overwrite_effect_slot -= 200;
+				print " if slot $overwrite_effect_slot is effect '" . $dbspelleffects[$spell["effect_base_value$n"]] . "' and <" . $spell["max$n"];
 				break;
 			case 147: // Increase Hitpoints (%)  
 				$name = $dbspelleffects[$spell["effectid$n"]];
@@ -370,6 +392,9 @@ function SpellDescription($spell, $n, $csv = false) {
 				print $dbspelleffects[$spell["effectid$n"]];
 				print " ($max% penalty)";
 				break;
+			case 110: // Increase Chance to Hit by XX% with Archery
+				print "Increase Chance to Hit by " . $spell["effect_base_value$n"] . "% with Archery.";
+				break;
 			case 0: // In/Decrease hitpoints
 			case 1: // Increase AC
 			case 2: // Increase ATK
@@ -379,6 +404,7 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 7: // Increase STA
 			case 8: // Increase INT
 			case 9: // Increase WIS
+			case 10: // Increase CHA
 			case 19: // Increase Faction
 			case 35: // Increase Disease Counter
 			case 36: // Increase Poison Counter

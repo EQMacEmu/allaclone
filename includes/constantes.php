@@ -373,7 +373,7 @@ $dbspelleffects[130] = 'Decrease Spell/Bash Hate';
 $dbspelleffects[131] = 'Decrease Chance of Using Reagent';
 $dbspelleffects[132] = 'Decrease Spell Mana Cost';
 $dbspelleffects[134] = 'Limit: Max Level';
-$dbspelleffects[135] = 'Limit: Resist(Magic allowed)';
+$dbspelleffects[135] = 'Limit: Resist';
 $dbspelleffects[136] = 'Limit: Target';
 $dbspelleffects[137] = 'Limit: Effect';
 $dbspelleffects[138] = 'Limit: Spell Type';
@@ -535,6 +535,7 @@ $dbbardskills[23] = "Wind";
 $dbbardskills[24] = "Strings";
 $dbbardskills[25] = "Brass";
 $dbbardskills[26] = "Percussions";
+$dbbardskills[50] = "Singing";
 $dbbardskills[51] = "All instruments";
 
 // Taken from PEQ DB

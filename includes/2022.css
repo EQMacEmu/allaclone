@@ -3539,7 +3539,8 @@ form.item-refine div .checkbox input:checked + span::after {
   margin-right: 1.5rem;
 }
 .spell-information dd ol {
-  padding-left: 1rem;
+  list-style: none;
+  padding-left: 0;
   margin-top: 0;
 }
 .spell-information dd ol a {

@@ -13,7 +13,7 @@ include($includes_dir . 'functions.php');
 include($includes_dir . 'mysql.php');
 
 /** Formats the npc/zone info selected in '$QueryResult' to display them by zone
- *  The top-level sort must be on the zone
+ *  The top-level sort must be on the zone.
  */
 function PrintNpcsByZone($QueryResult) {
 	if (mysqli_num_rows($QueryResult) > 0) {
