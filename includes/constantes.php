@@ -380,7 +380,7 @@ $dbspelleffects[138] = 'Limit: Spell Type';
 $dbspelleffects[139] = 'Limit: Spell';
 $dbspelleffects[140] = 'Limit: Min Duration';
 $dbspelleffects[141] = 'Limit: Instant spells only';
-$dbspelleffects[142] = 'LimitMinLevel';
+$dbspelleffects[142] = 'Limit: MinLevel';
 $dbspelleffects[143] = 'Limit: Min Casting Time';
 $dbspelleffects[145] = 'Teleport v2';
 $dbspelleffects[147] = 'Percentage Heal';
@@ -678,6 +678,7 @@ $dbbodytypes[66] = "Invisible Man";
 $dbbodytypes[67] = "Special";
 
 $dbbagtypes = array(
+	1 => "Quest",
 	9 => "Alchemy",
 	10 => "Tinkering",
 	12 => "Poison making",
