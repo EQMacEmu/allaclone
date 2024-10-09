@@ -50,9 +50,12 @@ function OutputEffects() {
 	}
 }
 
-function OutputItems() {
+function OutputItems($type) {
 	global $db, $tbitems, $id;
-	$itemQuery = "SELECT $tbitems.id,$tbitems.name FROM $tbitems WHERE $tbitems.scrolleffect=$id ORDER BY $tbitems.name ASC";
+	$itemQuery = "SELECT $tbitems.id,$tbitems.name
+		FROM $tbitems
+		WHERE $tbitems.${type}effect=$id
+		ORDER BY $tbitems.name ASC";
 	$result = mysqli_query($db, $itemQuery) or message_die('item.php', 'MYSQL_QUERY', $itemQuery, mysqli_error($db));
 
 	$string = "None";
@@ -139,11 +142,18 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 					<?php OutputEffects(); ?>
 				</ol>
 			</dd>
-			<?php if (OutputItems() !== "None") { ?>
-				<dd><strong>Items with this effect:</strong>
-					<?= OutputItems() ?>
-				</dd>
-			<?php } ?>
+			<?php
+			$types = array("scroll", "focus", "proc", "worn", "click");
+			foreach ($types as $type)
+			{
+				$output = OutputItems($type);
+				if ($output !== "None") {
+					print "<dd><strong>Items with this \"$type\" effect:</strong>";
+					print $output;
+					print "</dd>";
+				}
+			}
+			?>
 		</dl>
 	</div>
 </div>

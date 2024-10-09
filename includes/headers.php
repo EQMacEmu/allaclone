@@ -6,7 +6,7 @@
   <meta property="og:type" content="article">
   <?php if ($name) { ?>
     <meta property="og:title" content="<?php echo $name; ?>">
-    <meta property="og:description" content="Item Information for <?php echo $name; ?>">
+    <meta property="og:description" content="<?php echo $stats; ?>">
     <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
     <?php if ($item_icon) { ?>
       <meta property="og:image" content="<?php echo $item_icon; ?>">

@@ -68,9 +68,10 @@ if ( $item_icon == "" ) {
 
 $XhtmlCompliant = true;
 
+$item = $ItemRow;
+$stats=BuildItemStats($item, 0);
 include($includes_dir . 'headers.php');
 
-$item = $ItemRow;
 $Tableborder = 0;
 
 echo "<div class='item-content'>";
@@ -85,9 +86,27 @@ if ($item["lore"] != "") {
 	echo "id : " . $id;
 }
 
-echo BuildItemStats($item, 0);
+echo "<div class='item-stats'>";
+echo $stats;
+
+if ($item["color"] > 0)
+{
+	$hexcolor = sprintf('%06x', $item["color"]);
+	echo '<div style="width:120px">';
+	echo '<div style="float:right; width:80px; height:24px; background-color: #'.$hexcolor.';"></div>';
+	echo '<p><strong>Tint:</strong></p>';
+	echo '</div>';
+}
+
+
+echo "</div>";
 
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
+	if ($item["color"])
+	{
+		$hexcolor = sprintf('%06x', $item["color"]);
+		echo "<div class='img-color'; style='background-color: #$hexcolor'></div>";
+	}
 	echo "<img src='" . $icons_url . "item_" . $item["icon"] . ".gif' />";
 }
 
@@ -145,27 +164,34 @@ if ($ItemFoundInfo) {
 		SELECT nt.id
 			, nt.`name`
 			, z.short_name
-			, z.long_name 
-		FROM $tbnpctypes nt 
-		JOIN $tbzones z ON z.zoneidnumber = LEFT(nt.id, LENGTH(nt.id) - 3)
-		WHERE loottable_id IN
-			(SELECT loottable_Id FROM loottable_entries WHERE lootdrop_id IN
-				(SELECT lootdrop_id FROM lootdrop_entries WHERE item_id = $id)
+			, z.long_name
+			, lte.probability
+			, lte.multiplier
+			, lte.multiplier_min
+			, lte.mindrop
+			, lde.chance
+			, lde.multiplier as lde_mult
+		FROM $tbnpctypes nt
+			, $tbloottableentries lte
+			, $tblootdropentries lde
+			, $tbzones z
+		WHERE nt.loottable_id IN
+			(SELECT loottable_Id FROM $tbloottableentries WHERE lootdrop_id IN
+				(SELECT lootdrop_id FROM $tblootdropentries WHERE item_id = $id)
 			)
-		";
-
-		$query .= "
-				ORDER BY nt.id
-				ASC
+		AND nt.loottable_id = lte.loottable_id
+		AND lte.lootdrop_id = lde.lootdrop_id
+		AND lde.item_id = $id
+		AND z.zoneidnumber = nt.id DIV 1000
+		ORDER BY nt.id ASC;
 		";
 
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
-			$CurrentNPC = "";
 			$displayName = "";
-      $DroppedList = "<h3>Dropped by:</h3>";
+      			$DroppedList = "<h3>Dropped by:</h3>";
 			$DroppedList .= "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
@@ -195,13 +221,38 @@ if ($ItemFoundInfo) {
 						</li>";
 					$CurrentZone = $row["short_name"];
 				}
-				if ($CurrentNPC != $row["name"]) {
-					$DroppedList .= "
-						<li>
-							<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . "</a>
-						</li>";
-					$CurrentNPC = $row["name"];
+				// Calculate drop chance
+				$chance = $row['chance'] / 100;
+				$probability = $row['probability'] / 100;
+				$min = $row['multiplier_min'];
+				$mult = $row['multiplier'] - $min;
+				// Calculate the probability of at least 1 dropping by taking "one minus the probability of failure"
+				if ($min == 0) {
+					// No min drop means each table runs $mult times
+					$DropOne = round((1-((1-$chance*$probability)**$mult)) * 100, 2);
+				} else {
+					// The table gets 100% probability for $min drops, and the remainder get the usual treatment
+					$DropOne = round((1-(1-$chance)**$min*(1-($chance*$probability)**$mult)) * 100, 2);
 				}
+				$DropMsg = "$DropOne";
+				// Special loot tables that roll each individual item are marked with mindrop and droplimit as 0
+				// These often come with lootdrop multipliers (separate from lootable multipliers)
+				if ($row['mindrop'] == 0 && $row['droplimit'] == 0)
+				{
+					$DropPerKill = $DropOne * $row['lde_mult'];
+					$DropMsg = "$DropOne-$DropPerKill";
+				}
+				// When tables have multiple chances to roll, the drop-per-kill ratio is higher than the "drop at least one" calculation
+				// This is interesting when farming tradeskill materials
+				if ($mult > 1)
+				{
+					$DropPerKill = round($chance * ($min + $mult * $probability) * 100, 2);
+					$DropMsg = "$DropOne-$DropPerKill";
+				}
+				$DroppedList .= "
+					<li>
+						<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . " (" . $DropMsg . "%)</a>
+					</li>";
 			}
 			$DroppedList .= "</ul>";
 			echo $DroppedList;

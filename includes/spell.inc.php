@@ -127,7 +127,22 @@ function SpellDescription($spell, $n, $csv = false) {
 					print " by $max%";
 				}
 				break;
-			case 15: // Increase Mana per tick
+			case 15: // Increase/Decrease Mana per tick
+				$effect = $dbspelleffects[$spell["effectid$n"]];
+				if ($max < 0) {
+					$effect = str_replace("Increase", "Decrease", $effect);
+				}
+				print $effect;
+				if ($duration) {
+					if ($min != $max) {
+						print " by " . abs($min) . " (L$minlvl) to " . abs($max) . " (L$maxlvl) per tick (total " . abs($min * $duration) . " to " . abs($max * $duration) . ")";
+					} else {
+						print " by $max per tick (total " . abs($max * $duration) . ")";
+					}
+				} else {
+					print " by " . abs($max);
+				}
+				break;
 			case 100: // Increase Hitpoints v2 per tick
 				print $dbspelleffects[$spell["effectid$n"]];
 				if ($min != $max) {

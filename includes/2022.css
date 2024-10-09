@@ -3443,6 +3443,13 @@ form.item-refine div .checkbox input:checked + span::after {
   right: 20px;
   top: 70px;
 }
+.item-content .item-columns .item-wrapper .item-info .img-color {
+  position: absolute;
+  right: 20px;
+  top: 70px;
+  width: 40px;
+  height: 40px;
+}
 .item-content .item-columns .item-wrapper .item-info .item-stats {
   color: white;
   max-width: 500px;
