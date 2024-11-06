@@ -38,14 +38,19 @@ function PrintQueryResults(
 		echo  "<ul>";
 		for ($j = 1; $j <= $ObjectsToShow; $j++) {
 			$row = mysqli_fetch_array($FoundObjects);
-			$PrintString = " <li><a href='" . $OpenObjectByIdPage . "?id=" . $row[$IdAttribute] . "'>";
+			$attrs = "";
+			$id = $row[$IdAttribute];
+			if ($ObjectDescription == "item") {
+				$attrs = "data-item-id=\"$id\" class=\"item-link\"";
+			}
+			$PrintString = " <li><a href='$OpenObjectByIdPage?id=$id' $attrs>";
 			if ($ObjectDescription == "npc") {
 				// Clean up the name for NPCs
 				$PrintString .= ReadableNpcName($row[$NameAttribute]);
 			} else {
 				$PrintString .= $row[$NameAttribute];
 			}
-			$PrintString .= " (" . $row[$IdAttribute] . ")</a>";
+			$PrintString .= " ($id)</a>";
 
 			if ($ExtraField && $ExtraFieldDescription && $ExtraSkill) {
 				$PrintString .= " - " . ucfirstwords(str_replace("_", " ", $dbskills[$row[$ExtraSkill]])) . ", $ExtraFieldDescription " . $row[$ExtraField];
@@ -176,65 +181,73 @@ function modulo($d, $v) {
 /* Returns the list of slot names '$val' corresponds to (as a bit field) */
 function getslots($val) {
 	global $dbslots;
-	reset($dbslots);
-  $Result = '';
-  $v = '';
-	do {
-		$key = key($dbslots);
-		if ($key <= $val) {
-			$val -= $key;
-			$Result .= $v . current($dbslots);
-			$v = ", ";
+	$all_slots = 23;
+	if ($val == (2**$all_slots) - 1) {
+		return $dbslots[$all_slots];
+	} else if ($val == 0 ) {
+		return "None";
+	}
+	$Result = array();
+	for ($slot = 0; $slot < $all_slots; $slot++) {
+		if ($val & (2**$slot)) {
+			// EAR, FINGER, and WRIST appear twice in the list
+			if (strlen($dbslots[$slot])) {
+				array_push($Result, strtoupper($dbslots[$slot]));
+			}
 		}
-	} while (next($dbslots));
-	return $Result;
+	}
+	return implode(" ", $Result);
 }
+
 function getclasses($val) {
 	global $dbiclasses;
-	reset($dbiclasses);
-  $Result = '';
-  $v = '';
-	do {
-		$key = key($dbiclasses);
-		if ($key <= $val) {
-			$val -= $key;
-			$Result .= $v . current($dbiclasses);
-			$v = ", ";
+	$all_classes = 15;
+	if ($val == (2**$all_classes) - 1) {
+		return $dbiclasses[$all_classes];
+	} else if ($val == 0 ) {
+		return "None";
+	}
+	$Result = array();
+	for ($class = 0; $class < $all_classes; $class++) {
+		if ($val & (2**$class)) {
+			array_push($Result, $dbiclasses[$class]);
 		}
-	} while (next($dbiclasses));
-	return $Result;
+	}
+	return implode(" ", $Result);
 }
+
 function getraces($val) {
 	global $dbraces;
-	reset($dbraces);
-  $Result = '';
-  $v = '';
-	do {
-		$key = key($dbraces);
-		if ($key <= $val) {
-			$val -= $key;
-			$Result .= $v . current($dbraces);
-			$v = ", ";
+	$all_races = 14;
+	if ($val == (2**$all_races) - 1) {
+		return $dbraces[$all_races];
+	} else if ($val == 0 ) {
+		return "None";
+	}
+	$Result = array();
+	for ($race = 0; $race < $all_races; $race++) {
+		if ($val & (2**$race)) {
+			array_push($Result, $dbraces[$race]);
 		}
-	} while (next($dbraces));
-	return $Result;
+	}
+	return implode(" ", $Result);
 }
 function getsize($val) {
 	switch ($val) {
 		case 0:
-			return "Tiny";
+			return "TINY";
 			break;
 		case 1:
-			return "Small";
+			return "SMALL";
 			break;
 		case 2:
-			return "Medium";
+			return "MEDIUM";
 			break;
 		case 3:
-			return "Large";
+			return "LARGE";
 			break;
 		case 4:
-			return "Giant";
+			return "GIANT";
 			break;
 		default:
 			return "$val?";
@@ -350,6 +363,7 @@ function SelectIType($name, $selected) {
 	print "</SELECT>";
 }
 function SelectSlot($name, $selected) {
+	/*
 	global $dbslots;
 	print "<SELECT name=\"$name\">";
 	print "<option value='0'>Slot</option>\n";
@@ -363,6 +377,7 @@ function SelectSlot($name, $selected) {
 		print ">" . current($dbslots) . "</option>\n";
 	} while (next($dbslots));
 	print "</SELECT>";
+	*/
 }
 function SelectSpellEffect($name, $selected) {
 	global $dbspelleffects;
@@ -499,6 +514,15 @@ function SelectModifiers($name, $mod) {
 	WriteIt("strikethrough", "Strikethrough", $mod);
 	WriteIt("stunresist", "Stun Resist", $mod);
 	print "</select>\n";
+}
+function signred($stat) {
+	$PrintString = "";
+	if ($stat < 0) {
+		$PrintString .= "<font color='red'>" . sign($stat) . "</font>";
+	} else {
+		$PrintString .= sign($stat);
+	}
+	return $PrintString;
 }
 function GetItemStatsString($name, $stat, $stat2, $stat2color) {
 	if (!$stat2) {
@@ -677,85 +701,15 @@ function CalcBuffDuration($lvl, $form, $duration) { // spells.cpp, carefull, ret
 			return ($duration ? $duration : 3600);
 	}
 }
-function SpecialAttacks($att) {
-	$data = '';
-	$v = '';
-	// from mobs.h
-  //TODO: Update Syntax here
-	// for ($i = 0; $i < strlen($att); $i++) {
-	// 	switch ($att{
-	// 		$i}) {
-	// 		case 'A':
-	// 			$data .= $v . " Immune to melee";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'B':
-	// 			$data .= $v . " Immune to magic";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'C':
-	// 			$data .= $v . " Uncharmable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'D':
-	// 			$data .= $v . " Unfearable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'E':
-	// 			$data .= $v . " Enrage";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'F':
-	// 			$data .= $v . " Flurry";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'f':
-	// 			$data .= $v . " Immune to fleeing";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'I':
-	// 			$data .= $v . " Unsnarable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'M':
-	// 			$data .= $v . " Unmezzable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'N':
-	// 			$data .= $v . " Unstunable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'O':
-	// 			$data .= $v . " Immune to melee except bane";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'Q':
-	// 			$data .= $v . " Quadruple Attack";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'R':
-	// 			$data .= $v . " Rampage";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'S':
-	// 			$data .= $v . " Summon";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'T':
-	// 			$data .= $v . " Triple Attack";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'U':
-	// 			$data .= $v . " Unslowable";
-	// 			$v = ', ';
-	// 			break;
-	// 		case 'W':
-	// 			$data .= $v . " Immune to melee except magical";
-	// 			$v = ', ';
-	// 			break;
-	// 	}
-	// }
-	return $data;
+function SpecialAttacks($specialstr) {
+	global $specialattack;
+	$specials = explode("^", $specialstr);
+	$result = array();
+	foreach ($specials as $valuestr) {
+		$values = explode(",", $valuestr);
+		array_push($result, $specialattack[$values[0]]);
+	}
+	return implode(", ", $result);
 }
 function price($price) {
 	$res = "";
@@ -952,10 +906,132 @@ function Pagination($targetpage, $page, $total_pages, $limit, $adjacents) {
 	return $pagination;
 }
 
+function getPetFocus($id)
+{
+	$power = 0;
+	$max_level = 0;
+	$min_level = 0;
+	$pet_type = "";
+	switch($id)
+	{
+	case 20508: // Symbol of Ancient Summoning
+		$power = 25;
+		$max_level = 60;
+		$min_level = 40;
+		$pet_type = "All";
+		break;
+	case 28144: // Gloves of Dark Summoning
+		$power = 20;
+		$max_level = 60;
+		$min_level = 40;
+		$pet_type = "All";
+		break;
+	case 11571: // Encyclopedia Necrotheurgia
+		$power = 10;
+		$max_level = 48;
+		$min_level = 40;
+		$pet_type = "Necro";
+		break;
+	case 11569: // Staff of Elemental Mastery: Water
+		$power = 10;
+		$max_level = 48;
+		$min_level = 40;
+		$pet_type = "Water";
+		break;
+	case 11567: // Staff of Elemental Mastery: Earth
+		$power = 10;
+		$max_level = 48;
+		$min_level = 40;
+		$pet_type = "Earth";
+		break;
+	case 11566: // Staff of Elemental Mastery: Fire
+		$power = 10;
+		$max_level = 48;
+		$min_level = 40;
+		$pet_type = "Fire";
+		break;
+	case 11568: // Staff of Elemental Mastery: Air
+		$power = 10;
+		$max_level = 48;
+		$min_level = 40;
+		$pet_type = "Air";
+		break;
+	case 6360:  // Broom of Trilon
+		$power = 5;
+		$max_level = 41;
+		$min_level = 4;
+		$pet_type = "Air";
+		break;
+	case 6361:  // Shovel of Ponz
+		$power = 5;
+		$max_level = 41;
+		$min_level = 4;
+		$pet_type = "Earth";
+		break;
+	case 6362:  // Torch of Alna
+		$power = 5;
+		$max_level = 41;
+		$min_level = 4;
+		$pet_type = "Fire";
+		break;
+	case 6363:  // Stein of Ulissa
+		$power = 5;
+		$max_level = 41;
+		$min_level = 4;
+		$pet_type = "Water";
+		break;
+	}
+	if ($power > 0)
+	{
+		return "Pet Focus: $pet_type $power (Lvl: $min_level-$max_level)";
+	}
+	return "";
+}
+
+function GetItemRow($id) {
+	global $db, $tbitems, $DiscoveredItemsOnly, $hide_item_id;
+	if ($id != "" && is_numeric($id)) {
+		if ($DiscoveredItemsOnly == true) {
+			$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='" . $id . "' AND discovered_items.item_id=$tbitems.id";
+		} else {
+			$Query = "SELECT * FROM $tbitems WHERE id='" . $id . "'";
+		}
+		foreach ($hide_item_id as $hideme) {
+			$Query .= " AND $tbitems.id != $hideme"; // Block by ID set in config
+		}
+		$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
+		if (mysqli_num_rows($QueryResult) == 0) {
+			header("Location: items.php");
+			exit();
+		}
+		$ItemRow = mysqli_fetch_array($QueryResult);
+		$name = $ItemRow["Name"];
+	} elseif ($name != "") {
+		if ($DiscoveredItemsOnly == true) {
+			$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.name like '$name' AND discovered_items.item_id=$tbitems.id";
+		} else {
+			$Query = "SELECT * FROM $tbitems WHERE name like '$name'";
+		}
+		$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+		if (mysqli_num_rows($QueryResult) == 0) {
+			header("Location: items.php?iname=" . $name . "&isearch=true");
+			exit();
+		} else {
+			$ItemRow = mysqli_fetch_array($QueryResult);
+			$id = $ItemRow["id"];
+			$name = $ItemRow["name"];
+		}
+	} else {
+		header("Location: items.php");
+		exit();
+	}
+	return $ItemRow;
+}
+
 // Function to build item stats tables
 // Used for item.php as well as for tooltips for items
 function BuildItemStats($item, $show_name_icon) {
-	global $dbitypes, $dam2h, $dbbagtypes, $dbskills, $icons_url, $tbspells, $dbiracenames, $dbelements, $dbbodytypes, $dbbardskills;
+	global $db, $dbitypes, $dam2h, $dbbagtypes, $dbskills, $icons_url, $tbspells, $dbiracenames, $dbelements, $dbbodytypes, $dbbardskills;
 
 	$html_string = "";
 	if ($show_name_icon) {
@@ -963,284 +1039,357 @@ function BuildItemStats($item, $show_name_icon) {
 		$html_string .= "<img src='" . $icons_url . "item_" . $item["icon"] . ".gif' align='right' valign='top'/>";
 	}
 
-	$html_string .= "<p>";
-	$v = "";
+	// Add the Lore string if any. This isn't displayed in game.
+	$lorestr = ltrim($item["lore"], "#*");
+	if ($lorestr != $item["Name"] && strlen($lorestr))
+	{
+		$html_string .= "<p>Item Lore: $lorestr</p>\n";
+	}
+
+	// In game, top line is any of MAGIC, LORE ITEM, ARTIFACT, NO DROP, NORENT.
+	// This line is always present even if empty (hence, &nbsp)
+	$line = array();
 	if ($item["magic"] == 1) {
-		$html_string .= "MAGIC ITEM";
+		array_push($line, "MAGIC ITEM");
 	}
 	if (substr($item["lore"], 0, 2) == '*#') {
-		$html_string .= " LORE ITEM ARTIFACT";
+		array_push($line, "ARTIFACT");
+		array_push($line, "LORE ITEM");
 	} elseif (substr($item["lore"], 0, 1) == '*') {
-		$html_string .= " LORE ITEM";
+		array_push($line, "LORE ITEM");
 	} elseif (substr($item["lore"], 0, 1) == '#') {
-		$html_string .= " ARTIFACT";
+		array_push($line, "ARTIFACT");
 	}
 	if ($item["nodrop"] == 0) {
-		$html_string .= " NO DROP";
+		array_push($line, "NO DROP");
 	}
 	if ($item["norent"] == 0) {
-		$html_string .= " NORENT";
+		array_push($line, "NORENT");
 	}
-	if ($item["maxcharges"] > 0) {
-		$html_string .= " Charges: " . $item["maxcharges"];
-	}
+	// Print and clear
+	$html_string .= "<p>" . implode(" ", $line) . "&nbsp;</p>\n";
+	$line = array();
 
-	$html_string .= "</p>\n";
-
-
-	if ($item["deity"] > 0) {
-		$html_string .= "<p><strong>Deity:</strong> " . gedeities($item["deity"]) . "</p>\n";
-	}
-
+	// Items that are not books
 	if ($item["itemclass"] == 0)
 	{
+		// Slot: PRIMARY
 		if ($item["slots"] > 0) {
-			$html_string .= "<p><strong>Slot:</strong> " . strtoupper(getslots($item["slots"])) . "</p>\n";
-		}
-		if ($item["slots"] == 0) {
-			$html_string .= "<p><strong>Slot:</strong> NONE</p>\n";
+			$html_string .= "<p>Slot: " . getslots($item["slots"]) . "</p>\n";
 		}
 
+		// Skill: Xyz Delay
 		$TypeString = "";
 		switch ($item["itemtype"]) {
 			case 0: // 1HS
 			case 2: // 1HP
 			case 3: // 1HB
 			case 42: // H2H
+			case 5: // Archery
 			case 1: // 2hs
 			case 4: // 2hb
 			case 35: // 2hp
 				$TypeString = "Skill";
-				break;
-			default:
-				$TypeString = "Item Type";
+				array_push($line, "Skill:");
+				array_push($line, $dbitypes[$item["itemtype"]]);
 				break;
 		}
+		if ($item["delay"]) {
+			array_push($line, "Atk Delay:");
+			array_push($line, $item["delay"]);
+		}
+		if (count($line)) {
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
 
-		if (($dbitypes[$item["itemtype"]] != "") && ($item["bagslots"] == 0)) {
-			if ($item["slots"] == 0) {
-				$html_string .= $TypeString . ": Inventory";
+		// EXPENDABLE CHarges: XX
+		if ($item["maxcharges"] > 0) {
+			$html_string .= "<p>Charges: " . $item["maxcharges"] . "</p>\n";
+			$line = array();
+		}
+		// Level Needed:
+		// Skill: Alteration
+		// Mana Cost: ##
+		if (($item["scrolleffect"] > 0) && ($item["scrolleffect"] < 65535)) {
+			$manacost = 0;
+			$skill = 0;
+			$query = "SELECT mana, skill FROM $tbspells WHERE id=" . $item["scrolleffect"];
+			$QueryResult = mysqli_query($db, $query);
+			if (mysqli_num_rows($QueryResult) > 0) {
+				$rows = mysqli_fetch_array($QueryResult);
+				$manacost = $rows["mana"];
+				$skill = $rows["skill"];
+
+				$html_string .= "<p>Skill: " . $dbskills[$skill] . "</p>\n";
+				$html_string .= "<p>Mana Cost: " . $manacost . "</p>\n";
+			}
+		}
+		
+		// DMG, Bonus, AC
+		if ($item["damage"] > 0) {
+			switch ($item["itemtype"]) {
+				case 0: // 1HS
+				case 2: // 1HP
+				case 3: // 1HB
+				case 42: // H2H
+				case 5: // Archery
+					$dmgbonus = 13; // floor((65-25)/3)  main hand
+					break;
+				case 1: // 2hs
+				case 4: // 2hb
+				case 35: // 2hp
+					$dmgbonus = $dam2h[$item["delay"]];
+					break;
+				default:
+					$dmgbonus = $item["itemtype"];
+			}
+			array_push($line, "DMG:", $item["damage"]);
+			if ($dmgbonus) {
+				array_push($line, "Dmg Bonus:", $dmgbonus);
+			}
+		}
+		if ($item["ac"]) {
+			array_push($line, "AC:", $item["ac"]);
+		}
+		if (count($line)) {
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Cold DMG: ##
+		if ($dbelements[$item["elemdmgtype"]] != 'Unknown') {
+			array_push($line, $dbelements[$item["elemdmgtype"]], "DMG:", $item["elemdmgamt"]);
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Bane DMG: Type ##
+		if ($item["banedmgamt"] != 0) {
+			$type = "";
+			if ($item["banedmgrace"] > 0)
+				$type = $dbiracenames[$item["banedmgrace"]];
+			if ($item["banedmgbody"] > 0)
+				$type = $dbbodytypes[$item["banedmgbody"]];
+			array_push($line, "Bane DMG:", $type, sign($item["banedmgamt"]));
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// #Skill Mod
+		if (($item["skillmodtype"] > 0) && ($item["skillmodvalue"] != 0)) {
+			$html_string .= "<p>Skill Mod: " . $dbskills[$item["skillmodtype"]] . " " . sign($item["skillmodvalue"]) . "%</p>\n";
+		}
+
+		// Bard Skill
+		if ($item["bardtype"] > 0) {
+			$val = ($item["bardvalue"] * 10) - 100;
+			$html_string .= $dbitypes[$item["bardtype"]] . " (" . sign($val) . "%)";
+		}
+
+
+		// STR: # DEX: # STA: # CHA: # WIS: # INT: # AGI: # HP: # MANA: #
+		if ($item["astr"])
+			array_push($line, "STR:", signred($item["astr"]));
+		if ($item["adex"])
+			array_push($line, "DEX:", signred($item["adex"]));
+		if ($item["asta"])
+			array_push($line, "STA:", signred($item["asta"]));
+		if ($item["acha"])
+			array_push($line, "CHA:", signred($item["acha"]));
+		if ($item["awis"])
+			array_push($line, "WIS:", signred($item["awis"]));
+		if ($item["aint"])
+			array_push($line, "INT:", signred($item["aint"]));
+		if ($item["aagi"])
+			array_push($line, "AGI:", signred($item["aagi"]));
+		if ($item["hp"])
+			array_push($line, "HP:", signred($item["hp"]));
+		if ($item["mana"])
+			array_push($line, "MANA:", signred($item["mana"]));
+		if (count($line)) {
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		# SV FIRE: # SV DISEASE: # SV COLD: # SV MAGIC: # SV POISON: #
+		if ($item["fr"])
+			array_push($line, "SV FIRE:", signred($item["fr"]));
+		if ($item["dr"])
+			array_push($line, "SV DISEASE:", signred($item["dr"]));
+		if ($item["cr"])
+			array_push($line, "SV COLD:", signred($item["cr"]));
+		if ($item["mr"])
+			array_push($line, "SV MAGIC:", signred($item["mr"]));
+		if ($item["pr"])
+			array_push($line, "SV POISON:", signred($item["pr"]));
+		if (count($line)) {
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Recommended level of ##. Required level of ##.
+		if ($item["reclevel"] > 0) {
+			array_push($line, "Recommended level of " . $item["reclevel"] . ".");
+		}
+		if ($item["reqlevel"] > 0) {
+			array_push($line, "Required level of " . $item["reqlevel"] . ".");
+		}
+		if (count($line)) {
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Effect: 
+		if (($item["proceffect"] > 0) && ($item["proceffect"] != $item["worneffect"])) {
+			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["proceffect"]);
+			array_push($line, "Effect:", "<a href='spell.php?id=" . $item["proceffect"] . "'>$spellname</a>", "(Combat)");
+
+			$proclevel = $item["proclevel"] ?: $item["proclevel2"];
+			if (!$proclevel) {
+				$proclevel = 1;
+			}
+			array_push($line, "(Lvl: " . $proclevel . ")");
+			$procrate = 100 + $item["procrate"];
+			array_push($line, "(Rate: $procrate%)");
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		if (($item["worneffect"] > 0 || $item["proceffect"] > 0) && $item["worntype"] == 2) {
+			$effect = $item["worneffect"] ?: $item["proceffect"];
+			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $effect);
+			array_push($line, "Effect:", "<a href='spell.php?id=" . $effect . "'>$spellname</a>", "(Worn)");
+			if ($item["worneffect"] == 998) {
+				$haste = (int) $item["wornlevel"];
+				$haste++;
+				array_push($line, "(" . $haste . "%)");
 			} else {
-				$html_string .= $TypeString . ": " . $dbitypes[$item["itemtype"]];
+				array_push($line, "(Lvl: " . $item["wornlevel"]. ")");
+			}
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Effect: Aura of Bravery (Worn)
+		if (($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
+			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]);
+			array_push($line, "Focus Effect:", "<a href='spell.php?id=" . $item["focuseffect"] . "'>$spellname</a>");
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
+		}
+
+		// Effect: Allure (Casting Time: Instant)
+		// Effect: Divine Aura (Must Equip. Casting Time: 1.0)
+		// Effect: Identify (Casting Time: 4.0)
+		if (($item["clickeffect"] > 0) && ($item["clickeffect"] < 65535)) {
+			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["clickeffect"]);
+			array_push($line, "Effect:", "<a href='spell.php?id=" . $item["clickeffect"] . "'>$spellname</a>");
+
+			if ($item["clicktype"] == 4) {
+				array_push($line, "(Must Equip. Casting Time:");
+			} else {
+				array_push($line, "(Casting Time:");
 			}
 
-			if ($item["stacksize"] > 1) {
-				$html_string .= " (stackable)";
+			if ($item["casttime"] > 0) {
+				array_push($line, ($item["casttime"] / 1000) . ")");
+			} else {
+				array_push($line, "Instant)");
 			}
-			$html_string;
+	    
+			if ($item["clicklevel"] > 0) {
+				array_push($line, "(Lvl", $item["clicklevel"] . ")");
+			}
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
 		}
+
+		// WT: ## Range: ## Size: ##
+		array_push($line, "WT:", $item["weight"]/10);
+		if ($item["range"] > 0) {
+			array_push($line, "Range:", $item["range"]);
+		}
+		array_push($line, "Size:", getsize($item["size"]));
+		$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+		$line = array();
+
+		// Class: XXX YYY ZZZ
+		$html_string .= "<p>Class: " . getclasses($item["classes"]) . "</p>\n";
+
+		// Race: XXX YYY ZZZ
+		$html_string .= "<p>Race: " . getraces($item["races"]) . "</p>\n";
+
+		$ItemPrice = $item["price"];
+		$ItemValue = "";
+		$Platinum = 0;
+		$Gold = 0;
+		$Silver = 0;
+		$Copper = 0;
+
+		if ($ItemPrice > 1000) {
+			$Platinum = ((int)($ItemPrice / 1000));
+		}
+
+		if (($ItemPrice - ($Platinum * 1000)) > 100) {
+			$Gold = ((int)(($ItemPrice - ($Platinum * 1000)) / 100));
+		}
+
+		if (($ItemPrice - ($Platinum * 1000) - ($Gold * 100)) > 10) {
+			$Silver = ((int)(($ItemPrice - ($Platinum * 1000) - ($Gold * 100)) / 10));
+		}
+
+		if (($ItemPrice - ($Platinum * 1000) - ($Gold * 100) - ($Silver * 10)) > 0) {
+			$Copper = ($ItemPrice - ($Platinum * 1000) - ($Gold * 100) - ($Silver * 10));
+		}
+
+		// $ItemValue .= "<p>Value: ";
+		// $ItemValue .= $Platinum." <img src='" . $icons_url . "item_644.gif' width='14' height='14'/> ".
+		//                   $Gold." <img src='" . $icons_url . "item_645.gif' width='14' height='14'/> ".
+		//                 $Silver." <img src='" . $icons_url . "item_646.gif' width='14' height='14'/> ".
+		//                 $Copper." <img src='" . $icons_url . "item_647.gif' width='14' height='14'/>";
+		// $html_string .= $ItemValue ."</p>\n";
+
+
+		if (($item["scrolleffect"] > 0) && ($item["scrolleffect"] < 65535)) {
+			array_push($line, "Level Needed:", $item["scrolllevel"] . "-" . $item["scrolllevel2"]);
+			$html_string .= "<p>Spell Scroll Effect: <a href='spell.php?id=" . $item["scrolleffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["scrolleffect"]) . "</a></p>\n";
+		}
+
 	}
+	// Bags
 	else if ($item["itemclass"] == 1)
 	{
-		$html_string .= " <p>Container: CLOSED</p>\n";
-		$html_string .= " <p>Capacity: " . $item["bagslots"];
-		$html_string .= " Size Capacity: " . strtoupper(getsize($item["bagsize"])) . "</p>\n";
+		// Container:
+		$html_string .= "<p>Container: CLOSED</p>\n";
+
+		// WT: ## Weight Reduction ##%
+		array_push($line, "WT:", $item["weight"]/10);
+		array_push($line, "Weight Reduction:", $item["bagwr"] . "%");
+		$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+		$line = array();
+
+		// Capacity: ## Size Capacity: XXX
+		array_push($line, "Capacity:", $item["bagslots"]);
+		array_push($line, "Size Capacity:", getsize($item["bagsize"]));
+		$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+		$line = array();
+
 		$bagtype = $dbbagtypes[$item["bagtype"]];
 		if ($bagtype) {
 			$html_string .= " <p>Trade Skill Container: " . $dbbagtypes[$item["bagtype"]] . "</p>\n";
 		}
-		if ($item["bagwr"] > 0) {
-			$html_string .= " Weight Reduction: " . $item["bagwr"] . "%";
-		}
 	}
+	// Books
 	else if ($item["itemclass"] == 2)
 	{
 		$html_string .= "The Book is closed.";
 	}
 
-	$html_string .= GetItemStatsString(" Haste", $item["haste" . "%"], null, null);
-
-	if (($item["banedmgrace"] > 0) && ($item["banedmgamt"] != 0)) {
-		$html_string .= " Bane Damage (";
-		$html_string .= $dbiracenames[$item["banedmgrace"]];
-		$html_string .= ")" . sign($item["banedmgamt"]) . "";
-	}
-	$html_string .= GetItemStatsString(ucfirstwords($dbbodytypes[$item["banedmgbody"]]), $item["banedmgamt"], null, null);
-	$html_string .= GetItemStatsString(" Backstab Damage", $item["backstabdmg"], null, null);
-	$html_string .= GetItemStatsString(" Atk Delay", $item["delay"], null, null);
-	$html_string .= "<br />\n";
-	$html_string .= GetItemStatsString(" DMG", $item["damage"], null, null);
-	if ($item["damage"] > 0) {
-		switch ($item["itemtype"]) {
-			case 0: // 1HS
-			case 2: // 1HP
-			case 3: // 1HB
-			case 42: // H2H
-				$dmgbonus = 13; // floor((65-25)/3)  main hand
-				$html_string .= " Dmg Bonus: $dmgbonus";
-				break;
-			case 1: // 2hs
-			case 4: // 2hb
-			case 35: // 2hp
-				$dmgbonus = $dam2h[$item["delay"]];
-				$html_string .= " Dmg Bonus: $dmgbonus";
-				break;
-		}
-	}
-	$html_string .= GetItemStatsString(" AC", $item["ac"], null, null);
-	$html_string .= "<br />\n";
-	if ($dbelements[$item["elemdmgtype"]] != 'Unknown') {
-		$html_string .= GetItemStatsString(ucfirstwords($dbelements[$item["elemdmgtype"]]) . " DMG", $item["elemdmgamt"], null, null);
-		$html_string .= "<br />\n";
-	}
-	$html_string .= GetItemStatsString(" Range", $item["range"], null, null);
-	$html_string .= GetItemStatsString(" STR", $item["astr"], null, null);
-	$html_string .= GetItemStatsString(" DEX", $item["adex"], null, null);
-	$html_string .= GetItemStatsString(" STA", $item["asta"], null, null);
-	$html_string .= GetItemStatsString(" CHA", $item["acha"], null, null);
-	$html_string .= GetItemStatsString(" WIS", $item["awis"], null, null);
-	$html_string .= GetItemStatsString(" INT", $item["aint"], null, null);
-	$html_string .= GetItemStatsString(" AGI", $item["aagi"], null, null);
-	$html_string .= GetItemStatsString(" HP", $item["hp"], null, null);
-	$html_string .= GetItemStatsString(" MANA", $item["mana"], null, null);
-	$html_string .= "<br />\n";
-	$html_string .= GetItemStatsString(" SV FIRE", $item["fr"], null, null);
-	$html_string .= GetItemStatsString(" SV DISEASE", $item["dr"], null, null);
-	$html_string .= GetItemStatsString(" SV COLD", $item["cr"], null, null);
-	$html_string .= GetItemStatsString(" SV MAGIC", $item["mr"], null, null);
-	$html_string .= GetItemStatsString(" SV POISON", $item["pr"], null, null);
-	$html_string .= "<br />\n";
-	$html_string .= GetItemStatsString(" Atk", $item["attack"], null, null);
-	$html_string .= GetItemStatsString(" Regen", $item["regen"], null, null);
-	$html_string .= GetItemStatsString(" Flowing Thought", $item["manaregen"], null, null);
-	$html_string .= GetItemStatsString(" Spell Shielding", $item["spellshield"], null, null);
-	$html_string .= GetItemStatsString(" Combat Effects", $item["combateffects"], null, null);
-	$html_string .= GetItemStatsString(" Shielding", $item["shielding"], null, null);
-	$html_string .= GetItemStatsString(" DoT Shielding", $item["dotshielding"], null, null);
-	$html_string .= GetItemStatsString(" Avoidance", $item["avoidance"], null, null);
-	$html_string .= GetItemStatsString(" Accuracy", $item["accuracy"], null, null);
-	$html_string .= GetItemStatsString(" Stun Resist", $item["stunresist"], null, null);
-	$html_string .= GetItemStatsString(" Strikethrough", $item["strikethrough"], null, null);
-	$html_string .= GetItemStatsString(" Damage Shield", $item["damageshield"], null, null);
-
-	if ($item["extradmgamt"] > 0) {
-		$html_string .= ucfirstwords($dbskills[$item["extradmgskill"]]) . " Damage: " . sign($item["extradmgamt"]);
+	if ($item["deity"] > 0) {
+		$html_string .= "<p><strong>Deity:</strong> " . gedeities($item["deity"]) . "</p>\n";
 	}
 
-	if (($item["skillmodtype"] > 0) && ($item["skillmodvalue"] != 0)) {
-		$html_string .= " Skill Mod: " . ucfirstwords($dbskills[$item["skillmodtype"]]) . ": " . sign($item["skillmodvalue"]) . "%";
-	}
-
-	$html_string .= GetItemStatsString(" <br />\nRecommended level", $item["reclevel"], null, null);
-	$html_string .= GetItemStatsString(" <br />\nRequired level", $item["reqlevel"], null, null);
-
-	if (($item["itemclass"] == 0) && ($item["proceffect"] > 0) && ($item["proceffect"] < 65535)) {
-		$html_string .= " <br />\nEffect: <a href='spell.php?id=" . $item["proceffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["proceffect"]) . "</a> (Combat)";
-		$proclevel = $item["proclevel"] ?: $item["proclevel2"];
-		if ($proclevel) {
-			$html_string .= " (Lvl: " . $proclevel . ")";
-		} else {
-			$html_string .= " (Lvl: 1)";
-		}
-		$procrate = 100 + $item["procrate"];
-		$html_string .= " (Rate: $procrate%)";
-	}
-
-	if (($item["worneffect"] > 0 || $item["proceffect"] > 0) && $item["worntype"] == 2) {
-		$effect = $item["worneffect"] ?: $item["proceffect"];
-		$html_string .= " <br />\nEffect: <a href='spell.php?id=" . $effect . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $effect) . "</a> (Worn)";
-		if ($item["worneffect"] == 998) {
-			$haste = (int) $item["wornlevel"];
-			$haste++;
-			$html_string .= " (" . $haste . "%)";
-		} else {
-			$html_string .= " (Lvl: " . $item["wornlevel"]. ")";
-		}
-	}
-
-	if (($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
-		$html_string .= " <br />\nFocus Effect: <a href='spell.php?id=" . $item["focuseffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]) . "</a>";
-		// if ($item["focuslevel"] > 0) {
-		//     $html_string .= "<br />\nLevel for effect: " . $item["focuslevel"];
-		// }
-	}
-
-	if (($item["clickeffect"] > 0) && ($item["clickeffect"] < 65535)) {
-		$html_string .= " <br />\nClick Effect: <a href='spell.php?id=" . $item["clickeffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["clickeffect"]) . "</a> (";
-
-		if ($item["clicktype"] == 4) {
-			$html_string .= "Must Equip: ";
-		}
-
-		if ($item["casttime"] > 0) {
-			$html_string .= ($item["casttime"] / 1000) . " sec,";
-		} else {
-			$html_string .= " Instant,";
-		}
-    
-		if ($item["clicklevel"] > 0) {
-      $html_string .= " Lvl " . $item["clicklevel"];
-		}
-    $html_string .= ")";
-	}
-
-	$html_string .= GetItemStatsString("<br />\nWT", ($item["weight"] / 10), null, null);
-	if ($item["itemclass"] != 1)
-	{
-		$html_string .= " Size: " . strtoupper(getsize($item["size"]));
-	}
-
-	if (($item["scrolleffect"] > 0) && ($item["scrolleffect"] < 65535)) {
-		$html_string .= " <br />\nSpell Scroll Effect: <a href='spell.php?id=" . $item["scrolleffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["scrolleffect"]) . "</a>";
-	}
-
-	// bard items (fuck bards)
-	if (($item["bardtype"] > 22) && ($item["bardtype"] < 65535)) {
-		$html_string .= " Bard skill: " . $dbbardskills[$item["bardtype"]];
-		if ($dbbardskills[$item["bardtype"]] == "") {
-			$html_string .= "Unknown" . $item["bardtype"];
-		}
-
-		$val = ($item["bardvalue"] * 10) - 100;
-		if ($val > 0) {
-			$html_string .= " (" . sign($val) . "%)";
-		}
-	}
-
-	$ItemPrice = $item["price"];
-	$ItemValue = "";
-	$Platinum = 0;
-	$Gold = 0;
-	$Silver = 0;
-	$Copper = 0;
-
-	if ($ItemPrice > 1000) {
-		$Platinum = ((int)($ItemPrice / 1000));
-	}
-
-	if (($ItemPrice - ($Platinum * 1000)) > 100) {
-		$Gold = ((int)(($ItemPrice - ($Platinum * 1000)) / 100));
-	}
-
-	if (($ItemPrice - ($Platinum * 1000) - ($Gold * 100)) > 10) {
-		$Silver = ((int)(($ItemPrice - ($Platinum * 1000) - ($Gold * 100)) / 10));
-	}
-
-	if (($ItemPrice - ($Platinum * 1000) - ($Gold * 100) - ($Silver * 10)) > 0) {
-		$Copper = ($ItemPrice - ($Platinum * 1000) - ($Gold * 100) - ($Silver * 10));
-	}
-
-	// $ItemValue .= "<p>Value: ";
-	// $ItemValue .= $Platinum." <img src='" . $icons_url . "item_644.gif' width='14' height='14'/> ".
-	//                   $Gold." <img src='" . $icons_url . "item_645.gif' width='14' height='14'/> ".
-	//                 $Silver." <img src='" . $icons_url . "item_646.gif' width='14' height='14'/> ".
-	//                 $Copper." <img src='" . $icons_url . "item_647.gif' width='14' height='14'/>";
-	// $html_string .= $ItemValue ."</p>\n";
-
-
-	if ($item["itemclass"] == 0)
-	{
-		if ($item["classes"] > 0) {
-			$html_string .= "\n<p><strong>Class:</strong> " . getclasses($item["classes"]) . "</p>";
-		} else {
-			$html_string .= "\n<p><strong>Class:</strong> ALL</p>";
-		}
-		if ($item["races"] > 0) {
-			$html_string .= "\n<p><strong>Race:</strong> " . getraces($item["races"]) . "</p>";
-		} else {
-			$html_string .= "\n<p><strong>Race: </strong> ALL</p>";
-		}
-	}
 	return $html_string;
 }
 
@@ -1261,4 +1410,44 @@ function admindebug($content) {
 	if (isadmin()) {
 		debug($content);
 	}
+}
+
+function getcookie($name, $default) {
+	return isset($_COOKIE[$name]) ? $_COOKIE[$name] : $default;
+}
+
+function contentflagfilter() {
+	$contentflags = array(
+		"EquestrielleCorrupted"=>getcookie("EquestrielleCorrupted", true),
+		"OldPlane_Hate_Sky"=>getcookie("OldPlane_Hate_Sky", true),
+		"OldPlane_Fear"=>getcookie("OldPlane_Fear", true),
+		"Classic_OldWorldDrops"=>getcookie("Classic_OldWorldDrops", false),
+		"anniversary"=>false
+	);
+	$cf = array();
+	foreach($contentflags as $key=>$value) {
+		if ($value) {
+			array_push($cf, "'".$key."'");
+		}
+	}
+	return implode(",", $cf);
+}
+
+function gatefilter($tables, $expansion) {
+	$filter = "";
+	$cf = contentflagfilter();
+
+	foreach($tables as $table) {
+		if ($table == "zone") {
+			$filter .="
+				AND $table.expansion <= $expansion";
+		} else {
+			$filter .="
+				AND ($table.content_flags IS NULL OR $table.content_flags IN ($cf))
+				AND ($table.content_flags_disabled IS NULL OR $table.content_flags_disabled NOT IN ($cf))
+				AND ($table.min_expansion = -1 OR $table.min_expansion <= $expansion)
+				AND ($table.max_expansion = -1 OR $table.max_expansion >= $expansion)";
+		}
+	}
+	return $filter;
 }

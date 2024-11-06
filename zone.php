@@ -8,6 +8,10 @@ $name  = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
 $order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
 $mode  = (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
 
+if ($order == "level"){
+	$order = "level desc";
+}
+
 if ($UseCustomZoneList == TRUE && $name != '') {
 	$ZoneNote = GetFieldByQuery("note", "SELECT note FROM $tbzones WHERE short_name='$name'");
 	if (substr_count(strtolower($ZoneNote), "disabled") >= 1) {
@@ -34,12 +38,10 @@ $zone = mysqli_fetch_array($result);
 print "<div class='container zone'>";
 
 if ($mode == "npcs") {
-	$query = "SELECT $tbnpctypes.id,$tbnpctypes.class,$tbnpctypes.level,$tbnpctypes.maxlevel,$tbnpctypes.race,$tbnpctypes.name,$tbnpctypes.maxlevel,$tbnpctypes.loottable_id
-        FROM $tbnpctypes,$tbspawn2,$tbspawnentry,$tbspawngroup";
-	$query .= " WHERE $tbspawn2.zone='$name'
-        AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
-        AND $tbspawnentry.npcID=$tbnpctypes.id
-        AND $tbspawngroup.id=$tbspawnentry.spawngroupID";
+	$query = "SELECT $tbnpctypes.id,$tbnpctypes.class,$tbnpctypes.level,$tbnpctypes.maxlevel,$tbnpctypes.race,$tbnpctypes.name,$tbnpctypes.maxlevel
+		FROM $tbnpctypes,$tbzones
+		WHERE zone.short_name='$name'
+		AND $tbnpctypes.id DIV 1000 = $tbzones.zoneidnumber";
 
 	if ($HideInvisibleMen == TRUE) {
 		$query .= " AND $tbnpctypes.race!=127 AND $tbnpctypes.race!=240";
@@ -54,7 +56,7 @@ if ($mode == "npcs") {
 
 	if (mysqli_num_rows($result) > 0) {
 		print "<h2>Bestiary</h2>";
-    print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
+		print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=name>Name</a></b></td>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=level>Level Range</a></b></td>";
 		print "<td align='left' class='menuh'><b><a href=$PHP_SELF?name=$name&order=race>Race</a></b></td>";
@@ -81,10 +83,6 @@ if ($mode == "npcs") {
 				} else {
 					$RowClass = "lr";
 				}
-        
-        // print"<tr><td><pre>";
-        // var_dump($row);
-        // print "</pre></td></tr>";
 			}
 		}
 		print "</table>";
@@ -97,17 +95,15 @@ if ($mode == "items") {
 	$ItemsFound = 0;
 
 	$EquiptmentTable = "<h3>Equipment List</h3><div class='zone-information'><table border=0><tr>
-        <th class='menuh' width='100' align='left'>Icon</a></th>
-        <th class='menuh' align='left'><a href=$PHP_SELF?name=$name&mode=items&order=Name>Name</a></th>
-        <th class='menuh' align='left' width='400'><a href=$PHP_SELF?name=$name&mode=items&order=itemtype>Item type</a></th>
-        </tr>";
+		<th class='menuh' width='100' align='left'>Icon</a></th>
+		<th class='menuh' align='left'><a href=$PHP_SELF?name=$name&mode=items&order=Name>Name</a></th>
+		<th class='menuh' align='left' width='400'><a href=$PHP_SELF?name=$name&mode=items&order=itemtype>Item type</a></th>
+		</tr>";
 
-	$query = "SELECT $tbnpctypes.id";
-	$query .= " FROM $tbnpctypes,$tbspawn2,$tbspawnentry,$tbspawngroup";
-	$query .= " WHERE $tbspawn2.zone='$name'
-        AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
-        AND $tbspawnentry.npcID=$tbnpctypes.id
-        AND $tbspawngroup.id=$tbspawnentry.spawngroupID";
+	$query = "SELECT $tbnpctypes.id
+	FROM $tbnpctypes,$tbzones
+	WHERE $tbzones.short_name='$name'
+	AND $tbnpctypes.id DIV 1000 = $tbzones.zoneidnumber";
 
 	if ($MerchantsDontDropStuff == TRUE) {
 		foreach ($dbmerchants as $c) {
@@ -127,9 +123,9 @@ if ($mode == "items") {
 			$query .= ",$tbdiscovereditems";
 		}
 		$query .= " WHERE $tbnpctypes.id=" . $row["id"] . "
-            AND $tbnpctypes.loottable_id=$tbloottableentries.loottable_id
-            AND $tbloottableentries.lootdrop_id=$tblootdropentries.lootdrop_id
-            AND $tblootdropentries.item_id=$tbitems.id";
+			AND $tbnpctypes.loottable_id=$tbloottableentries.loottable_id
+			AND $tbloottableentries.lootdrop_id=$tblootdropentries.lootdrop_id
+			AND $tblootdropentries.item_id=$tbitems.id";
 		if ($DiscoveredItemsOnly == TRUE) {
 			$query .= " AND $tbdiscovereditems.item_id=$tbitems.id";
 		}
@@ -172,10 +168,10 @@ if ($mode == "items") {
 			}
 		}
 		$EquiptmentTable .= "<tr class='" . $RowClass . "'>
-        <td width='100' align='left'><img src='" . $icons_url . "item_" . $ItemData["icon"] . ".gif' align='left'/>
-        <img src='" . $images_url . "spacer_1.png' align='left'/>
-        </td><td><a href=item.php?id=" . $ItemData["id"] . " id='" . $ItemData["id"] . "'>" . $ItemData["Name"] . "</a></td>
-        <td width='400'>" . $ItemType . "</td></tr>";
+			<td width='100' align='left'><img src='" . $icons_url . "item_" . $ItemData["icon"] . ".gif' align='left'/>
+			<img src='" . $images_url . "spacer_1.png' align='left'/>
+			</td><td><a href=item.php?id=" . $ItemData["id"] . " id='" . $ItemData["id"] . "'>" . $ItemData["Name"] . "</a></td>
+			<td width='400'>" . $ItemType . "</td></tr>";
 		if ($RowClass == "lr") {
 			$RowClass = "dr";
 		} else {
@@ -196,20 +192,20 @@ if ($mode == "spawngroups") {
 	if ($DisplaySpawnGroupInfo == TRUE) {
 		print "</center>";
 		$query = "SELECT $tbspawngroup.*,$tbspawn2.x,$tbspawn2.y,$tbspawn2.z,$tbspawn2.respawntime
-            FROM $tbspawn2,$tbspawngroup
-            WHERE $tbspawn2.zone='$name'
-            AND $tbspawngroup.id=$tbspawn2.spawngroupID
-            ORDER BY $tbspawngroup.name ASC";
+			FROM $tbspawn2,$tbspawngroup
+			WHERE $tbspawn2.zone='$name'
+			AND $tbspawngroup.id=$tbspawn2.spawngroupID
+			ORDER BY $tbspawngroup.name ASC";
 		$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 		if (mysqli_num_rows($result) > 0) {
 			while ($row = mysqli_fetch_array($result)) {
 				print "<li><a href=spawngroup.php?id=" . $row["id"] . ">" . $row["name"] . "</a> (" . floor($row["y"]) . " / " . floor($row["x"]) . " / " . floor($row["z"]) . ") (respawn time : " . translate_time($row["respawntime"]) . ")<ul>";
 				$query = "SELECT $tbspawnentry.npcID,$tbnpctypes.name,$tbspawnentry.chance,$tbnpctypes.level
-                    FROM $tbspawnentry,$tbnpctypes
-                    WHERE $tbspawnentry.npcID=$tbnpctypes.id
-                    AND $tbspawnentry.spawngroupID=" . $row["id"] . "
-                    ORDER BY $tbnpctypes.name ASC";
+					FROM $tbspawnentry,$tbnpctypes
+					WHERE $tbspawnentry.npcID=$tbnpctypes.id
+					AND $tbspawnentry.spawngroupID=" . $row["id"] . "
+					ORDER BY $tbnpctypes.name ASC";
 				$result2 = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 				while ($res = mysqli_fetch_array($result2)) {
 					print "<li><a href=npc.php?id=" . $res["npcID"] . ">" . $res["name"] . "</a>, chance " . $res["chance"] . "%";
@@ -243,21 +239,21 @@ if ($mode == "tasks") {
 	if ($DisplayTaskInfo == TRUE) {
 		$ZoneID = GetFieldByQuery("zoneidnumber", "SELECT zoneidnumber FROM zone WHERE short_name = '$name'");
 		$query  = "SELECT $tbtasks.id, $tbtasks.title, $tbtasks.startzone, $tbtasks.minlevel, $tbtasks.maxlevel, $tbtasks.reward, $tbtasks.rewardid, $tbtasks.rewardmethod
-            FROM $tbtasks
-            WHERE $tbtasks.startzone=$ZoneID
-            ORDER BY $tbtasks.id ASC";
+			FROM $tbtasks
+			WHERE $tbtasks.startzone=$ZoneID
+			ORDER BY $tbtasks.id ASC";
 
 		$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 		print "<center>";
 		if (mysqli_num_rows($result) > 0) {
 			print "<table border=0 width=100% cellpadding='5' cellspacing='0'><tr valign=top><td width=100%>";
 			print "<center><table border=0 cellpadding='5' cellspacing='0'><tr>
-                <td class='menuh'>Task Name</td>
-                <td class='menuh'>Task ID</td>
-                <td class='menuh'>MinLevel</td>
-                <td class='menuh'>MaxLevel</td>
-                <td class='menuh'>Reward</td>
-                ";
+				<td class='menuh'>Task Name</td>
+				<td class='menuh'>Task ID</td>
+				<td class='menuh'>MinLevel</td>
+				<td class='menuh'>MaxLevel</td>
+				<td class='menuh'>Reward</td>
+				";
 
 			$RowClass = "lr";
 			while ($row = mysqli_fetch_array($result)) {
@@ -271,12 +267,12 @@ if ($mode == "tasks") {
 				}
 
 				print "<tr class='" . $RowClass . "'>
-                    <td><a href=task.php?id=" . $row["id"] . ">" . $row["title"] . "</a></td>
-                    <td align=center valign='top'>" . $row["id"] . "</td>
-                    <td align=center valign='top'>" . $row["minlevel"] . "</td>
-                    <td align=center valign='top'>" . $row["maxlevel"] . "</td>
-                    <td>" . $Reward . "</td>
-                    </tr>";
+					<td><a href=task.php?id=" . $row["id"] . ">" . $row["title"] . "</a></td>
+					<td align=center valign='top'>" . $row["id"] . "</td>
+					<td align=center valign='top'>" . $row["minlevel"] . "</td>
+					<td align=center valign='top'>" . $row["maxlevel"] . "</td>
+					<td>" . $Reward . "</td>
+					</tr>";
 				if ($RowClass == "lr") {
 					$RowClass = "dr";
 				} else {

@@ -32,12 +32,11 @@ function OutputClasses() {
 
 function GetReagents() {
 	global $spell, $tbitems;
-	$string = "None";
+	$string = array();
 	for ($i = 1; $i <= 4; $i++) {
 		if ($spell["components" . $i] > 0) {
-			$string = "";
 			$itemName = GetFieldByQuery("Name", "SELECT Name FROM $tbitems WHERE id=" . $spell["components" . $i]);
-			$string .= "<a style='display: inline; color: black; padding: 0;' href='item.php?id=" . $spell["components" . $i] . "'>" . $itemName . " </a>(" . $spell["component_counts" . $i] . ")";
+			array_push($string, "<a style='display: inline; color: black; padding: 0;' href='item.php?id=" . $spell["components" . $i] . "'>" . $itemName . " </a>(" . $spell["component_counts" . $i] . ")");
 		}
 	}
 	return $string;
@@ -62,7 +61,7 @@ function OutputItems($type) {
 	if (mysqli_num_rows($result)) {
 		$string = "<ol>";
 		while ($row = mysqli_fetch_array($result)) {
-			$string .= "<li><a href=item.php?id=" . $row["id"] . ">" . $row["name"] . "</a>";
+			$string .= "<li><a href=item.php?id=" . $row["id"] . ">" . $row["name"] . "</a></li>";
 		}
 		$string .= "</ol>";
 	}
@@ -133,8 +132,8 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 			</dd>
 			<dd><strong>Cast Time Restriction:</strong> <?= ($spell["TimeOfDay"] === 2) ? "Night" : "None" ?></dd>
 			<dd><strong>Duration:</strong> <?= ($duration === 0) ? "Instant" : translate_time($duration * 6) . " ({$duration} ticks)" ?></dd>
-			<?php if (GetReagents() !== "None") { ?>
-				<dd><strong>Reagents:</strong> <?= GetReagents(); ?></dd>
+			<?php foreach (GetReagents() as $reagent) { ?>
+				<dd><strong>Reagents:</strong> <?= $reagent; ?></dd>
 			<?php } ?>
 			<dd>
 				<strong>Spell Effects:</strong>

@@ -40,12 +40,19 @@ if ($recipe["notes"] != "") {
 	print "<tr><td cospan=2><b>Notes : </b>" . $recipe["notes"] . "</td></tr>";
 }
 // results containers
-$query = "SELECT $tbtradeskillrecipeentries.*,$tbitems.*,$tbitems.id AS item_id
-			FROM $tbtradeskillrecipe,$tbtradeskillrecipeentries,$tbitems
+$query = "SELECT $tbtradeskillrecipeentries.*,$tbitems.Name, $tbitems.icon
+			FROM $tbtradeskillrecipe,$tbtradeskillrecipeentries
+			LEFT OUTER JOIN $tbitems on $tbitems.id = $tbtradeskillrecipeentries.item_id
 			WHERE $tbtradeskillrecipe.id=$tbtradeskillrecipeentries.recipe_id
 			  AND $tbtradeskillrecipeentries.recipe_id=$id
 			  AND $tbtradeskillrecipeentries.item_id=$tbitems.id
 			  AND $tbtradeskillrecipeentries.iscontainer=1";
+$query = "SELECT tradeskill_recipe_entries.item_id, items.Name, items.icon
+	FROM tradeskill_recipe
+	JOIN tradeskill_recipe_entries ON tradeskill_recipe.id = tradeskill_recipe_entries.recipe_id
+	LEFT OUTER JOIN items ON items.id = tradeskill_recipe_entries.item_id
+	WHERE tradeskill_recipe_entries.iscontainer = 1
+	AND tradeskill_recipe_entries.recipe_id = $id;";
 
 $result = mysqli_query($db, $query) or message_die('recipe.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
@@ -55,11 +62,18 @@ if (mysqli_num_rows($result) > 0) {
 	print "<ul>";
 	while ($row = mysqli_fetch_array($result)) {
 
-		print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
-			"<a href=item.php?id=" . $row["item_id"] . " id=" . $row["item_id"] . ">" .
-			str_replace("_", " ", $row["Name"]) . "</a><br>";
-		if ($recipe["replace_container"] == 1) {
-			print " (this container will disappear after combine)";
+		$item_id = $row["item_id"];
+		if ($row["Name"]) {
+			print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
+				"<a href=item.php?id=$item_id id=$item_id data-item-id=\"$item_id\" class=\"item-link\">" .
+				str_replace("_", " ", $row["Name"]) . "</a><br>";
+			if ($recipe["replace_container"] == 1) {
+				print " (this container will disappear after combine)";
+			}
+		} else {
+			if (array_key_exists($item_id, $worldcontainer)) {
+				print $worldcontainer[$item_id] . "<br/>";
+			}
 		}
 	}
 	print "</ul></td></tr>";
@@ -77,11 +91,12 @@ $query = "SELECT $tbtradeskillrecipeentries.*,$tbitems.*,$tbitems.id AS item_id
 $result = mysqli_query($db, $query) or message_die('recipe.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 if (mysqli_num_rows($result) > 0) {
 	print "<tr class=myline height=6><td colspan=2></td><tr>";
-	print "<tr><td nowrap><b>Items resulting of a <FONT COLOR='#FFFF00'> successfull combine </FONT></b><ul>";
+	print "<tr><td nowrap><b>Items resulting of a <FONT COLOR='#00FF00'> successfull combine </FONT></b><ul>";
 	while ($row = mysqli_fetch_array($result)) {
 
+		$item_id = $row["item_id"];
 		print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
-			"<a href=item.php?id=" . $row["item_id"] . " id=" . ($row["item_id"] * 110) . ">" .
+			"<a href=item.php?id=$item_id id=" . ($item_id * 110) . " data-item-id=\"$item_id\" class=\"item-link\">" .
 			str_replace("_", " ", $row["Name"]) . "</a> x" . $row["successcount"] . " <br>";
 	}
 	print "</ul></td></tr>";
@@ -102,8 +117,9 @@ if ($recipe["nofail"] == 0) {
 		print "<tr><td nowrap><b>Items resulting of a <FONT COLOR='#FF0000'> failed combine </FONT></b><ul>";
 		while ($row = mysqli_fetch_array($result)) {
 
+			$item_id = $row["item_id"];
 			print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" .
-				"<a href=item.php?id=" . $row["item_id"] . " id=" . ($row["item_id"] * 10) . ">" .
+				"<a href=item.php?id=$item_id id=" . ($item_id * 10) . " data-item-id=\"$item_id\" class=\"item-link\">" .
 				str_replace("_", " ", $row["Name"]) . "</a> x" . $row["failcount"] . " <br>";
 		}
 		print "</td></tr>";
@@ -126,7 +142,8 @@ if (mysqli_num_rows($result) > 0) {
 
 	while ($row = mysqli_fetch_array($result)) {
 
-		print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" . "<a href=item.php?id=" . $row["item_id"] . " id=" . ($row["item_id"] * 100) . ">" .
+		$item_id = $row["item_id"];
+		print "<img src='" . $icons_url . "item_" . $row["icon"] . ".gif' align='left' width='15' height='15'/>" . "<a href=item.php?id=" . $row["item_id"] . " id=" . ($row["item_id"] * 100) . " data-item-id=\"$item_id\" class=\"item-link\">" .
 			str_replace("_", " ", $row["Name"]) . "</a> x " . $row["componentcount"] . " <br>";
 	}
 	print "</td></tr>";

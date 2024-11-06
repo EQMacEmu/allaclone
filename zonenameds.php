@@ -210,7 +210,7 @@ if ($mode=="npcs") {
 
 
 print "</td><td width=0% nowrap>"; // end first column
-print "<p class=page_small_title>Ressources</p>";
+print "<p class=page_small_title>Resources</p>";
 print "<li><a href=zone.php?name=$name&mode=npcs>".$zone["long_name"]." Bestiary List</a>";
 print "<li><a href=zonenameds.php?name=$name&mode=npcs>".$zone["long_name"]." Named Mobs List</a>";
 print "<li><a href=zone.php?name=$name&mode=items>".$zone["long_name"]." Equipment List </a>";
@@ -224,5 +224,6 @@ if ($AllowQuestsNPC==TRUE) {
 }
 print "</td></tr></table>";
 
+print "</div>";
 include($includes_dir."footers.php");
 ?>

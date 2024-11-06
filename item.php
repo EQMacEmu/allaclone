@@ -14,42 +14,10 @@ include($includes_dir . 'functions.php');
 
 $id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
+$content = (isset($_GET['content']) ? addslashes($_GET['content']) : '');
 
-if ($id != "" && is_numeric($id)) {
-	if ($DiscoveredItemsOnly == true) {
-		$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='" . $id . "' AND discovered_items.item_id=$tbitems.id";
-	} else {
-		$Query = "SELECT * FROM $tbitems WHERE id='" . $id . "'";
-	}
-	foreach ($hide_item_id as $hideme) {
-		$Query .= " AND $tbitems.id != $hideme"; // Block by ID set in config
-	}
-	$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
-	if (mysqli_num_rows($QueryResult) == 0) {
-		header("Location: items.php");
-		exit();
-	}
-	$ItemRow = mysqli_fetch_array($QueryResult);
-	$name = $ItemRow["name"];
-} elseif ($name != "") {
-	if ($DiscoveredItemsOnly == true) {
-		$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.name like '$name' AND discovered_items.item_id=$tbitems.id";
-	} else {
-		$Query = "SELECT * FROM $tbitems WHERE name like '$name'";
-	}
-	$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-	if (mysqli_num_rows($QueryResult) == 0) {
-		header("Location: items.php?iname=" . $name . "&isearch=true");
-		exit();
-	} else {
-		$ItemRow = mysqli_fetch_array($QueryResult);
-		$id = $ItemRow["id"];
-		$name = $ItemRow["name"];
-	}
-} else {
-	header("Location: items.php");
-	exit();
-}
+$ItemRow = GetItemRow($id);
+$name = $ItemRow["Name"];
 
 /** Here the following stands :
  *    $id : ID of the item to display
@@ -57,10 +25,6 @@ if ($id != "" && is_numeric($id)) {
  *    $ItemRow : row of the item to display extracted from the database
  *    The item actually exists
  */
-
-if ( $name == "" ) {
-  $name = $ItemRow["Name"];
-}
 
 if ( $item_icon == "" ) {
   $item_icon = $icons_url . "item_" . $ItemRow["icon"] . ".gif";
@@ -78,19 +42,24 @@ echo "<div class='item-content'>";
 echo "<div class='item-columns'>";
 echo "<div class='item-wrapper'>";
 echo "<div class='item-info'>";
-echo "<strong>" . $item["Name"] . "</strong>";
-
-if ($item["lore"] != "") {
-	echo "<p class='hidden'>(" . $item["lore"] . ") - id : " . $id . "</p>";
-} else {
-	echo "id : " . $id;
+echo "<strong>";
+echo $item["Name"];
+if ($item["stacksize"] > 1) {
+	echo " (stackable)";
 }
+echo "</strong>";
 
 echo "<div class='item-stats'>";
 echo $stats;
 
-if ($item["color"] > 0)
-{
+// Additional/hidden item information
+echo "<p>" . getPetFocus($item["id"]) . "</p>\n";
+
+if ($item["material"] > 0) {
+	echo "<p><strong>Material: </strong>" . $itemmaterial[$item["material"]] . "</p>";
+}
+
+if ($item["color"] > 0) {
 	$hexcolor = sprintf('%06x', $item["color"]);
 	echo '<div style="width:120px">';
 	echo '<div style="float:right; width:80px; height:24px; background-color: #'.$hexcolor.';"></div>';
@@ -160,30 +129,31 @@ if ($ItemFoundInfo) {
 
 	if ($IsDropped) {
 
+		$dropfilter = gatefilter(array($tbzones, $tbloottable, $tblootdrop, $tblootdropentries), $expansion);
 		$query = "
-		SELECT nt.id
-			, nt.`name`
-			, z.short_name
-			, z.long_name
-			, lte.probability
-			, lte.multiplier
-			, lte.multiplier_min
-			, lte.mindrop
-			, lde.chance
-			, lde.multiplier as lde_mult
-		FROM $tbnpctypes nt
-			, $tbloottableentries lte
-			, $tblootdropentries lde
-			, $tbzones z
-		WHERE nt.loottable_id IN
-			(SELECT loottable_Id FROM $tbloottableentries WHERE lootdrop_id IN
-				(SELECT lootdrop_id FROM $tblootdropentries WHERE item_id = $id)
-			)
-		AND nt.loottable_id = lte.loottable_id
-		AND lte.lootdrop_id = lde.lootdrop_id
-		AND lde.item_id = $id
-		AND z.zoneidnumber = nt.id DIV 1000
-		ORDER BY nt.id ASC;
+		SELECT $tbnpctypes.id,
+			$tbzones.short_name,
+			$tbzones.long_name,
+			$tbloottableentries.probability/100 as tbl_chance,
+			$tbloottableentries.multiplier_min as tbl_min,
+			$tbloottableentries.multiplier as tbl_max,
+			$tbloottableentries.mindrop as drp_min,
+			$tbloottableentries.droplimit as drp_max,
+			$tblootdropentries.multiplier as drp_mult,
+			$tblootdropentries.chance/100 as drp_chance,
+			$tblootdropentries.lootdrop_id as ldid,
+			$tbnpctypes.name
+		FROM $tbzones, $tbloottable, $tblootdrop, $tbnpctypes
+		JOIN $tbloottableentries ON $tbnpctypes.loottable_id = $tbloottableentries.loottable_id
+		JOIN $tblootdropentries ON $tbloottableentries.lootdrop_id = $tblootdropentries.lootdrop_id
+		WHERE $tblootdropentries.item_id = $id
+		AND $tbnpctypes.loottable_id = $tbloottableentries.loottable_id
+		AND $tblootdrop.id = $tbloottableentries.lootdrop_id
+		AND $tbloottable.id = $tbloottableentries.loottable_id
+		AND $tbloottableentries.lootdrop_id = $tblootdropentries.lootdrop_id
+		AND $tbzones.zoneidnumber = $tbnpctypes.id DIV 1000
+		$dropfilter
+		ORDER BY $tbnpctypes.id ASC;
 		";
 
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
@@ -221,37 +191,75 @@ if ($ItemFoundInfo) {
 						</li>";
 					$CurrentZone = $row["short_name"];
 				}
-				// Calculate drop chance
-				$chance = $row['chance'] / 100;
-				$probability = $row['probability'] / 100;
-				$min = $row['multiplier_min'];
-				$mult = $row['multiplier'] - $min;
-				// Calculate the probability of at least 1 dropping by taking "one minus the probability of failure"
-				if ($min == 0) {
-					// No min drop means each table runs $mult times
-					$DropOne = round((1-((1-$chance*$probability)**$mult)) * 100, 2);
+				$tbl_chance = $row["tbl_chance"];
+				$tbl_min = $row["tbl_min"];
+				$tbl_max = $row["tbl_max"];
+				$tbl_diff = $tbl_max - $tbl_min;
+
+				$drp_chance = $row["drp_chance"];
+				$drp_min = $row["drp_min"];
+				$drp_max = $row["drp_max"];
+				if ($drp_max < $drp_min)
+					$drp_max = $drp_min;
+				$drp_diff = $drp_max - $drp_min;
+				$drp_mult = $row["drp_mult"];
+				if ($drp_mult < 1)
+					$drp_mult = 1;
+
+				$ldid = $row["ldid"];
+				$sum_result = mysqli_query($db, "select SUM(chance)/100 as sum FROM lootdrop_entries where lootdrop_id=$ldid;") or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+				$sum_row = mysqli_fetch_array($sum_result);
+				$lde_sum = $sum_row["sum"];
+
+				// Calculate table values
+				$table_chance = $tbl_chance * $tbl_diff;
+				$table_failure = 0;
+				if ( $tbl_min == 0 ) {
+					$table_failure = (1-$tbl_chance)**$tbl_diff;
+				}
+
+				// Calculate drop values
+				$drop_chance = 0;
+				$drop_failure = 0;
+				if ($drp_min == 0 && $drp_max == 0) {
+					$drop_chance = $drp_chance * $drp_mult;
+					$drop_failure = (1-$drp_chance)**$drp_mult;
 				} else {
-					// The table gets 100% probability for $min drops, and the remainder get the usual treatment
-					$DropOne = round((1-(1-$chance)**$min*(1-($chance*$probability)**$mult)) * 100, 2);
+					$sum_chance = $drp_chance/$lde_sum;
+					if ($lde_sum > 1) {
+						$drops = $drp_max;
+					} else {
+						$drops = $drp_min + $drp_diff*$lde_sum;
+					}
+					$drop_chance = $drops*$sum_chance*(1+$drp_chance*($drp_mult-1));
+					$drop_failure = ((1-($sum_chance))**$drp_min * (1-($drp_chance))**$drp_diff);
 				}
-				$DropMsg = "$DropOne";
-				// Special loot tables that roll each individual item are marked with mindrop and droplimit as 0
-				// These often come with lootdrop multipliers (separate from lootable multipliers)
-				if ($row['mindrop'] == 0 && $row['droplimit'] == 0)
-				{
-					$DropPerKill = $DropOne * $row['lde_mult'];
-					$DropMsg = "$DropOne-$DropPerKill";
-				}
-				// When tables have multiple chances to roll, the drop-per-kill ratio is higher than the "drop at least one" calculation
-				// This is interesting when farming tradeskill materials
-				if ($mult > 1)
-				{
-					$DropPerKill = round($chance * ($min + $mult * $probability) * 100, 2);
-					$DropMsg = "$DropOne-$DropPerKill";
+
+				$average_drops = (($tbl_min + $table_chance) * $drop_chance) * 100;
+				$dropsone = (1-($table_failure + ((1-$table_failure) * $drop_failure))) * 100;
+
+				if ($average_drops > 10)
+					$average_drops = round($average_drops, 0);
+				else if ($average_drops > 1)
+					$average_drops = round($average_drops, 1);
+				else
+					$average_drops = round($average_drops, 2);
+				if ($dropsone > 10)
+					$dropsone = round($dropsone, 0);
+				else if ($dropsone > 1)
+					$dropsone = round($dropsone, 1);
+				else
+					$dropsone = round($dropsone, 2);
+
+				if ($tbl_max > 1 || $drp_max > 1 || $drp_mult > 1) {
+					$average_drops = $average_drops / 100;
+					$DropMsg = "($dropsone%, $average_drops avg drops per kill)";
+				} else {
+					$DropMsg = "($dropsone%)";
 				}
 				$DroppedList .= "
 					<li>
-						<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . " (" . $DropMsg . "%)</a>
+						<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . " " . $DropMsg . "</a>
 					</li>";
 			}
 			$DroppedList .= "</ul>";
@@ -299,6 +307,20 @@ if ($ItemFoundInfo) {
 	}
 }
 
+
+// Other bard items with this skill
+if ($item["bardtype"] > 0) {
+	echo "<h3>Other items with this Bard skill.</h3>";
+	$query = "SELECT id, name, bardvalue FROM items WHERE bardtype=".$item["bardtype"]." and id!=".$item["id"]." order by bardvalue desc;";
+	#echo $query;
+	$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+	echo "<ul>";
+	while ($row = mysqli_fetch_array($result)) {
+		$val = ($row["bardvalue"] * 10) - 100;
+		echo "<li><a href=item.php?id=" . $row["id"] . ">" . $row["name"] . " (+$val%)</a>";
+	}
+	echo "</ul>";
+}
 
 // spawn points if its a ground item
 $query = "SELECT $tbgroundspawns.*,$tbzones.short_name,$tbzones.long_name

@@ -28,7 +28,7 @@ include($includes_dir.'headers.php');
 
 if (!isset($id) || $id=='') { print "<script>document.location=\"index.php\";</script>"; }
 
-print "<center><table border=0 width=0%><tr valign=top><td width=50% nowrap>\n";
+print "<div><tr valign=top><td width=50% nowrap>\n";
 $query="SELECT $tbspawnentry.chance,$tbnpctypes.name,$tbnpctypes.id
         FROM $tbspawnentry,$tbnpctypes
         WHERE $tbspawnentry.spawngroupID=$id
@@ -42,7 +42,7 @@ if (mysqli_num_rows($result)>0) {
     print "<li><a href=npc.php?id=".$row["id"].">".$row["name"]."</a> (".$row["chance"]."%)"; 
   }
 }
-print "</td><td width=50% nowrap>";
+print "</td><br/><td width=50% nowrap>";
 print "<b>NPCs spawning around that spawngroup : </b><br>(Max range : $SpawngroupAroundRange)<ul>";
 $myrange=$SpawngroupAroundRange*$SpawngroupAroundRange; // precalculate, saves some mysql time
 $query="SELECT $tbspawnentry.chance,$tbspawn2.x AS x, $tbspawn2.y AS y, $tbspawn2.z AS z,
@@ -73,7 +73,8 @@ if (mysqli_num_rows($result)>0) {
 } else {
   print "None... ";
 }
-print "</ul></td></tr></table></center>";
+print "</ul></td></tr></div>";
 
+print "</div>";
 include($includes_dir."footers.php");
 ?>

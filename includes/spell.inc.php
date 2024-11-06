@@ -85,7 +85,6 @@ function SpellDescription($spell, $n, $csv = false) {
 				}
 				break;
 			case 87: // Increase Magnification
-			case 98: // Increase Haste v2
 			case 114: // Increase Agro Multiplier
 			case 119: // Increase Haste v3
 			case 123: // Increase Spell Damage
@@ -94,7 +93,7 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 127: // Increase Spell Haste
 			case 128: // Increase Spell Duration
 			case 129: // Increase Spell Range
-			case 130: // Decrease Spell/Bash Hate
+			case 130: // Increase Spell/Bash Hate
 			case 131: // Decrease Chance of Using Reagent
 			case 132: // Decrease Spell Mana Cost
 			case 158: // Increase Chance to Reflect Spell
@@ -124,8 +123,13 @@ function SpellDescription($spell, $n, $csv = false) {
 				if ($min != $max) {
 					print " by $min% (L$minlvl) to $max% (L$maxlvl)";
 				} else {
+					$max = abs($max);
 					print " by $max%";
 				}
+				break;
+			case 98: // Increase Haste v2
+				$max -= 100;
+				print $dbspelleffects[$spell["effectid$n"]] . " by $max%";
 				break;
 			case 15: // Increase/Decrease Mana per tick
 				$effect = $dbspelleffects[$spell["effectid$n"]];
@@ -285,6 +289,10 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 81: // Resurrect
 				print $dbspelleffects[$spell["effectid$n"]];
 				print " and restore " . $spell["effect_base_value$n"] . "% experience";
+				break;
+			case 84:
+				$value = -$spell["effect_base_value$n"];
+				print $dbspelleffects[$spell["effectid$n"]] . "($value)";
 				break;
 			case 83: // Teleport
 			case 88: // Evacuate
