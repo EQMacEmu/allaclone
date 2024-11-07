@@ -56,15 +56,19 @@ echo $stats;
 echo "<p>" . getPetFocus($item["id"]) . "</p>\n";
 
 if ($item["material"] > 0) {
-	echo "<p><strong>Material: </strong>" . $itemmaterial[$item["material"]] . "</p>";
+	echo "<p>Material: " . $itemmaterial[$item["material"]] . "</p>";
 }
 
 if ($item["color"] > 0) {
 	$hexcolor = sprintf('%06x', $item["color"]);
 	echo '<div style="width:120px">';
 	echo '<div style="float:right; width:80px; height:24px; background-color: #'.$hexcolor.';"></div>';
-	echo '<p><strong>Tint:</strong></p>';
+	echo '<p>Tint:</p>';
 	echo '</div>';
+}
+
+if ($item["light"] > 0) {
+	echo "<p>Light: " . $item["light"] . "</p>";
 }
 
 
