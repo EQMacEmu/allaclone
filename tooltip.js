@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tooltip = document.getElementById("tooltip");
+  let timeoutId;
 
   // Function to fetch and show item stats
   async function showItemStats(event) {
@@ -28,12 +29,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Attach event listeners to all links with data-item-id
   document.querySelectorAll("a[data-item-id]").forEach(link => {
-    link.addEventListener("mouseenter", showItemStats);
     link.addEventListener("mousemove", (event) => {
       // Update tooltip position on mouse move
       tooltip.style.left = `${event.pageX + 10}px`;
       tooltip.style.top = `${event.pageY + 10}px`;
     });
-    link.addEventListener("mouseleave", hideTooltip);
+    link.addEventListener("mouseenter", () => {
+      e = event;
+      timeoutId = setTimeout(() => {
+        showItemStats(e);
+      }, 500);
+    });
+    link.addEventListener("mouseleave", () => {
+        clearTimeout(timeoutId);
+        hideTooltip(e);
+    });
+    link.addEventListener("onclick", () => {
+        clearTimeout(timeoutId);
+        hideTooltip(e);
+    });
   });
 });
