@@ -329,6 +329,121 @@ if ($UseWikiImages) {
 	}
 }
 
+// zone list
+// NPCs with the same name have different IDs in different zones. So we'll only ever get 1 zone.
+$zonefilter = gatefilter(array($tbzones), $expansion);
+$query = "SELECT
+	$tbzones.long_name,
+	$tbzones.short_name
+	FROM $tbzones
+	WHERE
+	$tbzones.zoneidnumber = $id DIV 1000
+	$zonefilter
+	";
+foreach ($IgnoreZones as $zid) {
+	$query .= " AND $tbzones.short_name!='$zid'";
+}
+$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+
+print "<div class='spawn-wrapper list-wrapper'>";
+if (mysqli_num_rows($result) > 0) {
+	$spawnentryfilter = gatefilter(array($tbspawnentry, $tbspawn2), $expansion);
+	$spawn2filter = gatefilter(array($tbspawn2), $expansion);
+	$row = mysqli_fetch_array($result);
+	$short_name = $row["short_name"];
+	$long_name = $row["long_name"];
+	print "<p><strong>This NPC spawns in:</strong></p>";
+	print "<ul>";
+	print "<li class='spawn-zone'><a href='zone.php?name=$short_name'><u>$long_name</u></a></li>";
+	print "</ul>";
+	if ($DisplaySpawnGroupInfo == TRUE) {
+		// Some spawngroups have multiple spawntimes in spawn2. List each set separately
+		print "<ul class='spawn-group'>";
+		$query = "SELECT
+			$tbspawngroup.name as spawngroup,
+			$tbspawngroup.id as spawngroupID,
+			$tbspawnentry.chance,
+			$tbspawn2.respawntime,
+			$tbspawn2.variance,
+			$tbspawn2.boot_respawntime,
+			$tbspawn2.boot_variance
+			FROM $tbspawngroup
+			JOIN $tbspawnentry ON $tbspawngroup.id = $tbspawnentry.spawngroupID
+			JOIN $tbspawn2 ON $tbspawnentry.spawngroupID = $tbspawn2.spawngroupID
+			WHERE $tbspawnentry.npcID = $id
+			$spawnentryfilter
+			GROUP BY $tbspawngroup.id, $tbspawn2.respawntime
+			ORDER BY $tbspawngroup.name
+			";
+		$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+		if (mysqli_num_rows($result) > 0) {
+			while ($sgrow = mysqli_fetch_array($result)) {
+				$spawngroupID = $sgrow["spawngroupID"];
+				$chance = $sgrow["chance"];
+				$respawntime = $sgrow["respawntime"];
+				$variance = $sgrow["variance"];
+				$bootspawntime = $sgrow["boot_respawntime"];
+				$boot_variance = $sgrow["boot_variance"];
+				print "<li>";
+				print "<a href='spawngroup.php?id=$spawngroupID'>" . $sgrow["spawngroup"] . "</a> ($chance%)";
+				print "</li>";
+				print "<li>Boot spawn time: ";
+				print translate_time($bootspawntime);
+				if ($boot_variance) {
+					if ($bootspawntime) {
+						print " +/- " . translate_time($boot_variance / 2);
+					} else {
+						print " to " . translate_time($boot_variance);
+					}
+				}
+				$listid = $spawngroupID + $respawntime;
+				print "</li>";
+				print "<li>Respawn time: ";
+				print translate_time($respawntime);
+				if ($variance) {
+					print " +/- " . translate_time($variance / 2);
+				}
+				$listid = $spawngroupID + $respawntime;
+				print "</li>";
+				print "<li>";
+				$query = "SELECT
+					$tbspawn2.y,
+					$tbspawn2.x,
+					$tbspawn2.z
+					FROM $tbspawn2
+					WHERE $tbspawn2.spawngroupID = $spawngroupID
+					AND $tbspawn2.respawntime = $respawntime
+					$spawn2filter
+				";
+				$spawnresult = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+				$count = mysqli_num_rows($spawnresult);
+				if ($count > 1) {
+					print "<button type='button' class='collapsible' onclick=toggleList('$listid')>Hide/Show Spawn Locations ($count)</button>";
+					$display = "none";
+				} else {
+					$display = "block";
+				}
+				print "<ul class='spawn-table' style='display: $display;' id=$listid>";
+				if ($count > 0) {
+					while ($spawnrow = mysqli_fetch_array($spawnresult)) {
+						print "<li>";
+						print " (" . floor($spawnrow["y"]) . ", " . floor($spawnrow["x"]) . ", " . floor($spawnrow["z"]) . ")";
+						print "</li>";
+					}
+				}
+				print "</ul>";
+				print "</li>";
+			}
+		} else {
+			print "<div class='spawn-wrapper list-wrapper'><p>This NPC has no spawn point.</p></ul></div>";
+		}
+		print "</ul>";
+	}
+} else {
+	print "<p><strong>This NPC does not spawn during this expansion.</strong></p>";
+}
+print "</div";
+
 function print_spell($spell, $extra = "")
 {
 	global $icons_url;
@@ -391,57 +506,6 @@ if ($npc["npc_spells_id"] > 0) {
 	}
 }
 
-// zone list
-$query = "SELECT $tbzones.long_name,
-				$tbzones.short_name,
-				$tbspawn2.x,$tbspawn2.y,$tbspawn2.z,
-				$tbspawngroup.name as spawngroup,
-				$tbspawngroup.id as spawngroupID,
-				$tbspawn2.respawntime
-				FROM $tbzones,$tbspawnentry,$tbspawn2,$tbspawngroup
-				WHERE $tbspawnentry.npcID=$id
-				AND ($tbspawnentry.min_expansion = -1 OR $tbspawnentry.min_expansion <= $expansion)
-				AND ($tbspawnentry.max_expansion = -1 OR $tbspawnentry.max_expansion >= $expansion)
-				AND ($tbspawn2.min_expansion = -1 OR $tbspawn2.min_expansion <= $expansion)
-				AND ($tbspawn2.max_expansion = -1 OR $tbspawn2.max_expansion >= $expansion)
-				AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
-				AND $tbspawn2.zone=$tbzones.short_name
-				AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
-foreach ($IgnoreZones as $zid) {
-	$query .= " AND $tbzones.short_name!='$zid'";
-}
-$query .= " ORDER BY $tbzones.long_name,$tbspawngroup.name";
-$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-if (mysqli_num_rows($result) > 0) {
-	print "<div class='list-wrapper'><p><strong>This NPC spawns in:</strong></p><ul>";
-	$z = "";
-	$lastSpawnGroup="";
-	while ($row = mysqli_fetch_array($result)) {
-		if ($z != $row["short_name"]) {
-			print "<li><a href='zone.php?name=" . $row["short_name"] . "'>" . $row["long_name"] . "</a></li>";
-			$z = $row["short_name"];
-			if ($AllowQuestsNPC == TRUE) {
-				if (file_exists("$quests_dir$z/" . str_replace("#", "", $npc["name"]) . ".pl")) {
-					print "<br/><a href='" . $root_url . "quests/index.php?npc=" . str_replace("#", "", $npc["name"]) . "&zone=" . $z . "&amp;npcid=" . $id . "'>Quest(s) for that NPC</a>";
-				}
-			}
-			print "</li>";
-		}
-		if ($DisplaySpawnGroupInfo == TRUE) {
-			if ($row["spawngroup"] != $lastSpawnGroup) {
-				print "<li>";
-				print "<a href='spawngroup.php?id=" . $row["spawngroupID"] . "'>" . $row["spawngroup"] . "</a> : ";
-				print "Spawns every " . translate_time($row["respawntime"]);
-				print "</li>";
-				$lastSpawnGroup = $row["spawngroup"];
-			}
-			print "<li>";
-			print floor($row["y"]) . " , " . floor($row["x"]) . " , " . floor($row["z"]);
-			print "</li>";
-		}
-	}
-	print "</ul></div>";
-}
 // factions
 $query = "SELECT $tbfactionlist.name,
 			$tbfactionlist.id,

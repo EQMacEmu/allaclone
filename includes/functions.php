@@ -136,12 +136,16 @@ function YesNo($val) {
  * If '$sec' is '0', returns 'time' (prints 'Spawns all the time' as a result) */
 function translate_time($sec) {
 	if ($sec == 0) {
-		$Result = "time";
+		$Result = "instantly";
 	} else {
+		$d = floor($sec / 86400);
+		$sec = $sec % 86400;
 		$h = floor($sec / 3600);
-		$m = floor(($sec - $h * 3600) / 60);
-		$s = $sec - $h * 3600 - $m * 60;
-		$Result = ($h > 1 ? "$h hours " : "") . ($h == 1 ? "1 hour " : "") . ($m > 0 ? "$m min " : "") . ($s > 0 ? "$s sec" : "");
+		$sec = $sec % 3600;
+		$m = floor($sec / 60);
+		$sec = $sec % 60;
+		$s = $sec;
+		$Result = ($d > 1 ? "$d days " : "") . ($d == 1 ? "1 day " : "") .($h > 1 ? "$h hours " : "") . ($h == 1 ? "1 hour " : "") . ($m > 0 ? "$m min " : "") . ($s > 0 ? "$s sec" : "");
 	}
 	return $Result;
 }
