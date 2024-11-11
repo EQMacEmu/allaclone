@@ -17,6 +17,7 @@ $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
 $content = (isset($_GET['content']) ? addslashes($_GET['content']) : '');
 
+$Title="";
 if ($id != "" && !in_array($id, $hide_npc_id) && is_numeric($id)) {
 	$Query = "SELECT * FROM $tbnpctypes WHERE id='" . $id . "'";
 	foreach ($hide_npc_id as $hideme) {
@@ -77,7 +78,11 @@ if ($npc["lastname"] != "") {
 print "<div class='secondary-info'>";
 
 print "<p><strong>Race:</strong> " . $dbiracenames[$npc["race"]] . "</p>";
-print "<p><strong>Class:</strong> " . $dbclasses[$npc["class"]] . "</p>";
+$greed="";
+if ($npc["class"] == 41) {
+	$greed = " (" . $npc["greed"] . ")";
+}
+print "<p><strong>Class:</strong> " . $dbclasses[$npc["class"]] . " $greed</p>";
 print "<p><strong>Hit Points:</strong> " . $npc["hp"] . "</p>";
 if ($npc["mana"] > 0) {
 	print "<p><strong>Mana:</strong> " . $npc["mana"] . "</p>";
@@ -88,35 +93,27 @@ $mr = $npc["MR"];
 $dr = $npc["DR"];
 $fr = $npc["FR"];
 $cr = $npc["CR"];
-print "\n<table id='resists-table'>";
-print "\n<tr><td colspan='5'><strong>Resists:</strong></td></tr>";
-print "\n<tr>";
-print "\n<td><img width='20' height='20' title='Magic Resist' src='${icons_url}/161.gif' /></td>";
-print "\n<td><img width='20' height='20' title='Fire Resist' src='${icons_url}/51.gif' /></td>";
-print "\n<td><img width='20' height='20' title='Cold Resist' src='${icons_url}/56.gif' /></td>";
-print "\n<td><img width='20' height='20' title='Disease Resist' src='${icons_url}/41.gif' /></td>";
-print "\n<td><img width='20' height='20' title='Poison Resist' src='${icons_url}/42.gif' /></td>";
-print "\n</tr>";
-print "\n<tr>";
-print "\n<td>$mr</td>";
-print "\n<td>$fr</td>";
-print "\n<td>$cr</td>";
-print "\n<td>$dr</td>";
-print "\n<td>$pr</td>";
-print "\n</tr>";
-print "\n</table>";
-print "\n<p><strong>Special:</strong> " . SpecialAttacks($npc["special_abilities"]) . "</p>";
-print "\n<p><strong>Agro Radius</strong>: " . $npc["aggroradius"] . "</p>";
-print "\n<p><strong>Assist Radius</strong>: " . $npc["assistradius"] . "</p>";
-print "\n</div>";
-
-if ($npc["npc_faction_id"] > 0) {
-	$query = "SELECT $tbfactionlist.name,$tbfactionlist.id
-				FROM $tbfactionlist,$tbnpcfaction 
-				WHERE $tbnpcfaction.id=" . $npc["npc_faction_id"] . " 
-				AND $tbnpcfaction.primaryfaction=$tbfactionlist.id";
-	$faction = GetRowByQuery($query);
-}
+print "<table id='resists-table'>";
+print "<tr><td colspan='5'><strong>Resists:</strong></td></tr>";
+print "<tr>";
+print "<td><img width='20' height='20' title='Magic Resist' src='${icons_url}/161.gif' /></td>";
+print "<td><img width='20' height='20' title='Fire Resist' src='${icons_url}/51.gif' /></td>";
+print "<td><img width='20' height='20' title='Cold Resist' src='${icons_url}/56.gif' /></td>";
+print "<td><img width='20' height='20' title='Disease Resist' src='${icons_url}/41.gif' /></td>";
+print "<td><img width='20' height='20' title='Poison Resist' src='${icons_url}/42.gif' /></td>";
+print "</tr>";
+print "<tr>";
+print "<td>$mr</td>";
+print "<td>$fr</td>";
+print "<td>$cr</td>";
+print "<td>$dr</td>";
+print "<td>$pr</td>";
+print "</tr>";
+print "</table>";
+print "<p><strong>Special:</strong> " . SpecialAttacks($npc["special_abilities"]) . "</p>";
+print "<p><strong>Agro Radius</strong>: " . $npc["aggroradius"] . "</p>";
+print "<p><strong>Assist Radius</strong>: " . $npc["assistradius"] . "</p>";
+print "</div>"; // secondary-info
 
 
 $loottable_id = 0;
@@ -161,11 +158,6 @@ function printLootDrop($loottable)
 	$drp_diff = $drp_max - $drp_min;
 
 	$table_chance = $tbl_chance*$tbl_diff;
-	if ($tbl_min > 0) {
-		$table_failure = 0;
-	} else {
-		$table_failure = ((1-($drp_chance))**$drp_mult);
-	}
 	$table_chance = round($tbl_chance * 100, 2);
 	$sum = round($drp_sum * 100, 2);
 	//print "<li>[$lootdrop_id] $name</li>";
@@ -255,8 +247,8 @@ function printLootDrop($loottable)
 	}
 }
 
+print "<div class='list-wrapper'>";
 if ($loottable_id > 0) {
-	print "<div class='list-wrapper'>";
 	print "<p><strong>When killed, this NPC can drop: </strong></p>";
 	print "<ul>";
 
@@ -285,10 +277,10 @@ if ($loottable_id > 0) {
 	}
 
 	print "</ul>";
-	print "</div>";
 } else {
 	print "<p><strong>No item drops found.</strong></p>";
 }
+print "</div>"; // list-wrapper
 
 if ($npc["merchant_id"] > 0) {
 	$query = "SELECT $tbitems.id,$tbitems.Name,$tbitems.price
@@ -313,7 +305,7 @@ if ($npc["merchant_id"] > 0) {
 	}
 }
 
-print "</div>";
+print "</div>"; // left-col
 
 print "<div class='right-col'>";
 if ($UseWikiImages) {
@@ -435,14 +427,14 @@ if (mysqli_num_rows($result) > 0) {
 				print "</li>";
 			}
 		} else {
-			print "<div class='spawn-wrapper list-wrapper'><p>This NPC has no spawn point.</p></ul></div>";
+			print "<p>This NPC has no spawn point.</p></ul>";
 		}
 		print "</ul>";
 	}
 } else {
 	print "<p><strong>This NPC does not spawn during this expansion.</strong></p>";
 }
-print "</div";
+print "</div>"; // spawn-wrapper
 
 function print_spell($spell, $extra = "")
 {
@@ -502,11 +494,23 @@ if ($npc["npc_spells_id"] > 0) {
 				print "</li>";
 			}
 		}
-		print "</ul></div>";
+		print "</ul></div>"; // list-wrapper
 	}
 }
 
 // factions
+if ($npc["npc_faction_id"] > 0) {
+	$query = "SELECT $tbfactionlist.name,$tbfactionlist.id
+				FROM $tbfactionlist,$tbnpcfaction 
+				WHERE $tbnpcfaction.id=" . $npc["npc_faction_id"] . " 
+				AND $tbnpcfaction.primaryfaction=$tbfactionlist.id";
+	$faction = GetRowByQuery($query);
+	print "<div class='list-wrapper'>";
+	print "<p><strong>Consider faction:</strong></p>";
+	print "<p><a href=faction.php?id=" . $faction["id"] . ">" . $faction["name"] . "</a></p>";
+	print "</div>";
+}
+
 $query = "SELECT $tbfactionlist.name,
 			$tbfactionlist.id,
 			$tbnpcfactionentries.value
@@ -526,7 +530,7 @@ if (mysqli_num_rows($result) > 0) {
 		}
 	}
 	print "</ul>";
-	print "</div>";
+	print "</div>"; // list-wrapper
 }
 $query = "SELECT $tbfactionlist.name,
 			$tbfactionlist.id,
@@ -547,11 +551,11 @@ if (mysqli_num_rows($result) > 0) {
 		}
 	}
 	print "</ul>";
-	print "</div>";
+	print "</div>"; // list-wrapper
 }
-print "</div>";
-print "</div>";
-print "</div>";
-print "</div>";
+print "</div>"; // site-wrapper
+print "</div>"; // main
+print "</div>"; // npc-info
+print "</div>"; // npc-wrapper
 
 include($includes_dir . "footers.php");

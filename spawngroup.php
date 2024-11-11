@@ -19,7 +19,7 @@ $query="SELECT $tbspawngroup.name AS sgname, $tbspawn2.*,
           AND $tbspawn2.zone=$tbzones.short_name";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 $spawn=mysqli_fetch_array($result);
-$Title=$spawn["sgname"]." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
+$Title=$spawn["sgname"]; #." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
 $x=floor($spawn["x"]);
 $y=floor($spawn["y"]);
 $z=floor($spawn["z"]);
@@ -33,7 +33,7 @@ $query="SELECT $tbspawnentry.chance,$tbnpctypes.name,$tbnpctypes.id
         FROM $tbspawnentry,$tbnpctypes
         WHERE $tbspawnentry.spawngroupID=$id
           AND $tbspawnentry.npcID=$tbnpctypes.id 
-        ORDER BY $tbnpctypes.name ASC
+        ORDER BY $tbspawnentry.chance DESC
         ";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 print "<b>NPCs composing that spawngroup :</b>";

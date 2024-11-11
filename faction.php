@@ -26,7 +26,13 @@ function PrintNpcsByZone($QueryResult) {
 				print "<a class='zone' href='zone.php?name=" . $row["zone"] . "'>" . $row["long_name"] . "</a>";
 				$CurrentZone = $row["zone"];
 			}
-			print "<li><a href='npc.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a></li>";
+			$id=$row["id"];
+			$name=str_replace(array("_","#"), " ", $row["name"]);
+			$value = "";
+			if (array_key_exists("value", $row)) {
+				$value=" (" . $row["value"] . ")";
+			}
+			print "<li><a href='npc.php?id=$id'>$name$value</a></li>";
 		}
 		echo '</ul>';
 	}
@@ -74,41 +80,48 @@ include($includes_dir . 'headers.php');
 
 echo '<div class="container faction-details">';
 echo '<div class="faction-list">';
+echo '<div class="consider">';
+echo "<strong>NPCs that consider on this faction</strong>";
+$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbzones.short_name as zone
+FROM $tbfactionlist
+JOIN $tbnpcfaction ON $tbnpcfaction.primaryfaction = $tbfactionlist.id
+JOIN $tbnpctypes ON $tbnpctypes.npc_faction_id = $tbnpcfaction.id
+JOIN $tbzones ON $tbzones.zoneidnumber = $tbnpctypes.id DIV 1000
+WHERE $tbfactionlist.id = $id
+ORDER BY $tbzones.long_name ASC, npc_types.name ASC
+";
+$QueryResult = mysqli_query($db, $Query) or message_die('faction.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+PrintNpcsByZone($QueryResult);
+echo '</div>'; // consider
 echo '<div class="raise">';
 echo "<strong>NPCs whom death raises the faction</strong>";
-$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbspawn2.zone
-			FROM $tbnpcfactionentries,$tbnpctypes,$tbspawnentry,$tbspawn2,$tbzones
+$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbzones.short_name as zone,$tbnpcfactionentries.value
+			FROM $tbnpcfactionentries,$tbnpctypes,$tbzones
 			WHERE $tbnpcfactionentries.faction_id=$id
 			AND $tbnpcfactionentries.npc_faction_id=$tbnpctypes.npc_faction_id
 			AND $tbnpcfactionentries.value>0
-			AND $tbnpctypes.id=$tbspawnentry.npcID
-			AND $tbspawn2.spawngroupID=$tbspawnentry.spawngroupID
-			AND $tbzones.short_name=$tbspawn2.zone
-			GROUP BY $tbnpctypes.id
-			ORDER BY $tbzones.long_name ASC
+			AND $tbzones.zoneidnumber = $tbnpctypes.id DIV 1000
+			ORDER BY $tbzones.zoneidnumber ASC, $tbnpcfactionentries.value DESC
 			";
 $QueryResult = mysqli_query($db, $Query) or message_die('faction.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 PrintNpcsByZone($QueryResult);
-echo '</div>';
+echo '</div>'; // raise
 
 echo '<div class="lower">';
 echo "<strong>NPCs whom death lowers the faction</strong>";
-$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbspawn2.zone
-			FROM $tbnpcfactionentries,$tbnpctypes,$tbspawnentry,$tbspawn2,$tbzones
+$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbzones.short_name as zone,$tbnpcfactionentries.value
+			FROM $tbnpcfactionentries,$tbnpctypes,$tbzones
 			WHERE $tbnpcfactionentries.faction_id=$id
 			AND $tbnpcfactionentries.npc_faction_id=$tbnpctypes.npc_faction_id
 			AND $tbnpcfactionentries.value<0
-			AND $tbnpctypes.id=$tbspawnentry.npcID
-			AND $tbspawn2.spawngroupID=$tbspawnentry.spawngroupID
-			AND $tbzones.short_name=$tbspawn2.zone
-			GROUP BY $tbnpctypes.id
-			ORDER BY $tbzones.long_name ASC
+			AND $tbzones.zoneidnumber=$tbnpctypes.id DIV 1000
+			ORDER BY $tbzones.long_name ASC, $tbnpcfactionentries.value ASC
 			";
 $QueryResult = mysqli_query($db, $Query) or message_die('faction.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 PrintNpcsByZone($QueryResult);
-echo '</div>';
-echo '</div>';
-echo '</div>';
+echo '</div>'; // lower
+echo '</div>'; // faction-list
+echo '</div>'; // faction-details
 echo '</div>';
 
 include($includes_dir . "footers.php");

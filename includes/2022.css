@@ -3627,10 +3627,15 @@ form.item-refine div .checkbox input:checked + span::after {
 }
 .factions .faction-list,
 .faction-details .faction-list {
-  display: -ms-grid;
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   grid-template-columns: repeat(auto-fit, minmax(610px, 1fr));
+}
+
+.faction .faction-list > div,
+.faction-details .faction-list > div {
+  flex: 1 1 30%;
 }
 
 .recipes {
