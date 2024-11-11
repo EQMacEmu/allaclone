@@ -19,7 +19,7 @@ $query="SELECT $tbspawngroup.name AS sgname, $tbspawn2.*,
           AND $tbspawn2.zone=$tbzones.short_name";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 $spawn=mysqli_fetch_array($result);
-$Title=$spawn["sgname"]; #." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
+$Title=$spawn["sgname"] ." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
 $x=floor($spawn["x"]);
 $y=floor($spawn["y"]);
 $z=floor($spawn["z"]);
@@ -28,7 +28,9 @@ include($includes_dir.'headers.php');
 
 if (!isset($id) || $id=='') { print "<script>document.location=\"index.php\";</script>"; }
 
-print "<div><tr valign=top><td width=50% nowrap>\n";
+print "<div class='spawngroup-wrapper'>";
+print "<div class='spawngroup-info'>";
+print "<ul>";
 $query="SELECT $tbspawnentry.chance,$tbnpctypes.name,$tbnpctypes.id
         FROM $tbspawnentry,$tbnpctypes
         WHERE $tbspawnentry.spawngroupID=$id
@@ -42,7 +44,10 @@ if (mysqli_num_rows($result)>0) {
     print "<li><a href=npc.php?id=".$row["id"].">".$row["name"]."</a> (".$row["chance"]."%)"; 
   }
 }
-print "</td><br/><td width=50% nowrap>";
+print "</ul>";
+print "</div>"; // spawngroup-info
+print "<div class='spawngroup-nearby'>";
+print "<ul>";
 print "<b>NPCs spawning around that spawngroup : </b><br>(Max range : $SpawngroupAroundRange)<ul>";
 $myrange=$SpawngroupAroundRange*$SpawngroupAroundRange; // precalculate, saves some mysql time
 $query="SELECT $tbspawnentry.chance,$tbspawn2.x AS x, $tbspawn2.y AS y, $tbspawn2.z AS z,
@@ -73,8 +78,10 @@ if (mysqli_num_rows($result)>0) {
 } else {
   print "None... ";
 }
-print "</ul></td></tr></div>";
+print "</ul>";
+print "</div>"; // spawngroup-nearby
+print "</div>"; // spawngroup-wrapper
+print "</div>"; // main
 
-print "</div>";
 include($includes_dir."footers.php");
 ?>

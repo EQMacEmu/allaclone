@@ -3748,3 +3748,17 @@ table#resists-table th,
 .tooltip a:hover {
   color: #99ddff;
 }
+
+.spawngroup-wrapper {
+  display: flex;
+  grid-area: pageContent;
+  width: 100%;
+  max-width: 1260px;
+  margin: 0 auto;
+}
+.spawngroup-wrapper .spawngroup-info,.spawngroup-nearby {
+  flex: 1 1 45%;
+  min-width: 200px;
+  box-sizing: border-box;
+  padding: 10px;
+}
