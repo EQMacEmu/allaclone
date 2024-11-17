@@ -331,7 +331,9 @@ if (isset($QueryResult)) {
 			$TableData .= "</td><td>";
 
 
-			$TableData .= "<a href='item.php?id=" . $row["id"] . "' id='" . $row["id"] . "'>" . $row["Name"] . "</a>";
+			$id = $row["id"];
+			$attrs = "data-item-id=\"$id\" class=\"item-link\"";
+			$TableData .= "<a href='item.php?id=$id' id='$id' $attrs>" . $row["Name"] . "</a>";
 
 			$TableData .= "</td><td>";
 			$TableData .= $dbitypes[$row["itemtype"]];

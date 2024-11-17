@@ -3024,6 +3024,10 @@ article.news h2 {
   border-top: 1px solid rgba(250, 0, 0, 0.3);
 }
 
+.npc-info p {
+  margin: 0px;
+}
+
 .container.items {
   grid-area: pageContent;
 }
@@ -3674,22 +3678,28 @@ form.item-refine div .checkbox input:checked + span::after {
 
 table#resists-table td,
 table#resists-table th,
-.spawn-wrapper table.spawn-table td {
+.collapsible-table td {
   border: 1px solid #000;
   text-align: center;
   padding: 5px;
 }
 
-.spawn-wrapper table.spawn-table tr:nth-child(even) {
+.collapsible-table tr:nth-child(even) {
   background-color: #D3D3D3;
 }
 
-.spawn-wrapper table.spawn-table {
+.collapsible-table {
   width: 100%;
+  column-count: 2;
+  column-gap: 10px;
 }
 
-.spawn-wrapper table.spawn-table td {
+.collapsible-table td {
   text-align: left;
+}
+
+.collapsible-table li {
+  break-inside: avoid;
 }
 
 .spawn-wrapper ul ul.spawn-group {
@@ -3700,7 +3710,7 @@ table#resists-table th,
   margin-left: 20px;
 }
 
-.spawn-wrapper .collapsible {
+.collapsible {
   background-color: #777;
   color: white;
   cursor: pointer;
@@ -3713,7 +3723,7 @@ table#resists-table th,
 }
 
 .spawn-wrapper .active,
-.spawn-wrapper .collapsible:hover {
+.collapsible:hover {
   background-color: #555;
 }
 

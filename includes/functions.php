@@ -342,7 +342,7 @@ function SelectIClass($name, $selected) {
 	global $dbiclasses;
 	print "<SELECT name=\"$name\">";
 	print "<option value='0'>Class</option>\n";
-	for ($i = 1; $i <= 32768; $i *= 2) {
+	for ($i = 1; $i < 15; $i++) {
 		print "<option value='" . $i . "'";
 		if ($i == $selected) {
 			print " selected='1'";
@@ -367,21 +367,18 @@ function SelectIType($name, $selected) {
 	print "</SELECT>";
 }
 function SelectSlot($name, $selected) {
-	/*
 	global $dbslots;
 	print "<SELECT name=\"$name\">";
 	print "<option value='0'>Slot</option>\n";
-	reset($dbslots);
-	do {
-		$key = key($dbslots);
+	for ($i = 1; $i < 15; $i++) {
+		$key = $dbslots[$i];
 		print "<option value='" . $key . "'";
 		if ($key == $selected) {
 			print " selected='1'";
 		}
-		print ">" . current($dbslots) . "</option>\n";
-	} while (next($dbslots));
+		print ">" . $dbslots[$i] . "</option>\n";
+	}
 	print "</SELECT>";
-	*/
 }
 function SelectSpellEffect($name, $selected) {
 	global $dbspelleffects;
@@ -1088,7 +1085,7 @@ function BuildItemStats($item, $show_name_icon) {
 			case 0: // 1HS
 			case 2: // 1HP
 			case 3: // 1HB
-			case 42: // H2H
+			case 45: // H2H
 			case 5: // Archery
 			case 1: // 2hs
 			case 4: // 2hb
@@ -1136,7 +1133,7 @@ function BuildItemStats($item, $show_name_icon) {
 				case 0: // 1HS
 				case 2: // 1HP
 				case 3: // 1HB
-				case 42: // H2H
+				case 45: // H2H
 				case 5: // Archery
 					$dmgbonus = 13; // floor((65-25)/3)  main hand
 					break;
@@ -1170,12 +1167,16 @@ function BuildItemStats($item, $show_name_icon) {
 
 		// Bane DMG: Type ##
 		if ($item["banedmgamt"] != 0) {
-			$type = "";
-			if ($item["banedmgrace"] > 0)
-				$type = $dbiracenames[$item["banedmgrace"]];
-			if ($item["banedmgbody"] > 0)
-				$type = $dbbodytypes[$item["banedmgbody"]];
-			array_push($line, "Bane DMG:", $type, sign($item["banedmgamt"]));
+			$banetarget = "";
+			$banetype = "";
+			if ($item["banedmgrace"] > 0) {
+				$banetarget = $dbiracenames[$item["banedmgrace"]];
+				$banetype = "Race";
+			} else if ($item["banedmgbody"] > 0) {
+				$banetarget = $dbbodytypes[$item["banedmgbody"]];
+				$banetype = "Body";
+			}
+			array_push($line, "Bane DMG:", $banetarget, sign($item["banedmgamt"]), "($banetype)");
 			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
 			$line = array();
 		}

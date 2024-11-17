@@ -8,7 +8,7 @@
   <meta property="og:type" content="article">
   <?php if ($name) { ?>
     <meta property="og:title" content="<?php echo $name; ?>">
-    <?php if (defined($stats) && strlen($stats)) { ?>
+    <?php if (strlen($stats)) { ?>
         <meta property="og:description" content="<?php echo $stats ?>">
     <?php } ?>
     <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">

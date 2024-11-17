@@ -77,17 +77,18 @@ if ($npc["lastname"] != "") {
 
 print "<div class='secondary-info'>";
 
-print "<p><strong>Race:</strong> " . $dbiracenames[$npc["race"]] . "</p>";
+print "<p><strong>Race/Body:</strong> " . $dbiracenames[$npc["race"]] . " / " . $dbbodytypes[$npc["bodytype"]] . "</p>";
 $greed="";
 if ($npc["class"] == 41) {
 	$greed = " (" . $npc["greed"] . ")";
 }
 print "<p><strong>Class:</strong> " . $dbclasses[$npc["class"]] . " $greed</p>";
-print "<p><strong>Hit Points:</strong> " . $npc["hp"] . "</p>";
+print "<p><strong>HP/Mana:</strong> " . $npc["hp"] . " / " . $npc["mana"] . "</p>";
 if ($npc["mana"] > 0) {
 	print "<p><strong>Mana:</strong> " . $npc["mana"] . "</p>";
 }
 print "<p><strong>Dmg/Delay:</strong> " . $npc["mindmg"] . "-" . $npc["maxdmg"] . " / " . $npc["attack_delay"] . "</p>";
+print "<p><strong>AC/ATK:</strong> " . $npc["AC"] . " / " . $npc["ATK"] . "</p>";
 $pr = $npc["PR"];
 $mr = $npc["MR"];
 $dr = $npc["DR"];
@@ -113,6 +114,14 @@ print "</table>";
 print "<p><strong>Special:</strong> " . SpecialAttacks($npc["special_abilities"]) . "</p>";
 print "<p><strong>Agro Radius</strong>: " . $npc["aggroradius"] . "</p>";
 print "<p><strong>Assist Radius</strong>: " . $npc["assistradius"] . "</p>";
+print "<button type='button' class='collapsible' onclick=toggleList('rawdump')>Raw NPC Data</button>";
+print "<ul class='collapsible-table' style='display: none;' id='rawdump'>";
+foreach ($npc as $key => $value) {
+	if(!is_int($key)) {
+		print "<li>$key : $value</li>";
+	}
+}
+print "</ul>";
 print "</div>"; // secondary-info
 
 
@@ -415,7 +424,7 @@ if (mysqli_num_rows($result) > 0) {
 				} else {
 					$display = "block";
 				}
-				print "<ul class='spawn-table' style='display: $display;' id=$listid>";
+				print "<ul class='collapsible-table' style='display: $display;' id=$listid>";
 				if ($count > 0) {
 					while ($spawnrow = mysqli_fetch_array($spawnresult)) {
 						print "<li>";
