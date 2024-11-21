@@ -60,11 +60,18 @@ if ($item["material"] > 0) {
 }
 
 if ($item["color"] > 0) {
+	$color = $item["color"];
+	$r = ($color & (0xff<<16))>>16;
+	$g = ($color & (0xff<<8))>>8;
+	$b = $color & (0xff);
+	$luminance = (299*$r + 587*$g + 114*$b)/1000;
+	$hexprint = sprintf('%d, %d, %d', $r, $g, $b);
 	$hexcolor = sprintf('%06x', $item["color"]);
-	echo '<div style="width:120px">';
-	echo '<div style="float:right; width:80px; height:24px; background-color: #'.$hexcolor.';"></div>';
-	echo '<p>Tint:</p>';
-	echo '</div>';
+	$textcolor = ($luminance > 128) ? "black" : "white";
+	echo '<p class="item-tint" style="display: inline-flex; align-items: center; gap: 0.5rem">';
+	echo "Tint: ($hexprint)";
+	echo '<span class="color-block" style="background-color: #'.$hexcolor.'; height: 24px; width: 80px; display: inline-block; border: 1px solid #aaa;"></span>';
+	echo '</p>';
 }
 
 if ($item["light"] > 0) {
