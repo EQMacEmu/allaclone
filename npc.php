@@ -452,7 +452,7 @@ function print_spell($spell, $extra = "")
 	print "<img height='20' width='20' id='spell-icon' src='{$icons_url}{$spell['new_icon']}.gif' alt='{$spell["name"]}' />";
 	print "<a href='spell.php?id=" . $spell["id"] . "'>" . $spell["name"] . "</a>";
 	if ($extra != "") {
-		print "($extra)";
+		print " ($extra)";
 	}
 	print "</li>";
 }

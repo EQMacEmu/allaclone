@@ -2523,7 +2523,7 @@ body {
   grid-area: contentHeader;
   width: 100%;
   max-width: 1260px;
-  margin: 2rem auto;
+  margin: 1rem auto;
 }
 
 a {
@@ -3008,8 +3008,16 @@ article.news h2 {
   margin: 0;
   list-style-type: none;
 }
-.npc-wrapper .list-wrapper li a {
-  padding: 5px;
+.spawn-wrapper.list-wrapper ul,
+.list-wrapper ul, 
+.list-wrapper img, 
+.list-wrapper li.bad, 
+.list-wrapper li.good, 
+.list-wrapper p.consider-faction {
+  margin-left: 1em;
+}
+.npc-wrapper .list-wrapper img {
+  margin-right: .2em;
 }
 .npc-wrapper .list-wrapper li.good {
   background: rgba(0, 250, 0, 0.2);
@@ -3540,7 +3548,6 @@ form.item-refine div .checkbox input:checked + span::after {
   display: flex;
   -ms-flex-wrap: nowrap;
       flex-wrap: nowrap;
-  margin: 0 0 0.4rem;
 }
 .spell-information dd strong {
   text-align: right;

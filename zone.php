@@ -46,11 +46,7 @@ if ($mode == "npcs") {
 	if ($HideInvisibleMen == TRUE) {
 		$query .= " AND $tbnpctypes.race!=127 AND $tbnpctypes.race!=240";
 	}
-	if ($GroupNpcsByName == TRUE) {
-		$query .= " GROUP BY $tbnpctypes.name";
-	} else {
-		$query .= " GROUP BY $tbnpctypes.id";
-	}
+	$query .= " GROUP BY $tbnpctypes.id";
 	$query .= " ORDER BY $order";
 	$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
