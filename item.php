@@ -140,7 +140,7 @@ if ($ItemFoundInfo) {
 
 	if ($IsDropped) {
 
-		$dropfilter = gatefilter(array($tbzones, $tbloottable, $tblootdrop, $tblootdropentries), $expansion);
+		$dropfilter = gatefilter(array($tbzones, $tbloottable, $tblootdrop, $tblootdropentries));
 		$query = "
 		SELECT $tbnpctypes.id,
 			$tbzones.short_name,

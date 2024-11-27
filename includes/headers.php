@@ -37,7 +37,6 @@
 			<div class="intro container">
 				<div class="forms">
 					<div class="expansion">
-						<?php include("expansion.php"); ?>
 						<form name="expansionform" method="POST" action="">
 							<select name="expansion" onchange="this.form.submit()" id="expansion">
 								<?php

@@ -1515,3 +1515,10 @@ $worldcontainer[48] = "Fier'Dal Forge (Wood Elf)";
 $worldcontainer[49] = "Vale Forge (Halfling)";
 $worldcontainer[50] = "Erud Forge (Erudite)";
 
+$expansionNames = [
+	"Classic",
+	"Ruins of Kunark",
+	"Scars of Velious",
+	"Shadows of Luclin",
+	"Planes of Power"
+];

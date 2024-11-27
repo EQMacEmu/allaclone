@@ -84,9 +84,6 @@ if ($npc["class"] == 41) {
 }
 print "<p><strong>Class:</strong> " . $dbclasses[$npc["class"]] . " $greed</p>";
 print "<p><strong>HP/Mana:</strong> " . $npc["hp"] . " / " . $npc["mana"] . "</p>";
-if ($npc["mana"] > 0) {
-	print "<p><strong>Mana:</strong> " . $npc["mana"] . "</p>";
-}
 print "<p><strong>Dmg/Delay:</strong> " . $npc["mindmg"] . "-" . $npc["maxdmg"] . " / " . $npc["attack_delay"] . "</p>";
 print "<p><strong>AC/ATK:</strong> " . $npc["AC"] . " / " . $npc["ATK"] . "</p>";
 $pr = $npc["PR"];
@@ -127,7 +124,7 @@ print "</div>"; // secondary-info
 
 $loottable_id = 0;
 if (($npc["loottable_id"] > 0) and ((!in_array($npc["class"], $dbmerchants)) or ($MerchantsDontDropStuff == FALSE))) {
-	$filter = gatefilter(array($tbloottable), $expansion);
+	$filter = gatefilter(array($tbloottable));
 	$query = "SELECT
 		id
 		FROM
@@ -184,8 +181,9 @@ function printLootDrop($loottable)
 	} else if ($tbl_diff == 0) {
 		print "Runs $tbl_min times.";
 	} else {
-		if ($tbl_min > 1) {
-			print "Runs $tbl_min times, plus ${tbl_diff}x${table_chance}% times.";
+		if ($tbl_min >= 1) {
+			$s = ($tbl_min > 1) ? "s" : "";
+			print "Runs $tbl_min time${s}, plus ${tbl_diff}x${table_chance}% times.";
 		} else {
 			print "Has a ${table_chance}% to run.";
 		}
@@ -208,7 +206,7 @@ function printLootDrop($loottable)
 
 	print "</u></li>";
 
-	$filter = gatefilter(array($tblootdropentries), $expansion);
+	$filter = gatefilter(array($tblootdropentries));
 	$query = "SELECT
 		$tbitems.id as id,
 		$tbitems.name as name,
@@ -261,7 +259,7 @@ if ($loottable_id > 0) {
 	print "<p><strong>When killed, this NPC can drop: </strong></p>";
 	print "<ul>";
 
-	$filter = gatefilter(array($tblootdrop, $tblootdropentries), $expansion);
+	$filter = gatefilter(array($tblootdrop, $tblootdropentries));
 	$query = "SELECT
 		$tbloottableentries.lootdrop_id,
 		$tbloottableentries.probability/100 as tbl_chance,
@@ -332,7 +330,7 @@ if ($UseWikiImages) {
 
 // zone list
 // NPCs with the same name have different IDs in different zones. So we'll only ever get 1 zone.
-$zonefilter = gatefilter(array($tbzones), $expansion);
+$zonefilter = gatefilter(array($tbzones));
 $query = "SELECT
 	$tbzones.long_name,
 	$tbzones.short_name
@@ -348,8 +346,8 @@ $result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $qu
 
 print "<div class='spawn-wrapper list-wrapper'>";
 if (mysqli_num_rows($result) > 0) {
-	$spawnentryfilter = gatefilter(array($tbspawnentry, $tbspawn2), $expansion);
-	$spawn2filter = gatefilter(array($tbspawn2), $expansion);
+	$spawnentryfilter = gatefilter(array($tbspawnentry, $tbspawn2));
+	$spawn2filter = gatefilter(array($tbspawn2));
 	$row = mysqli_fetch_array($result);
 	$short_name = $row["short_name"];
 	$long_name = $row["long_name"];

@@ -36,7 +36,8 @@ function GetReagents() {
 	for ($i = 1; $i <= 4; $i++) {
 		if ($spell["components" . $i] > 0) {
 			$itemName = GetFieldByQuery("Name", "SELECT Name FROM $tbitems WHERE id=" . $spell["components" . $i]);
-			array_push($string, "<a style='display: inline; color: black; padding: 0;' href='item.php?id=" . $spell["components" . $i] . "'>" . $itemName . " </a>(" . $spell["component_counts" . $i] . ")");
+			$id = $spell["components" . $i];
+			array_push($string, "<a data-item-id=\"$id\" class=\"item-link\" style='display: inline; color: black; padding: 0;' href='item.php?id=$id'>" . $itemName . " </a>(" . $spell["component_counts" . $i] . ")");
 		}
 	}
 	return $string;
@@ -61,7 +62,8 @@ function OutputItems($type) {
 	if (mysqli_num_rows($result)) {
 		$string = "<ol>";
 		while ($row = mysqli_fetch_array($result)) {
-			$string .= "<li><a href=item.php?id=" . $row["id"] . ">" . $row["name"] . "</a></li>";
+			$id = $row["id"];
+			$string .= "<li><a data-item-id=\"$id\" class=\"item-link\" href=item.php?id=" . $row["id"] . ">" . $row["name"] . "</a></li>";
 		}
 		$string .= "</ol>";
 	}

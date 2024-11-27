@@ -1032,7 +1032,7 @@ function GetItemRow($id) {
 // Function to build item stats tables
 // Used for item.php as well as for tooltips for items
 function BuildItemStats($item, $show_name_icon) {
-	global $db, $dbitypes, $dam2h, $dbbagtypes, $dbskills, $icons_url, $tbspells, $dbiracenames, $dbelements, $dbbodytypes, $dbbardskills;
+	global $db, $dbitypes, $dam2h, $dbbagtypes, $dbskills, $icons_url, $tbspells, $dbiracenames, $dbelements, $dbbodytypes, $dbbardskills, $expansion;
 
 	$html_string = "";
 	if ($show_name_icon) {
@@ -1053,12 +1053,12 @@ function BuildItemStats($item, $show_name_icon) {
 	if ($item["magic"] == 1) {
 		array_push($line, "MAGIC ITEM");
 	}
-	if (substr($item["lore"], 0, 2) == '*#') {
-		array_push($line, "ARTIFACT");
+	$i = 0;
+	if ($item["lore"][$i] == '*') {
+		$i++;
 		array_push($line, "LORE ITEM");
-	} elseif (substr($item["lore"], 0, 1) == '*') {
-		array_push($line, "LORE ITEM");
-	} elseif (substr($item["lore"], 0, 1) == '#') {
+	}
+	if ($item["lore"][$i] == '#') {
 		array_push($line, "ARTIFACT");
 	}
 	if ($item["nodrop"] == 0) {
@@ -1077,6 +1077,16 @@ function BuildItemStats($item, $show_name_icon) {
 		// Slot: PRIMARY
 		if ($item["slots"] > 0) {
 			$html_string .= "<p>Slot: " . getslots($item["slots"]) . "</p>\n";
+		}
+
+		// EXPENDABLE Charges: XX
+		if ($item["maxcharges"] > 0) {
+			if ($item["clicktype"] == 3) {
+				array_push($line, "EXPENDABLE");
+			}
+			array_push($line, "Charges:", $item["maxcharges"]);
+			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
+			$line = array();
 		}
 
 		// Skill: Xyz Delay
@@ -1104,11 +1114,6 @@ function BuildItemStats($item, $show_name_icon) {
 			$line = array();
 		}
 
-		// EXPENDABLE CHarges: XX
-		if ($item["maxcharges"] > 0) {
-			$html_string .= "<p>Charges: " . $item["maxcharges"] . "</p>\n";
-			$line = array();
-		}
 		// Level Needed:
 		// Skill: Alteration
 		// Mana Cost: ##
@@ -1166,7 +1171,7 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 
 		// Bane DMG: Type ##
-		if ($item["banedmgamt"] != 0) {
+		if ($expansion >=3 && $item["banedmgamt"] != 0) {
 			$banetarget = "";
 			$banetype = "";
 			if ($item["banedmgrace"] > 0) {
@@ -1182,7 +1187,7 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 
 		// #Skill Mod
-		if (($item["skillmodtype"] > 0) && ($item["skillmodvalue"] != 0)) {
+		if ($expansion >=3 && ($item["skillmodtype"] > 0) && ($item["skillmodvalue"] != 0)) {
 			$html_string .= "<p>Skill Mod: " . $dbskills[$item["skillmodtype"]] . " " . sign($item["skillmodvalue"]) . "%</p>\n";
 		}
 
@@ -1277,7 +1282,7 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 
 		// Effect: Aura of Bravery (Worn)
-		if (($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
+		if (($expansion >= 3) && ($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]);
 			array_push($line, "Focus Effect:", "<a href='spell.php?id=" . $item["focuseffect"] . "'>$spellname</a>");
 			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
@@ -1438,7 +1443,8 @@ function contentflagfilter() {
 	return implode(",", $cf);
 }
 
-function gatefilter($tables, $expansion) {
+function gatefilter($tables) {
+	global $expansion;
 	$filter = "";
 	$cf = contentflagfilter();
 
