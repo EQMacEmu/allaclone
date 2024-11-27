@@ -1515,6 +1515,24 @@ $worldcontainer[48] = "Fier'Dal Forge (Wood Elf)";
 $worldcontainer[49] = "Vale Forge (Halfling)";
 $worldcontainer[50] = "Erud Forge (Erudite)";
 
+// Expansion and content gating
+$contentflags = array(
+	"EquestrielleCorrupted"=>false,
+	"OldPlane_Hate_Sky"=>false,
+	"OldPlane_Fear"=>false,
+	"Classic_OldWorldDrops"=>true,
+	"anniversary"=>false
+);
+$contentNames = [
+	"Classic",                // 0
+	" * Plane of Fear",          // 1
+	" * Plane of Hate and Sky",  // 2
+	"Ruins of Kunark",        // 3
+	"Scars of Velious",       // 4
+	" * Equestrielle Event",     // 5
+	"Shadows of Luclin",      // 6
+	"Planes of Power"         // 7
+];
 $expansionNames = [
 	"Classic",
 	"Ruins of Kunark",
@@ -1522,3 +1540,35 @@ $expansionNames = [
 	"Shadows of Luclin",
 	"Planes of Power"
 ];
+$defaultContent = count($contentNames);
+
+if (isset($_COOKIE['content']) && is_numeric($_COOKIE['content']) && $_COOKIE['content'] >= 0 && $_COOKIE['content'] < count($contentNames)) {
+	$content = (int)$_COOKIE['content'];
+} else {
+	$content = $defaultContent;
+	setcookie('content', $content, time() + (86400 * 30), "/");
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['content'])) {
+	$newContent = (int)$_POST['content'];
+	if ($newContent >= 0 && $newContent <= count($contentNames)) {
+		$content = $newContent;
+		setcookie('content', $newContent, time() + (86400 * 30), "/"); // Update cookie for 30 days
+	}
+}
+$expansion = 0;
+if ($content >= 1) {
+	$contentflags["OldPlane_Fear"] = true;
+}
+
+if ($content >= 2) {
+	$contentflags["OldPlane_Hate_Sky"] = true;
+	$contentflags["Classic_OldWorldDrops"] = false;
+}
+if ($content >= 3) {
+	$expansion = $content - 2;
+}
+if ($content >= 5) {
+	$expansion = $content - 3;
+	$contentflags["EquestrielleCorrupted"] = true;
+}

@@ -14,7 +14,6 @@ include($includes_dir . 'functions.php');
 
 $id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$content = (isset($_GET['content']) ? addslashes($_GET['content']) : '');
 
 $ItemRow = GetItemRow($id);
 $name = $ItemRow["Name"];

@@ -2550,7 +2550,7 @@ a:hover {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   height: 15rem;
 }
-.container.intro .quick-search input, .container.intro .expansion select {
+.container.intro .quick-search input, .container.intro .content select {
   padding: 0.5rem;
   border-radius: 4px;
   border: 0;
@@ -2847,7 +2847,7 @@ article.news h2 {
   text-decoration: underline;
 }
 
-.expansion-list,
+.content-list,
 .zone-list {
   display: -webkit-box;
   display: -ms-flexbox;
@@ -2861,7 +2861,7 @@ article.news h2 {
   padding: 0;
   margin: 0;
 }
-.expansion-list li,
+.content-list li,
 .zone-list li {
   margin: 0;
   text-align: center;
@@ -2870,7 +2870,7 @@ article.news h2 {
           flex: 0 1 100%;
 }
 @media only screen and (min-width: 640px) {
-  .expansion-list li,
+  .content-list li,
 .zone-list li {
     -webkit-box-flex: 0;
         -ms-flex: 0 1 50%;
@@ -2878,7 +2878,7 @@ article.news h2 {
   }
 }
 @media only screen and (min-width: 1024px) {
-  .expansion-list li,
+  .content-list li,
 .zone-list li {
     -webkit-box-flex: 0;
         -ms-flex: 0 1 33.3%;

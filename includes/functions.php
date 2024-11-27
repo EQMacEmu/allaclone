@@ -1427,13 +1427,7 @@ function getcookie($name, $default) {
 }
 
 function contentflagfilter() {
-	$contentflags = array(
-		"EquestrielleCorrupted"=>getcookie("EquestrielleCorrupted", true),
-		"OldPlane_Hate_Sky"=>getcookie("OldPlane_Hate_Sky", true),
-		"OldPlane_Fear"=>getcookie("OldPlane_Fear", true),
-		"Classic_OldWorldDrops"=>getcookie("Classic_OldWorldDrops", false),
-		"anniversary"=>false
-	);
+	global $contentflags;
 	$cf = array();
 	foreach($contentflags as $key=>$value) {
 		if ($value) {
@@ -1453,9 +1447,12 @@ function gatefilter($tables) {
 			$filter .="
 				AND $table.expansion <= $expansion";
 		} else {
+			if (strlen("$cf")) {
+				$filter .="
+					AND ($table.content_flags IS NULL OR $table.content_flags IN ($cf))
+					AND ($table.content_flags_disabled IS NULL OR $table.content_flags_disabled NOT IN ($cf))";
+			}
 			$filter .="
-				AND ($table.content_flags IS NULL OR $table.content_flags IN ($cf))
-				AND ($table.content_flags_disabled IS NULL OR $table.content_flags_disabled NOT IN ($cf))
 				AND ($table.min_expansion = -1 OR $table.min_expansion <= $expansion)
 				AND ($table.max_expansion = -1 OR $table.max_expansion >= $expansion)";
 		}

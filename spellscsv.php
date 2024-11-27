@@ -33,7 +33,7 @@ header("Content-type: application/vnd.ms-excel");
 header("Content-disposition: attachment; filename=spells.csv"); 
 $result=mysqli_query($db, $query) or message_die('spells.php','MYSQL_QUERY',$query,mysqli_error($db));
 if (mysqli_num_rows($result)>0) {
-  $content=""; $l=0;
+  $l=0;
   if (!($iclass>0)) { print "Spell name,Mana,Duration/Effects,Casting Time,Target\n"; }
   while ($row=mysqli_fetch_array($result)) {
     if (($iclass>0) AND ($l!=$row["level$iclass"])) { 

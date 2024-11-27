@@ -36,13 +36,13 @@
 		<header class="header">
 			<div class="intro container">
 				<div class="forms">
-					<div class="expansion">
-						<form name="expansionform" method="POST" action="">
-							<select name="expansion" onchange="this.form.submit()" id="expansion">
+					<div class="content">
+						<form name="contentform" method="POST" action="">
+							<select name="content" onchange="this.form.submit()" id="content">
 								<?php
-								foreach ($expansionNames as $expid => $expacname) {
-									$selected = $expid === $expansion ? "selected" : "";
-									echo "<option value=\"$expid\" $selected>$expacname</option>";
+								foreach ($contentNames as $contentId => $contentName) {
+									$selected = $contentId === $content ? "selected" : "";
+									echo "<option value=\"$contentId\" $selected>$contentName</option>";
 								}
 								?>
 							</select>

@@ -15,7 +15,6 @@ include($includes_dir . 'mysql.php');
 
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$content = (isset($_GET['content']) ? addslashes($_GET['content']) : '');
 
 $Title="";
 if ($id != "" && !in_array($id, $hide_npc_id) && is_numeric($id)) {
