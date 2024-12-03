@@ -93,11 +93,11 @@ $cr = $npc["CR"];
 print "<table id='resists-table'>";
 print "<tr><td colspan='5'><strong>Resists:</strong></td></tr>";
 print "<tr>";
-print "<td><img width='20' height='20' title='Magic Resist' src='${icons_url}/161.gif' /></td>";
-print "<td><img width='20' height='20' title='Fire Resist' src='${icons_url}/51.gif' /></td>";
-print "<td><img width='20' height='20' title='Cold Resist' src='${icons_url}/56.gif' /></td>";
-print "<td><img width='20' height='20' title='Disease Resist' src='${icons_url}/41.gif' /></td>";
-print "<td><img width='20' height='20' title='Poison Resist' src='${icons_url}/42.gif' /></td>";
+print "<td><img width='20' height='20' title='Magic Resist' src='{$icons_url}/161.gif' /></td>";
+print "<td><img width='20' height='20' title='Fire Resist' src='{$icons_url}/51.gif' /></td>";
+print "<td><img width='20' height='20' title='Cold Resist' src='{$icons_url}/56.gif' /></td>";
+print "<td><img width='20' height='20' title='Disease Resist' src='{$icons_url}/41.gif' /></td>";
+print "<td><img width='20' height='20' title='Poison Resist' src='{$icons_url}/42.gif' /></td>";
 print "</tr>";
 print "<tr>";
 print "<td>$mr</td>";
@@ -182,9 +182,9 @@ function printLootDrop($loottable)
 	} else {
 		if ($tbl_min >= 1) {
 			$s = ($tbl_min > 1) ? "s" : "";
-			print "Runs $tbl_min time${s}, plus ${tbl_diff}x${table_chance}% times.";
+			print "Runs $tbl_min time{$s}, plus {$tbl_diff}x{$table_chance}% times.";
 		} else {
-			print "Has a ${table_chance}% to run.";
+			print "Has a {$table_chance}% to run.";
 		}
 	}
 	if ($drp_min == 0 && $drp_max == 0) {
@@ -199,7 +199,7 @@ function printLootDrop($loottable)
 		if ($sum > 1) {
 			print " Drops $drp_max entries each run.";
 		} else if ($drp_min > 1) {
-			print " Drops at least $drp_min and ${sum}% up to $drp_max each run.";
+			print " Drops at least $drp_min and {$sum}% up to $drp_max each run.";
 		}
 	}
 
@@ -229,7 +229,7 @@ function printLootDrop($loottable)
 				$drp_mult = 1;
 			}
 			print "<li>";
-			print "<img width='20' heigth='20' src='${icons_url}item_$icon.gif' />";
+			print "<img width='20' heigth='20' src='{$icons_url}item_$icon.gif' />";
 			print "<a href='item.php?id=$id' data-item-id='$id'>$name</a>";
 			if (($drp_min == 0 && $drp_max == 0) || $drp_mult > 1) {
 				$chance = round($drp_chance * 100, 2);
@@ -242,9 +242,9 @@ function printLootDrop($loottable)
 				$min = $drp_min;
 				$max = $drp_mult - $min;
 				if ($min > 0) {
-					print "(${min}x100% + ${max}x$chance%)";
+					print "({$min}x100% + {$max}x$chance%)";
 				} else {
-					print "(${max}x$chance%)";
+					print "({$max}x$chance%)";
 				}
 			}
 			print "</li>";
@@ -495,7 +495,7 @@ if ($npc["npc_spells_id"] > 0) {
 				$spell = getspell($row["spellid"]);
 				$mana = $row["manacost"] > 0 ? $row["manacost"] : $spell["mana"];
 				$recast = $row["recast_delay"] > 0 ? $row["recast_delay"] : round($spell["recast_time"] / 1000, 2);
-				print_spell($spell, "Mana: $mana, Recast: ${recast}s");
+				print_spell($spell, "Mana: $mana, Recast: {$recast}s");
 				if ($DebugNpc) {
 					print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
 				}
