@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Fetch item stats from the server
     try {
-      const response = await fetch(`/allaclone/item-preview.php?id=${itemId}`);
+      const response = await fetch(`item-preview.php?id=${itemId}`);
       const data = await response.text();
       showTooltip(event, data);
 
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Fetch spell effects from the server
     try {
-      const response = await fetch(`/allaclone/spell-preview.php?id=${spellId}`);
+      const response = await fetch(`spell-preview.php?id=${spellId}`);
       const data = await response.text();
       showTooltip(event, data);
 

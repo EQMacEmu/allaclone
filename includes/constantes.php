@@ -1515,6 +1515,8 @@ $worldcontainer[48] = "Fier'Dal Forge (Wood Elf)";
 $worldcontainer[49] = "Vale Forge (Halfling)";
 $worldcontainer[50] = "Erud Forge (Erudite)";
 
+$hide_spell_id = array();
+
 // Expansion and content gating
 $contentflags = array(
 	"EquestrielleCorrupted"=>false,
