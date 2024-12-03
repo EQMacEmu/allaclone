@@ -3766,6 +3766,17 @@ table#resists-table th,
   color: #99ddff;
 }
 
+.tooltip ol {
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+
+.tooltip li {
+  margin:1em;
+  padding:0;
+}
+
 .spawngroup-wrapper {
   display: flex;
   grid-area: pageContent;

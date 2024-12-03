@@ -43,15 +43,8 @@ function GetReagents() {
 	return $string;
 }
 
-function OutputEffects() {
-	global $spell;
-	for ($n = 1; $n <= 12; $n++) {
-		SpellDescription($spell, $n);
-	}
-}
-
-function OutputItems($type) {
-	global $db, $tbitems, $id;
+function OutputItems($type, $id) {
+	global $db, $tbitems;
 	$itemQuery = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems
 		WHERE $tbitems.${type}effect=$id
@@ -147,7 +140,7 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 			$types = array("scroll", "focus", "proc", "worn", "click");
 			foreach ($types as $type)
 			{
-				$output = OutputItems($type);
+				$output = OutputItems($type, $id);
 				if ($output !== "None") {
 					print "<dd><strong>Items with this \"$type\" effect:</strong>";
 					print $output;

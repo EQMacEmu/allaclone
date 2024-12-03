@@ -76,10 +76,12 @@ function SpellDescription($spell, $n, $csv = false) {
 				}
 				break;
 			case 32: // summonitem
+			case 109: // summonitem v2
 				print $dbspelleffects[$spell["effectid$n"]];
 				$name = GetFieldByQuery("name", "SELECT name FROM $tbitems WHERE id=" . $spell["effect_base_value$n"]);
 				if (($name != "") and ($csv == false)) {
-					print " : <a href=item.php?id=" . $spell["effect_base_value$n"] . ">$name</a>";
+					$id = $spell["effect_base_value$n"];
+					print " : <a data-item-id=\"$id\" class=\"item-link\" href=item.php?id=$id>$name</a>";
 				} else {
 					print " : $name";
 				}

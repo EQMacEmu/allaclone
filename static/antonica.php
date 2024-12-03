@@ -22,7 +22,7 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=freporte>Freeport (East)</a>
 		<li><a href=../zone.php?name=freportn>Freeport (North)</a>
 		<li><a href=../zone.php?name=freportw>Freeport (West)</a>
-		<li><a href=../zone.php?name=gukta>Gukta</a>
+		<li><a href=../zone.php?name=grobb>Grobb</a>
 		<li><a href=../zone.php?name=halas>Halas</a>
 		<li><a href=../zone.php?name=highkeep>Highpass Keep</a>
 		<li><a href=../zone.php?name=highpass>Highpass Hold</a>

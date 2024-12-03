@@ -20,10 +20,12 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=poknowledge>Plane of Knowledge</a></li>
 		<li><a href=../zone.php?name=ponightmare>Plane of Nightmare</a></li>
 		<li><a href=../zone.php?name=postorms>Plane of Storms</a></li>
-		<li><a href=../zone.php?name=potimea>Plane of Time</a></li>
+		<li><a href=../zone.php?name=potimea>Plane of Time A</a></li>
+		<li><a href=../zone.php?name=potimeb>Plane of Time B</a></li>
 		<li><a href=../zone.php?name=potorment>Plane of Torment</a></li>
 		<li><a href=../zone.php?name=potranquility>Plane of Tranquility</a></li>
 		<li><a href=../zone.php?name=povalor>Plane of Valor</a></li>
+		<li><a href=../zone.php?name=poearthb>Ragrax, Stronghold of the Twelve</a></li>
 		<li><a href=../zone.php?name=powater>Reef of Coirnav</a></li>
 		<li><a href=../zone.php?name=codecay>Ruins of Lxanvom (Crypt of Decay)</a></li>
 		<li><a href=../zone.php?name=hohonorb>Temple of Marr</a></li>

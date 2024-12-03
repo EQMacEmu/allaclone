@@ -271,6 +271,14 @@ function getspell($id) {
 	$s = mysqli_fetch_array($result);
 	return $s;
 }
+
+function OutputEffects() {
+	global $spell;
+	for ($n = 1; $n <= 12; $n++) {
+		SpellDescription($spell, $n);
+	}
+}
+
 function gedeities($val) {
 	global $dbideities;
 	reset($dbideities);
@@ -315,8 +323,8 @@ function SelectDeity($name, $selected) {
 function SelectRace($name, $selected) {
 	global $dbraces;
 	print "<SELECT name=\"$name\">";
-	print "<option value='0'>Race</option>\n";
-	for ($i = 1; $i < 32768; $i *= 2) {
+	print "<option value='-1'>Race</option>\n";
+	for ($i = 0; $i < 14; $i++) {
 		print "<option value='" . $i . "'";
 		if ($i == $selected) {
 			print " selected='1'";
@@ -341,8 +349,8 @@ function SelectMobRace($name, $selected) {
 function SelectIClass($name, $selected) {
 	global $dbiclasses;
 	print "<SELECT name=\"$name\">";
-	print "<option value='0'>Class</option>\n";
-	for ($i = 1; $i < 15; $i++) {
+	print "<option value='-1'>Class</option>\n";
+	for ($i = 0; $i < 15; $i++) {
 		print "<option value='" . $i . "'";
 		if ($i == $selected) {
 			print " selected='1'";
@@ -370,13 +378,16 @@ function SelectSlot($name, $selected) {
 	global $dbslots;
 	print "<SELECT name=\"$name\">";
 	print "<option value='0'>Slot</option>\n";
-	for ($i = 1; $i < 15; $i++) {
+	$skip = array(1, 9, 15);
+	for ($i = 1; $i < 20; $i++) {
+		if (in_array($i, $skip))
+			continue;
 		$key = $dbslots[$i];
-		print "<option value='" . $key . "'";
-		if ($key == $selected) {
+		print "<option value='" . $i . "'";
+		if ($i == $selected) {
 			print " selected='1'";
 		}
-		print ">" . $dbslots[$i] . "</option>\n";
+		print ">$key</option>\n";
 	}
 	print "</SELECT>";
 }
@@ -1251,9 +1262,10 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 
 		// Effect: 
-		if (($item["proceffect"] > 0) && ($item["proceffect"] != $item["worneffect"])) {
+		if (($item["proceffect"] > 0) && ($item["proceffect"] != $item["worneffect"] && $item["worntype"] != 2)) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["proceffect"]);
-			array_push($line, "Effect:", "<a href='spell.php?id=" . $item["proceffect"] . "'>$spellname</a>", "(Combat)");
+			$spellid = $item["proceffect"];
+			array_push($line, "Effect:", "<a href='spell.php?id=$spellid' data-spell-id='$spellid'>$spellname</a>", "(Combat)");
 
 			$proclevel = $item["proclevel"] ?: $item["proclevel2"];
 			if (!$proclevel) {
@@ -1269,7 +1281,7 @@ function BuildItemStats($item, $show_name_icon) {
 		if (($item["worneffect"] > 0 || $item["proceffect"] > 0) && $item["worntype"] == 2) {
 			$effect = $item["worneffect"] ?: $item["proceffect"];
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $effect);
-			array_push($line, "Effect:", "<a href='spell.php?id=" . $effect . "'>$spellname</a>", "(Worn)");
+			array_push($line, "Effect:", "<a href='spell.php?id=$effect' data-spell-id='$effect'>$spellname</a>", "(Worn)");
 			if ($item["worneffect"] == 998) {
 				$haste = (int) $item["wornlevel"];
 				$haste++;
@@ -1284,7 +1296,8 @@ function BuildItemStats($item, $show_name_icon) {
 		// Effect: Aura of Bravery (Worn)
 		if (($expansion >= 3) && ($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]);
-			array_push($line, "Focus Effect:", "<a href='spell.php?id=" . $item["focuseffect"] . "'>$spellname</a>");
+			$effect = $item["focuseffect"];
+			array_push($line, "Focus Effect:", "<a href='spell.php?id=$effect' data-spell-id='$effect'>$spellname</a>");
 			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
 			$line = array();
 		}
@@ -1294,7 +1307,8 @@ function BuildItemStats($item, $show_name_icon) {
 		// Effect: Identify (Casting Time: 4.0)
 		if (($item["clickeffect"] > 0) && ($item["clickeffect"] < 65535)) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["clickeffect"]);
-			array_push($line, "Effect:", "<a href='spell.php?id=" . $item["clickeffect"] . "'>$spellname</a>");
+			$effect = $item["clickeffect"];
+			array_push($line, "Effect:", "<a href='spell.php?id=$effect' data-spell-id='$effect'>$spellname</a>");
 
 			if ($item["clicktype"] == 4) {
 				array_push($line, "(Must Equip. Casting Time:");
@@ -1363,7 +1377,8 @@ function BuildItemStats($item, $show_name_icon) {
 
 		if (($item["scrolleffect"] > 0) && ($item["scrolleffect"] < 65535)) {
 			array_push($line, "Level Needed:", $item["scrolllevel"] . "-" . $item["scrolllevel2"]);
-			$html_string .= "<p>Spell Scroll Effect: <a href='spell.php?id=" . $item["scrolleffect"] . "'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["scrolleffect"]) . "</a></p>\n";
+			$effect = $item["scrolleffect"];
+			$html_string .= "<p>Spell Scroll Effect: <a href='spell.php?id=$effect' data-spell-id='$effect'>" . GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["scrolleffect"]) . "</a></p>\n";
 		}
 
 	}
@@ -1385,8 +1400,7 @@ function BuildItemStats($item, $show_name_icon) {
 		$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
 		$line = array();
 
-		$bagtype = $dbbagtypes[$item["bagtype"]];
-		if ($bagtype) {
+		if (array_key_exists($item["bagtype"], $dbbagtypes)) {
 			$html_string .= " <p>Trade Skill Container: " . $dbbagtypes[$item["bagtype"]] . "</p>\n";
 		}
 	}

@@ -63,10 +63,8 @@ if ($item["color"] > 0) {
 	$r = ($color & (0xff<<16))>>16;
 	$g = ($color & (0xff<<8))>>8;
 	$b = $color & (0xff);
-	$luminance = (299*$r + 587*$g + 114*$b)/1000;
 	$hexprint = sprintf('%d, %d, %d', $r, $g, $b);
 	$hexcolor = sprintf('%06x', $item["color"]);
-	$textcolor = ($luminance > 128) ? "black" : "white";
 	echo '<p class="item-tint" style="display: inline-flex; align-items: center; gap: 0.5rem">';
 	echo "Tint: ($hexprint)";
 	echo '<span class="color-block" style="background-color: #'.$hexcolor.'; height: 24px; width: 80px; display: inline-block; border: 1px solid #aaa;"></span>';

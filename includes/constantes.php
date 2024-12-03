@@ -134,7 +134,7 @@ $dbslots[8] = "Back";
 $dbslots[7] = "Arms";
 $dbslots[6] = "Shoulders";
 $dbslots[5] = "Neck";
-//$dbslots[2&4] = "Ears";
+//$dbslots[1&4] = "Ears";
 $dbslots[4] = "Ear";
 $dbslots[3] = "Face";
 $dbslots[2] = "Head";
@@ -1524,14 +1524,14 @@ $contentflags = array(
 	"anniversary"=>false
 );
 $contentNames = [
-	"Classic",                // 0
+	"Classic",                   // 0
 	" * Plane of Fear",          // 1
 	" * Plane of Hate and Sky",  // 2
-	"Ruins of Kunark",        // 3
-	"Scars of Velious",       // 4
+	"Ruins of Kunark",           // 3
+	"Scars of Velious",          // 4
 	" * Equestrielle Event",     // 5
-	"Shadows of Luclin",      // 6
-	"Planes of Power"         // 7
+	"Shadows of Luclin",         // 6
+	"Planes of Power"            // 7
 ];
 $expansionNames = [
 	"Classic",
@@ -1540,7 +1540,7 @@ $expansionNames = [
 	"Shadows of Luclin",
 	"Planes of Power"
 ];
-$defaultContent = count($contentNames);
+$defaultContent = count($contentNames) - 1;
 
 if (isset($_COOKIE['content']) && is_numeric($_COOKIE['content']) && $_COOKIE['content'] >= 0 && $_COOKIE['content'] < count($contentNames)) {
 	$content = (int)$_COOKIE['content'];

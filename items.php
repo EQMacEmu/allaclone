@@ -14,8 +14,8 @@ include($includes_dir . 'functions.php');
 
 $isearch       = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname         = (isset($_GET['iname']) ? $_GET['iname'] : '');
-$iclass        = (isset($_GET['iclass']) ? addslashes($_GET['iclass']) : '');
-$irace         = (isset($_GET['irace']) ? addslashes($_GET['irace']) : '');
+$iclass        = (isset($_GET['iclass']) ? addslashes($_GET['iclass']) : -1);
+$irace         = (isset($_GET['irace']) ? addslashes($_GET['irace']) : -1);
 $islot         = (isset($_GET['islot']) ? addslashes($_GET['islot']) : '');
 $istat1        = (isset($_GET['istat1']) ? addslashes($_GET['istat1']) : '');
 $istat1comp    = (isset($_GET['istat1comp']) ? addslashes($_GET['istat1comp']) : '');
@@ -69,7 +69,7 @@ if ($isearch != "") {
 	}
 	if (($istat1 != "") and ($istat1value != "")) {
 		if ($istat1 == "ratio") {
-			$Query .= " $s ($tbitems.delay/$tbitems.damage $istat1comp $istat1value) AND ($tbitems.damage>0)";
+			$Query .= " $s ($tbitems.damage/$tbitems.delay $istat1comp $istat1value) AND ($tbitems.damage>0)";
 			$s = "AND";
 		} else {
 			$Query .= " $s ($tbitems.$istat1 $istat1comp $istat1value)";
@@ -114,15 +114,17 @@ if ($isearch != "") {
 		$s = "AND";
 	}
 	if ($iclass > 0) {
-		$Query .= " $s ($tbitems.classes & $iclass) ";
+		$class = 2**$iclass;
+		$Query .= " $s ($tbitems.classes & $class) ";
 		$s = "AND";
 	}
 	if ($ideity > 0) {
 		$Query .= " $s ($tbitems.deity   & $ideity) ";
 		$s = "AND";
 	}
-	if ($irace > 0) {
-		$Query .= " $s ($tbitems.races   & $irace) ";
+	if ($irace >= 0) {
+		$race = 2**$irace;
+		$Query .= " $s ($tbitems.races   & $race) ";
 		$s = "AND";
 	}
 	if ($itype >= 0) {
@@ -130,7 +132,8 @@ if ($isearch != "") {
 		$s = "AND";
 	}
 	if ($islot > 0) {
-		$Query .= " $s ($tbitems.slots   & $islot) ";
+		$slot = 2**$islot;
+		$Query .= " $s ($tbitems.slots   & $slot) ";
 		$s = "AND";
 	}
 	if ($iaugslot > 0) {
@@ -308,8 +311,8 @@ if (isset($QueryResult)) {
 
 		echo "<div class='search-item-list'><table border='$Tableborder' cellpadding='5' width='100%'>";
 		echo "<tr>
-					<th class='menuh iicon'>&nbsp;</th>
-					<th class='menuh iname'>&nbsp;</th>
+					<th class='menuh iicon'>Icon</th>
+					<th class='menuh iname'>Name</th>
 					<th class='menuh itype'>Type</th>
 					<th class='menuh iac'>AC</th>
 					<th class='menuh ihp'>HP</th>

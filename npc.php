@@ -230,7 +230,7 @@ function printLootDrop($loottable)
 			}
 			print "<li>";
 			print "<img width='20' heigth='20' src='${icons_url}item_$icon.gif' />";
-			print "<a href='item.php?id=$id' data-item-id=\"$id\" class=\"item-link\">$name</a>";
+			print "<a href='item.php?id=$id' data-item-id='$id'>$name</a>";
 			if (($drp_min == 0 && $drp_max == 0) || $drp_mult > 1) {
 				$chance = round($drp_chance * 100, 2);
 			} else {
@@ -298,7 +298,8 @@ if ($npc["merchant_id"] > 0) {
 	if (mysqli_num_rows($result) > 0) {
 		print "<p><strong>This NPC sells:</strong></p><ul>";
 		while ($row = mysqli_fetch_array($result)) {
-			print "<li><a href='item.php?id=" . $row["id"] . "'>" . $row["Name"] . "</a> ";
+			$id = $row["id"];
+			print "<li><a href='item.php?id=$id' data-item-id='$id'>" . $row["Name"] . "</a> ";
 			if ($npc["class"] == 41) {
 				print "(" . price($row["price"]) . ")";
 			} // NPC is a shopkeeper
@@ -447,7 +448,8 @@ function print_spell($spell, $extra = "")
 	global $icons_url;
 	print "<li>";
 	print "<img height='20' width='20' id='spell-icon' src='{$icons_url}{$spell['new_icon']}.gif' alt='{$spell["name"]}' />";
-	print "<a href='spell.php?id=" . $spell["id"] . "'>" . $spell["name"] . "</a>";
+	$id = $spell["id"];
+	print "<a href='spell.php?id=$id' data-spell-id='$id'>" . $spell["name"] . "</a>";
 	if ($extra != "") {
 		print " ($extra)";
 	}
