@@ -220,7 +220,7 @@ function printLootDrop($loottable)
 	$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 	if (mysqli_num_rows($result) > 0) {
 		while ($row = mysqli_fetch_array($result)) {
-			$id = $row["id"];
+			$item_id = $row["id"];
 			$name = $row["name"];
 			$icon = $row["icon"];
 			$drp_mult = $row["drp_mult"];
@@ -230,7 +230,7 @@ function printLootDrop($loottable)
 			}
 			print "<li>";
 			print "<img width='20' heigth='20' src='{$icons_url}item_$icon.gif' />";
-			print "<a href='item.php?id=$id' data-item-id='$id'>$name</a>";
+			print "<a href='item.php?id=$item_id' data-item-id='$item_id'>$name</a>";
 			if (($drp_min == 0 && $drp_max == 0) || $drp_mult > 1) {
 				$chance = round($drp_chance * 100, 2);
 			} else {
@@ -298,8 +298,8 @@ if ($npc["merchant_id"] > 0) {
 	if (mysqli_num_rows($result) > 0) {
 		print "<p><strong>This NPC sells:</strong></p><ul>";
 		while ($row = mysqli_fetch_array($result)) {
-			$id = $row["id"];
-			print "<li><a href='item.php?id=$id' data-item-id='$id'>" . $row["Name"] . "</a> ";
+			$item_id = $row["id"];
+			print "<li><a href='item.php?id=$item_id' data-item-id='$item_id'>" . $row["Name"] . "</a> ";
 			if ($npc["class"] == 41) {
 				print "(" . price($row["price"]) . ")";
 			} // NPC is a shopkeeper
