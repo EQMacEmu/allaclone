@@ -67,6 +67,7 @@ function SpellDescription($spell, $n, $csv = false) {
 					}
 				}
 				break;
+			case 64: // SpinStun
 			case 21: // stun 
 				print $dbspelleffects[$spell["effectid$n"]];
 				if ($min != $max) {
@@ -74,6 +75,9 @@ function SpellDescription($spell, $n, $csv = false) {
 				} else {
 					print " (" . ($max / 1000) . " sec)";
 				}
+				break;
+			case 20: // Blindness
+				print $dbspelleffects[$spell["effectid$n"]] . " (" . $max . ")";
 				break;
 			case 32: // summonitem
 			case 109: // summonitem v2
@@ -183,7 +187,6 @@ function SpellDescription($spell, $n, $csv = false) {
 				break;
 			case 13: // See Invisible
 			case 18: // Pacify
-			case 20: // Blindness
 			case 25: // Bind Affinity
 			case 26: // Gate
 			case 28: // Invisibility versus Undead
@@ -198,7 +201,6 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 56: // True North
 			case 57: // Levitate
 			case 61: // Identify
-			case 64: // SpinStun
 			case 65: // Infravision
 			case 66: // UltraVision
 			case 67: // Eye of Zomm

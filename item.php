@@ -58,7 +58,7 @@ if ($item["material"] > 0) {
 	echo "<p>Material: " . $itemmaterial[$item["material"]] . "</p>";
 }
 
-if ($item["color"] > 0) {
+if ($item["slots"] & $wearable_slots && $item["color"] > 0) {
 	$color = $item["color"];
 	$r = ($color & (0xff<<16))>>16;
 	$g = ($color & (0xff<<8))>>8;
@@ -79,7 +79,7 @@ if ($item["light"] > 0) {
 echo "</div>";
 
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
-	if ($item["color"])
+	if ($item["slots"] & $wearable_slot && $item["color"] > 0)
 	{
 		$hexcolor = sprintf('%06x', $item["color"]);
 		echo "<div class='img-color'; style='background-color: #$hexcolor'></div>";

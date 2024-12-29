@@ -140,6 +140,7 @@ $dbslots[3] = "Face";
 $dbslots[2] = "Head";
 $dbslots[1] = ""; // Ear
 $dbslots[0] = "Held";
+$wearable_slots = 923268;
 
 // ItemClasses 2^class
 $dbiclasses = array();
@@ -1520,8 +1521,8 @@ $hide_spell_id = array();
 // Expansion and content gating
 $contentflags = array(
 	"EquestrielleCorrupted"=>false,
-	"OldPlane_Hate_Sky"=>false,
-	"OldPlane_Fear"=>false,
+	"OldPlane_Hate_Sky"=>true,
+	"OldPlane_Fear"=>true,
 	"Classic_OldWorldDrops"=>true,
 	"anniversary"=>false
 );
@@ -1565,6 +1566,7 @@ if ($content >= 1) {
 
 if ($content >= 2) {
 	$contentflags["OldPlane_Hate_Sky"] = true;
+	$contentflags["OldPlane_Fear"] = false;
 	$contentflags["Classic_OldWorldDrops"] = false;
 }
 if ($content >= 3) {

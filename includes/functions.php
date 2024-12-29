@@ -1312,6 +1312,8 @@ function BuildItemStats($item, $show_name_icon) {
 
 			if ($item["clicktype"] == 4) {
 				array_push($line, "(Must Equip. Casting Time:");
+			} else if ($item["clicktype"] == 5) {
+				array_push($line, "(Class Only. Casting Time:");
 			} else {
 				array_push($line, "(Casting Time:");
 			}
