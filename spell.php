@@ -98,7 +98,7 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 				<dd><strong>Mana Cost:</strong> <?= $spell["mana"] ?></dd>
 			<?php } ?>
 			<dd><strong>Spell Type:</strong> <?= ($spell["goodEffect"]) ? "Beneficial" : "Detrimental" ?></dd>
-			<dd><strong>Skill:</strong> <?= ($spell["skill"] < 52) ? $dbskills[$spell["skill"]] : null ?></dd>
+			<dd><strong>Skill:</strong> <?= ($spell["skill"] < 73) ? $dbskills[$spell["skill"]] : null ?></dd>
 			<?php if ($spell['cast_time']) { ?>
 				<dd><strong>Cast Time:</strong> <?= $spell["cast_time"] / 1000 . " seconds" ?></dd>
 			<?php } ?>
