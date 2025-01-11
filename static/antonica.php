@@ -59,8 +59,8 @@ include('../includes/functions.php');
 		<li><a href=../zone.php?name=qeynos>South Qeynos</a>
 		<li><a href=../zone.php?name=paw>Splitpaw Lair</a>
 		<li><a href=../zone.php?name=qrg>Surefall Glade</a>
+		<li><a href=../zone.php?name=soltemple>Temple of Solusek Ro</a>
 		<li><a href=../zone.php?name=halls>The Forgotten Halls</a>
-		<li><a href=../zone.php?name=solrotower>The Tower of Solusek Ro</a>
 		<li><a href=../zone.php?name=guktop>Upper Guk</a>
 		<li><a href=../zone.php?name=commons>West Commonlands</a>
 		<li><a href=../zone.php?name=qey2hh1>Western Plains of Karana</a>

@@ -169,10 +169,16 @@ if ($ItemFoundInfo) {
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
 			$displayName = "";
-      			$DroppedList = "<h3>Dropped by:</h3>";
+			$DroppedList = "<h3>Dropped by (*no spawn table):</h3>";
 			$DroppedList .= "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
+				$nospawn = "";
+				if (!HasSpawnTable($row["id"]))
+				{
+					$nospawn = "*";
+				}
+
 				if ($CurrentZone != $row["short_name"]) {
 					switch ($row["short_name"]) {
 						case "poair":
@@ -267,7 +273,7 @@ if ($ItemFoundInfo) {
 				}
 				$DroppedList .= "
 					<li>
-						<a href='npc.php?id=" . $row["id"] . "'>" . trim(str_replace("_", " ", $row["name"]), '#') . " " . $DropMsg . "</a>
+						<a href='npc.php?id=" . $row["id"] . "'>$nospawn" . trim(str_replace("_", " ", $row["name"]), '#') . " " . $DropMsg . "</a>
 					</li>";
 			}
 			$DroppedList .= "</ul>";

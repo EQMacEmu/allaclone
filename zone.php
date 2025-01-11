@@ -51,7 +51,7 @@ if ($mode == "npcs") {
 	$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 	if (mysqli_num_rows($result) > 0) {
-		print "<h2>Bestiary</h2>";
+		print "<h2>Bestiary</h2>(*no spawn table)";
 		print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=name>Name</a></b></td>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=level>Level Range</a></b></td>";
@@ -61,8 +61,12 @@ if ($mode == "npcs") {
 		$RowClass = "lr";
 		while ($row = mysqli_fetch_array($result)) {
 			if ((ReadableNpcName($row["name"])) != '') {
+				$nospawn = "";
+				if (!HasSpawnTable($row["id"])) {
+					$nospawn = "*";
+				}
 				print "<tr class='" . $RowClass . "'>";
-				print "<td><a href=npc.php?id=" . $row["id"] . ">" . ReadableNpcName($row["name"]) . "</a>";
+				print "<td><a href=npc.php?id=" . $row["id"] . ">$nospawn" . ReadableNpcName($row["name"]) . "</a>";
 
 				if ($row['maxlevel'] == 0) {
 					$MaxLevel = $row['level'];
