@@ -11,6 +11,7 @@ include('../includes/functions.php');
 	<ul class="zone-list">
 		<li><a href=../zone.php?name=erudnext>Erudin</a>
 		<li><a href=../zone.php?name=erudsxing>Erud's Crossing</a>
+		<li><a href=../zone.php?name=erudnint>Erudin Palace</a>
 		<li><a href=../zone.php?name=hole>The Hole</a>
 		<li><a href=../zone.php?name=kerraridge>Kerra Island</a>
 		<li><a href=../zone.php?name=paineel>Paineel</a>

@@ -1095,7 +1095,18 @@ function BuildItemStats($item, $show_name_icon) {
 			if ($item["clicktype"] == 3) {
 				array_push($line, "EXPENDABLE");
 			}
-			array_push($line, "Charges:", $item["maxcharges"]);
+			if ($item["itemtype"] == 14)
+			{
+				array_push($line, "This is a meal.", "(".$item["casttime"].")");
+			}
+			else if ($item["itemtype"] == 15)
+			{
+				array_push($line, "This is a drink.", "(".$item["casttime"].")");
+			}
+			else
+			{
+				array_push($line, "Charges:", $item["maxcharges"]);
+			}
 			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
 			$line = array();
 		}
