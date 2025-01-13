@@ -456,6 +456,7 @@ $dbspelltargets[16] = "Plant";
 $dbspelltargets[17] = "Giant";
 $dbspelltargets[18] = "Dragon";
 $dbspelltargets[24] = "Area of effect on undeads";
+$dbspelltargets[25] = "Area of effect on summoned";
 $dbspelltargets[36] = "Area - PC Only";
 $dbspelltargets[40] = "Friendly area of effect";
 $dbspelltargets[41] = "Group";
@@ -1521,8 +1522,8 @@ $hide_spell_id = array();
 // Expansion and content gating
 $contentflags = array(
 	"EquestrielleCorrupted"=>false,
-	"OldPlane_Hate_Sky"=>true,
-	"OldPlane_Fear"=>true,
+	"OldPlane_Hate_Sky"=>false,
+	"OldPlane_Fear"=>false,
 	"Classic_OldWorldDrops"=>true,
 	"anniversary"=>false
 );

@@ -289,10 +289,12 @@ if ($loottable_id > 0) {
 print "</div>"; // list-wrapper
 
 if ($npc["merchant_id"] > 0) {
+	$filter = gatefilter(array($tbmerchantlist));
 	$query = "SELECT $tbitems.id,$tbitems.Name,$tbitems.price
 				FROM $tbitems,$tbmerchantlist
 				WHERE $tbmerchantlist.merchantid=" . $npc["merchant_id"] . "
 				AND $tbmerchantlist.item=$tbitems.id
+				$filter
 				ORDER BY $tbmerchantlist.slot";
 	$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 	if (mysqli_num_rows($result) > 0) {

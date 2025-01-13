@@ -287,20 +287,22 @@ if ($ItemFoundInfo) {
 
 	if ($IsSold) {
 		// npcs selling this (Very Heavy Query)
+		$filter = gatefilter(array($tbzones, $tbmerchantlist));
 		$query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbspawn2.zone,$tbzones.long_name,$tbnpctypes.class
 					FROM $tbnpctypes,$tbmerchantlist,$tbspawn2,$tbzones,$tbspawnentry
 					WHERE $tbmerchantlist.item=$id
 					AND $tbnpctypes.id=$tbspawnentry.npcID
 					AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
 					AND $tbmerchantlist.merchantid=$tbnpctypes.merchant_id
-					AND $tbzones.short_name=$tbspawn2.zone";
+					AND $tbzones.short_name=$tbspawn2.zone
+					$filter";
           
 		$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 		if (mysqli_num_rows($result) > 0) {
 			$MerchantList = "";
 			$MerchantList .= $Separator;
 			$Separator = "<hr />";
-			$MerchantList .= "<h3>Sold by:</h3>";
+			$MerchantList .= "<h3>Sold by (*no spawn table):</h3>";
 			$MerchantList .= "<ul>";
 			$CurrentZone = "";
       while ($row = mysqli_fetch_array($result)) {
@@ -312,7 +314,12 @@ if ($ItemFoundInfo) {
             </li>";
           $CurrentZone = $row["zone"];
         }
-				$MerchantList .= "<li><a style='display: inline;' href='npc.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a>";
+				$nospawn = "";
+				if (!HasSpawnTable($row["id"]))
+				{
+					$nospawn = "*";
+				}
+				$MerchantList .= "<li><a style='display: inline;' href='npc.php?id=" . $row["id"] . "'>$nospawn" . str_replace("_", " ", $row["name"]) . "</a>";
 				$MerchantList .= " (" . price($item["price"]) . ")";
 				$MerchantList .= "</li>";
 			}

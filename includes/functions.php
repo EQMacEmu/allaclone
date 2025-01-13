@@ -1490,7 +1490,7 @@ function gatefilter($tables) {
 function HasSpawnTable($npcID)
 {
     global $db, $tbspawnentry, $tbspawn2, $tbzones;
-    $spawnfilter = gatefilter(array($tbspawnentry, $tbspawn2));
+    $spawnfilter = gatefilter(array($tbspawnentry, $tbspawn2, $tbzones));
     $spawnquery = "SELECT $tbspawn2.spawngroupID FROM $tbspawnentry JOIN $tbspawn2 ON $tbspawn2.spawngroupID = $tbspawnentry.spawngroupID JOIN $tbzones ON $tbzones.zoneidnumber = $npcID DIV 1000 WHERE $tbspawn2.zone = $tbzones.short_name AND npcID = $npcID $spawnfilter;";
     $spawnresult = mysqli_query($db, $spawnquery) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
     $nospawn = "";
