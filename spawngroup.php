@@ -31,10 +31,12 @@ if (!isset($id) || $id=='') { print "<script>document.location=\"index.php\";</s
 print "<div class='spawngroup-wrapper'>";
 print "<div class='spawngroup-info'>";
 print "<ul>";
+$filter = gatefilter(array($tbspawnentry));
 $query="SELECT $tbspawnentry.chance,$tbnpctypes.name,$tbnpctypes.id
         FROM $tbspawnentry,$tbnpctypes
         WHERE $tbspawnentry.spawngroupID=$id
           AND $tbspawnentry.npcID=$tbnpctypes.id 
+	  $filter
         ORDER BY $tbspawnentry.chance DESC
         ";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
@@ -50,6 +52,7 @@ print "<div class='spawngroup-nearby'>";
 print "<ul>";
 print "<b>NPCs spawning around that spawngroup : </b><br>(Max range : $SpawngroupAroundRange)<ul>";
 $myrange=$SpawngroupAroundRange*$SpawngroupAroundRange; // precalculate, saves some mysql time
+$filter = gatefilter(array($tbspawnentry, $tbspawn2));
 $query="SELECT $tbspawnentry.chance,$tbspawn2.x AS x, $tbspawn2.y AS y, $tbspawn2.z AS z,
                $tbnpctypes.name,$tbnpctypes.id,
                $tbspawngroup.id AS sgid,$tbspawngroup.name AS sgname
@@ -61,6 +64,7 @@ $query="SELECT $tbspawnentry.chance,$tbspawn2.x AS x, $tbspawn2.y AS y, $tbspawn
           AND(($x-$tbspawn2.x)*($x-$tbspawn2.x))+(($y-$tbspawn2.y)*($y-$tbspawn2.y))<$myrange
           AND (abs(z-$tbspawn2.z)<20)
           AND $tbspawngroup.id!=$id
+	  $filter
         ORDER BY sgid ASC, $tbnpctypes.name ASC
         ";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));

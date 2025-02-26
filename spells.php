@@ -90,26 +90,28 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 		$ClassOper = ">";
 	}
 
-	$sql = 'SELECT ' . $tbspells . '.* FROM ' . $tbspells . ' WHERE';
+	$sql = "SELECT $tbspells.* FROM $tbspells";
 	$sv = '';
 
 	if ($type) {
-		$sql .= ' ' . $tbspells . '.classes' . $type . " " . $ClassOper .  " " . $level . ' 
-					AND ' . $tbspells . '.classes' . $type . ' <= ' . $ServerMaxLevel;
+		$sql .= ",$tbitems WHERE $tbspells.id = $tbitems.scrolleffect AND $tbspells.classes$type $ClassOper $level 
+					AND $tbspells.classes$type <= $ServerMaxLevel";
 		$sv = 'AND';
+	} else {
+		$sv = ' WHERE';
 	}
 
-	$sql .= ' ' . $sv . ' ' . $tbspells . '.name LIKE \'%' . addslashes($namestring) . '%\'';
+	$sql .= " $sv $tbspells.name LIKE '%" . addslashes($namestring) . "%'";
 
 	if ($UseSpellGlobals == TRUE) {
-		$sql .= ' AND ISNULL((SELECT ' . $tbspellglobals . '.spellid FROM ' . $tbspellglobals . ' 
-				WHERE ' . $tbspellglobals . '.spellid = ' . $tbspells . '.id))';
+		$sql .= " AND ISNULL((SELECT $tbspellglobals.spellid FROM $tbspellglobals 
+				WHERE $tbspellglobals.spellid = $tbspells.id))";
 	}
 
 	if ($type != 0) {
-		$sql .= ' ORDER BY ' . $tbspells . '.classes' . $type . ', ' . $tbspells . '.name';
+		$sql .= " GROUP BY $tbspells.id ORDER BY $tbspells.classes$type, $tbspells.name";
 	} else {
-		$sql .= ' ORDER BY ' . $tbspells . '.name LIMIT ' . $MaxItemsReturned;
+		$sql .= " ORDER BY $tbspells.name LIMIT $MaxItemsReturned";
 	}
 
 	$result = mysqli_query($db, $sql);

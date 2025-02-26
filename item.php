@@ -91,7 +91,7 @@ echo "</div></div>";
 echo "<div class='drop-information'>";
 
 // trade skills for which that item is a component
-$filter = gatefilter($tbtradeskillrecipe);
+$filter = gatefilter(array($tbtradeskillrecipe));
 $query = "SELECT $tbtradeskillrecipe.name,$tbtradeskillrecipe.id,$tbtradeskillrecipe.tradeskill FROM $tbtradeskillrecipe,$tbtradeskillrecipeentries WHERE $tbtradeskillrecipe.id=$tbtradeskillrecipeentries.recipe_id AND $tbtradeskillrecipeentries.item_id=$id AND $tbtradeskillrecipeentries.componentcount>0 $filter GROUP BY $tbtradeskillrecipe.id";
 $result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 $TradeskillResults = "";
@@ -170,14 +170,14 @@ if ($ItemFoundInfo) {
 		if (mysqli_num_rows($result) > 0) {
 			$CurrentZone = "";
 			$displayName = "";
-			$DroppedList = "<h3>Dropped by (*no spawn table):</h3>";
+			$DroppedList = "<h3>Dropped by (***no spawn table):</h3>";
 			$DroppedList .= "<ul>";
 			while ($row = mysqli_fetch_array($result)) {
 				// var_dump($row);
 				$nospawn = "";
 				if (!HasSpawnTable($row["id"]))
 				{
-					$nospawn = "*";
+					$nospawn = "***";
 				}
 
 				if ($CurrentZone != $row["short_name"]) {
@@ -302,7 +302,7 @@ if ($ItemFoundInfo) {
 			$MerchantList = "";
 			$MerchantList .= $Separator;
 			$Separator = "<hr />";
-			$MerchantList .= "<h3>Sold by (*no spawn table):</h3>";
+			$MerchantList .= "<h3>Sold by (***no spawn table):</h3>";
 			$MerchantList .= "<ul>";
 			$CurrentZone = "";
       while ($row = mysqli_fetch_array($result)) {
@@ -317,7 +317,7 @@ if ($ItemFoundInfo) {
 				$nospawn = "";
 				if (!HasSpawnTable($row["id"]))
 				{
-					$nospawn = "*";
+					$nospawn = "***";
 				}
 				$MerchantList .= "<li><a style='display: inline;' href='npc.php?id=" . $row["id"] . "'>$nospawn" . str_replace("_", " ", $row["name"]) . "</a>";
 				$MerchantList .= " (" . price($item["price"]) . ")";

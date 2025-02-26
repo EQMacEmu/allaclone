@@ -51,7 +51,7 @@ if ($mode == "npcs") {
 	$result = mysqli_query($db, $query) or message_die('zone.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 	if (mysqli_num_rows($result) > 0) {
-		print "<h2>Bestiary</h2>(*no spawn table)";
+		print "<h2>Bestiary</h2>(***no spawn table)";
 		print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=name>Name</a></b></td>";
 		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=level>Level Range</a></b></td>";
@@ -63,7 +63,7 @@ if ($mode == "npcs") {
 			if ((ReadableNpcName($row["name"])) != '') {
 				$nospawn = "";
 				if (!HasSpawnTable($row["id"])) {
-					$nospawn = "*";
+					$nospawn = "***";
 				}
 				print "<tr class='" . $RowClass . "'>";
 				print "<td><a href=npc.php?id=" . $row["id"] . ">$nospawn" . ReadableNpcName($row["name"]) . "</a>";
@@ -158,6 +158,7 @@ if ($mode == "items") {
 	array_multisort($tmp, $ItemsData);
 
 	foreach ($ItemsData as $key => $ItemData) {
+		$item_id = $ItemData["id"];
 		if ($ItemData["itemtype"] > 0) {
 			$ItemType = $dbitypes[$ItemData["itemtype"]];
 		} else {
@@ -170,7 +171,7 @@ if ($mode == "items") {
 		$EquiptmentTable .= "<tr class='" . $RowClass . "'>
 			<td width='100' align='left'><img src='" . $icons_url . "item_" . $ItemData["icon"] . ".gif' align='left'/>
 			<img src='" . $images_url . "spacer_1.png' align='left'/>
-			</td><td><a href=item.php?id=" . $ItemData["id"] . " id='" . $ItemData["id"] . "'>" . $ItemData["Name"] . "</a></td>
+			</td><td><a href=item.php?id=$item_id data-item-id='$item_id'>" . $ItemData["Name"] . "</a></td>
 			<td width='400'>" . $ItemType . "</td></tr>";
 		if ($RowClass == "lr") {
 			$RowClass = "dr";

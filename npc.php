@@ -122,10 +122,16 @@ print "</div>"; // secondary-info
 
 
 $loottable_id = 0;
+$mincash = 0;
+$maxcash = 0;
+$avgcoin = 0;
 if (($npc["loottable_id"] > 0) and ((!in_array($npc["class"], $dbmerchants)) or ($MerchantsDontDropStuff == FALSE))) {
 	$filter = gatefilter(array($tbloottable));
 	$query = "SELECT
-		id
+		id,
+		mincash,
+		maxcash,
+		avgcoin
 		FROM
 		$tbloottable
 		WHERE
@@ -136,6 +142,9 @@ if (($npc["loottable_id"] > 0) and ((!in_array($npc["class"], $dbmerchants)) or 
 	if (mysqli_num_rows($result) > 0) {
 		while ($row = mysqli_fetch_array($result)) {
 			$loottable_id = $row["id"];
+			$mincash = $row["mincash"];
+			$maxcash = $row["maxcash"];
+			$avgcoin = $row["avgcoin"];
 		}
 	}
 }
@@ -256,6 +265,10 @@ function printLootDrop($loottable)
 print "<div class='list-wrapper'>";
 if ($loottable_id > 0) {
 	print "<p><strong>When killed, this NPC can drop: </strong></p>";
+	if ($avgcoin > 0)
+	{
+		print "<p>Average plat: " . $avgcoin/1000 . "</p";
+	}
 	print "<ul>";
 
 	$filter = gatefilter(array($tblootdrop, $tblootdropentries));
