@@ -115,7 +115,7 @@ $dbclasses[62] = "Corpse Class";
 // Slots
 $dbslots = array();
 $dbslots[22] = "Ammo";
-$dbslots[21] = "Power Source";
+//$dbslots[21] = "Power Source";
 $dbslots[20] = "Waist";
 $dbslots[19] = "Feet";
 $dbslots[18] = "Legs";
@@ -521,6 +521,19 @@ $dbitypes[45] = "Hand to Hand";
 $dbitypes[46] = "Unknown";
 $dbitypes[50] = "Singing";
 $dbitypes[51] = "All Instrument Types";
+
+// Stackable item types
+$stackable = array(
+	14, // Food
+	15, // Drink
+	17, // Combinable
+	18, // Bandage
+	19, // Small Throwing
+	27, // Arrow
+	28, // Unknown4
+	37, // Fishing Bait
+	38 // Alcohol
+);
 
 $dbiaugrestrict[1] = "Armor Only";
 $dbiaugrestrict[2] = "Weapons Only";

@@ -43,7 +43,7 @@ echo "<div class='item-wrapper'>";
 echo "<div class='item-info'>";
 echo "<strong>";
 echo $item["Name"];
-if ($item["stacksize"] > 1) {
+if ($item["itemclass"] == 0 && $item["maxcharges"] > 0 && in_array($item["itemtype"], $stackable)) {
 	echo " (stackable)";
 }
 echo "</strong>";
@@ -139,6 +139,7 @@ if ($ItemFoundInfo) {
 	if ($IsDropped) {
 
 		$dropfilter = gatefilter(array($tbzones, $tbloottable, $tblootdrop, $tblootdropentries));
+		$dropentriesfilter = gatefilter(array($tblootdropentries));
 		$query = "
 		SELECT $tbnpctypes.id,
 			$tbzones.short_name,
@@ -222,7 +223,7 @@ if ($ItemFoundInfo) {
 					$drp_mult = 1;
 
 				$ldid = $row["ldid"];
-				$sum_result = mysqli_query($db, "select SUM(chance)/100 as sum FROM lootdrop_entries where lootdrop_id=$ldid;") or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+				$sum_result = mysqli_query($db, "select SUM(chance)/100 as sum FROM lootdrop_entries where lootdrop_id=$ldid $dropentriesfilter;") or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 				$sum_row = mysqli_fetch_array($sum_result);
 				$lde_sum = $sum_row["sum"];
 

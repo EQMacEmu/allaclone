@@ -1085,9 +1085,11 @@ function BuildItemStats($item, $show_name_icon) {
 	// Items that are not books
 	if ($item["itemclass"] == 0)
 	{
+		// Don't display POWER SOURCE
+		$slots = $item["slots"] & ~(1<<21);
 		// Slot: PRIMARY
-		if ($item["slots"] > 0) {
-			$html_string .= "<p>Slot: " . getslots($item["slots"]) . "</p>\n";
+		if ($slots > 0) {
+			$html_string .= "<p>Slot: " . getslots($slots) . "</p>\n";
 		}
 
 		// EXPENDABLE Charges: XX
@@ -1179,6 +1181,10 @@ function BuildItemStats($item, $show_name_icon) {
 		}
 		if ($item["ac"]) {
 			array_push($line, "AC:", $item["ac"]);
+			if ($item["itemtype"] == 8)
+			{
+				array_push($line, "(Shield)");
+			}
 		}
 		if (count($line)) {
 			$html_string .= "<p>" . implode(" ", $line) . "</p>\n";
@@ -1304,7 +1310,7 @@ function BuildItemStats($item, $show_name_icon) {
 			$line = array();
 		}
 
-		// Effect: Aura of Bravery (Worn)
+		// Focus Effect
 		if (($expansion >= 3) && ($item["focuseffect"] > 0) && ($item["focuseffect"] < 65535)) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]);
 			$effect = $item["focuseffect"];

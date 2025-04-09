@@ -113,7 +113,7 @@ if ($isearch != "") {
 		$Query .= " $s ($tbitems.Name like '%" . $name . "%')";
 		$s = "AND";
 	}
-	if ($iclass > 0) {
+	if ($iclass >= 0) {
 		$class = 2**$iclass;
 		$Query .= " $s ($tbitems.classes & $class) ";
 		$s = "AND";
