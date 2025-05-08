@@ -1079,7 +1079,7 @@ function BuildItemStats($item, $show_name_icon) {
 	}
 	// Print and clear
 	// This line is always present even if empty
-	$html_string .= "" . implode(" ", $line) . "\n";
+	$html_string .= implode(" ", $line) . "\n";
 	$line = array();
 
 	// Items that are not books
@@ -1134,7 +1134,7 @@ function BuildItemStats($item, $show_name_icon) {
 			array_push($line, $item["delay"]);
 		}
 		if (count($line)) {
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1187,14 +1187,14 @@ function BuildItemStats($item, $show_name_icon) {
 			}
 		}
 		if (count($line)) {
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
 		// Cold DMG: ##
 		if ($dbelements[$item["elemdmgtype"]] != 'Unknown') {
 			array_push($line, $dbelements[$item["elemdmgtype"]], "DMG:", $item["elemdmgamt"]);
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1210,7 +1210,7 @@ function BuildItemStats($item, $show_name_icon) {
 				$banetype = "Body";
 			}
 			array_push($line, "Bane DMG:", $banetarget, sign($item["banedmgamt"]), "($banetype)");
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1246,7 +1246,7 @@ function BuildItemStats($item, $show_name_icon) {
 		if ($item["mana"])
 			array_push($line, "MANA:", signred($item["mana"]));
 		if (count($line)) {
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1262,7 +1262,7 @@ function BuildItemStats($item, $show_name_icon) {
 		if ($item["pr"])
 			array_push($line, "SV POISON:", signred($item["pr"]));
 		if (count($line)) {
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1274,7 +1274,7 @@ function BuildItemStats($item, $show_name_icon) {
 			array_push($line, "Required level of " . $item["reqlevel"] . ".");
 		}
 		if (count($line)) {
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1291,7 +1291,7 @@ function BuildItemStats($item, $show_name_icon) {
 			array_push($line, "(Lvl: " . $proclevel . ")");
 			$procrate = 100 + $item["procrate"];
 			array_push($line, "(Rate: $procrate%)");
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1306,7 +1306,7 @@ function BuildItemStats($item, $show_name_icon) {
 			} else {
 				array_push($line, "(Lvl: " . $item["wornlevel"]. ")");
 			}
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1315,7 +1315,7 @@ function BuildItemStats($item, $show_name_icon) {
 			$spellname = GetFieldByQuery("name", "SELECT name FROM $tbspells WHERE id=" . $item["focuseffect"]);
 			$effect = $item["focuseffect"];
 			array_push($line, "Focus Effect:", "<a href='spell.php?id=$effect' data-spell-id='$effect'>$spellname</a>");
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1344,7 +1344,7 @@ function BuildItemStats($item, $show_name_icon) {
 			if ($item["clicklevel"] > 0) {
 				array_push($line, "(Lvl", $item["clicklevel"] . ")");
 			}
-			$html_string .= "" . implode(" ", $line) . "\n";
+			$html_string .= implode(" ", $line) . "\n";
 			$line = array();
 		}
 
@@ -1354,7 +1354,7 @@ function BuildItemStats($item, $show_name_icon) {
 			array_push($line, "Range:", $item["range"]);
 		}
 		array_push($line, "Size:", getsize($item["size"]));
-		$html_string .= "" . implode(" ", $line) . "\n";
+		$html_string .= implode(" ", $line) . "\n";
 		$line = array();
 
 		// Class: XXX YYY ZZZ
@@ -1410,13 +1410,13 @@ function BuildItemStats($item, $show_name_icon) {
 		// WT: ## Weight Reduction ##%
 		array_push($line, "WT:", $item["weight"]/10);
 		array_push($line, "Weight Reduction:", $item["bagwr"] . "%");
-		$html_string .= "" . implode(" ", $line) . "\n";
+		$html_string .= implode(" ", $line) . "\n";
 		$line = array();
 
 		// Capacity: ## Size Capacity: XXX
 		array_push($line, "Capacity:", $item["bagslots"]);
 		array_push($line, "Size Capacity:", getsize($item["bagsize"]));
-		$html_string .= "" . implode(" ", $line) . "\n";
+		$html_string .= implode(" ", $line) . "\n";
 		$line = array();
 
 		if (array_key_exists($item["bagtype"], $dbbagtypes)) {
