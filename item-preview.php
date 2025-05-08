@@ -13,5 +13,7 @@ $item=GetItemRow($id);
 $stats=BuildItemStats($item, 0);
 
 
+echo "<div class='item-stats'>";
 echo $stats;
+echo "</div>";
 ?>

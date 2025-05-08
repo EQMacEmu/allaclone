@@ -3462,15 +3462,17 @@ form.item-refine div .checkbox input:checked + span::after {
   width: 40px;
   height: 40px;
 }
-.item-content .item-columns .item-wrapper .item-info .item-stats {
+.item-stats {
   color: white;
   max-width: 500px;
   padding: 5px 60px 5px 10px;
+  white-space: pre-line;
+  line-height: 1.4;
 }
-.item-content .item-columns .item-wrapper .item-info .item-stats p {
+.item-stats p {
   margin: 0;
 }
-.item-content .item-columns .item-wrapper .item-info .item-stats a {
+.item-stats a {
   display: inline;
   padding: 0;
   margin: 0;

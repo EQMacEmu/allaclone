@@ -52,10 +52,12 @@ echo "<div class='item-stats'>";
 echo $stats;
 
 // Additional/hidden item information
-echo "<p>" . getPetFocus($item["id"]) . "</p>\n";
+$focus = getPetFocus($item["id"]);
+if (!empty($focus))
+	print "$focus\n";
 
 if ($item["material"] > 0) {
-	echo "<p>Material: " . $itemmaterial[$item["material"]] . "</p>";
+	echo "Material: " . $itemmaterial[$item["material"]] . "\n";
 }
 
 if ($item["slots"] & $wearable_slots && $item["color"] > 0) {
@@ -68,15 +70,15 @@ if ($item["slots"] & $wearable_slots && $item["color"] > 0) {
 	echo '<p class="item-tint" style="display: inline-flex; align-items: center; gap: 0.5rem">';
 	echo "Tint: ($hexprint)";
 	echo '<span class="color-block" style="background-color: #'.$hexcolor.'; height: 24px; width: 80px; display: inline-block; border: 1px solid #aaa;"></span>';
-	echo '</p>';
+	echo "</p>\n";
 }
 
 if ($item["light"] > 0) {
-	echo "<p>Light: " . $item["light"] . "</p>";
+	echo "Light: " . $item["light"] . "\n";
 }
 
 
-echo "</div>";
+echo "</div>"; // item-stats
 
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
 	if ($item["slots"] & $wearable_slot && $item["color"] > 0)
