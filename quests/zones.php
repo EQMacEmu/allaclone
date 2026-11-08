@@ -14,8 +14,18 @@ if (empty($AllowQuestsNPC)) {
 }
 
 $aZone = isset($_REQUEST['aZone']) ? $_REQUEST['aZone'] : '';
-$searchItem = isset($_REQUEST['item_id']) ? (int)$_REQUEST['item_id'] : 0;
+$searchItemRaw = isset($_REQUEST['item_id']) ? trim($_REQUEST['item_id']) : '';
+$searchItemId = 0;
+$searchItemName = '';
+if ($searchItemRaw !== '') {
+	if (ctype_digit($searchItemRaw)) {
+		$searchItemId = (int)$searchItemRaw;
+	} else {
+		$searchItemName = $searchItemRaw;
+	}
+}
 $searchName = isset($_REQUEST['q']) ? trim($_REQUEST['q']) : '';
+$hasItemSearch = ($searchItemId > 0 || $searchItemName !== '');
 
 $Title = "Quests by zone";
 include('../includes/headers.php');
@@ -47,9 +57,9 @@ while ($row = mysqli_fetch_array($result)) {
 }
 print "</select></label>";
 print "<label>NPC name <input type='text' name='q' value=\"" . htmlspecialchars($searchName) . "\" placeholder='e.g. Lanhern'></label>";
-print "<label>Item ID <input type='text' name='item_id' inputmode='numeric' value=\"" . ($searchItem > 0 ? $searchItem : '') . "\" placeholder='hand-in or reward'></label>";
+print "<label>Item <input type='text' name='item_id' value=\"" . htmlspecialchars($searchItemRaw) . "\" placeholder='name or ID'></label>";
 print "<input type='submit' value='Search'>";
-if ($aZone != '' || $searchName != '' || $searchItem > 0) {
+if ($aZone != '' || $searchName != '' || $hasItemSearch) {
 	print "<a class='quest-search-reset' href='{$root_url}quests/zones.php'>Clear</a>";
 }
 print "</form>";
@@ -61,11 +71,18 @@ if ($aZone != "") {
 if ($searchName != "") {
 	$where .= " AND qn.npc_name LIKE '%" . addslashes(str_replace(' ', '_', $searchName)) . "%'";
 }
-if ($searchItem > 0) {
+if ($searchItemId > 0) {
 	$where .= " AND qn.npc_id IN (
 		SELECT DISTINCT t.npc_id FROM $tbquesttrade t
 		JOIN $tbquesttradeitem ti ON ti.trade_id=t.id
-		WHERE ti.item_id=$searchItem)";
+		WHERE ti.item_id=$searchItemId)";
+} elseif ($searchItemName !== '') {
+	$itemLike = addslashes(str_replace('_', '%', str_replace(' ', '%', $searchItemName)));
+	$where .= " AND qn.npc_id IN (
+		SELECT DISTINCT t.npc_id FROM $tbquesttrade t
+		JOIN $tbquesttradeitem ti ON ti.trade_id=t.id
+		JOIN $tbitems it ON it.id=ti.item_id
+		WHERE it.Name LIKE '%$itemLike%')";
 }
 
 $maxRows = 500;
