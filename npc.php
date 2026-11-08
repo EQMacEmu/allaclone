@@ -371,9 +371,6 @@ if (mysqli_num_rows($result) > 0) {
 	print "<p><strong>This NPC spawns in:</strong></p>";
 	print "<ul>";
 	print "<li class='spawn-zone'><a href='zone.php?name=$short_name'><u>$long_name</u></a></li>";
-	if (map_txt_available($short_name)) {
-		print "<li class='spawn-zone'><a href='zone.php?name=$short_name&mode=map'><u>$long_name Interactive Map</u></a></li>";
-	}
 	print "</ul>";
 
 	if (map_txt_available($short_name)) {

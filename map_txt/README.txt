@@ -9,6 +9,6 @@ Get them from the Brewall map packs at https://www.eqmaps.info/eq-map-files/
 and copy the zones you need. Any EverQuest client map folder in the same format
 also works (for example the zone_map_src/map_files folder of a Zeal checkout).
 
-Zones without a file here simply don't show the "Interactive Map" link.
+Zones without a file here simply don't show an interactive map on the zone page.
 
 Credit: Brewall (eqmaps.info); label layers may come from Project Miragul.

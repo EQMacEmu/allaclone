@@ -38,18 +38,18 @@ $zone = mysqli_fetch_array($result);
 
 print "<div class='container zone'>";
 
+// Old ?mode=map bookmarks fold into the default zone page (map is embedded there).
 if ($mode == "map") {
+	$mode = "npcs";
+}
+
+if ($mode == "npcs") {
 	if (map_txt_available($name)) {
-		print "<h3>" . htmlspecialchars($zone["long_name"]) . " Map</h3>";
+		print "<h2>Map</h2>";
 		$spawn_pts = fetch_zone_succor_spawn($zone);
 		render_interactive_map($name, $spawn_pts, array(), array(), 'zone');
-	} else {
-		print "<p>No interactive map data for this zone.</p>";
-		if (file_exists($maps_dir . $name . ".jpg")) {
-			print "<p><a href='" . htmlspecialchars($maps_url . $name . ".jpg") . "'>Open static map image</a></p>";
-		}
 	}
-} elseif ($mode == "npcs") {
+
 	$query = "SELECT $tbnpctypes.id,$tbnpctypes.class,$tbnpctypes.level,$tbnpctypes.maxlevel,$tbnpctypes.race,$tbnpctypes.name,$tbnpctypes.maxlevel
 		FROM $tbnpctypes,$tbzones
 		WHERE zone.short_name='$name'
@@ -308,9 +308,6 @@ if ($DisplayNamedNPCsInfo == TRUE) {
 	print "<li><a href=zonenameds.php?name=$name&mode=npcs>" . $zone["long_name"] . " Named Mobs List</a>";
 }
 print "<li><a href=$PHP_SELF?name=$name&mode=items>" . $zone["long_name"] . " Equipment</a>";
-if (map_txt_available($name)) {
-	print "<li><a href=$PHP_SELF?name=$name&mode=map>" . $zone["long_name"] . " Interactive Map</a>";
-}
 if (file_exists($maps_dir . $name . ".jpg")) {
 	print "<li><a href=" . $maps_url . $name . ".jpg>" . $zone["long_name"] . " Map (image)</a>";
 } elseif (file_exists($maps_dir . $name . ".gif")) {
