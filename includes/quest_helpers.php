@@ -201,8 +201,10 @@ function quest_print_item_sources($db, $itemId) {
 						}
 						if ($rewardParts) {
 							echo "<strong>Reward:</strong> " . implode(', ', $rewardParts);
-						} elseif (!$peers) {
-							echo "<strong>Reward:</strong> (none resolved)";
+						} else {
+							$questUrl = quest_npc_detail_url($npcId, $row['zone']);
+							echo ($peers ? "<br>" : "");
+							echo "<strong>Reward:</strong> <a href='$questUrl'>see quest details</a> (not extracted for this trade)";
 						}
 						echo "</li>";
 					}
