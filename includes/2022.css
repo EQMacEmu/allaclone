@@ -3916,6 +3916,11 @@ table#resists-table th,
   gap: 6px;
   white-space: nowrap;
 }
+.map-controls select[data-map-control="z-focus"] {
+  max-width: 9rem;
+  padding: 2px 4px;
+  font-size: 13px;
+}
 .map-controls button {
   padding: 3px 10px;
   border: 1px solid #888;

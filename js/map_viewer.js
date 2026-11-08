@@ -2,6 +2,7 @@
  * Allaclone Brewall map viewer (Konva).
  * Map-file coords are Brewall model space: canvas = (-spawn2.x, -spawn2.y).
  * Mouseover /loc: X = -canvasX, Y = -canvasY.
+ * Z-fade mirrors Zeal ZoneMap autofade: opacity vs focus Z (spawn/succor).
  */
 (function (global) {
   'use strict';
@@ -10,6 +11,10 @@
   var MAX_SCALE = 8;
   // Smallest area (map units) framed around spawn points so a lone spawn keeps surrounding context.
   var MIN_SPAWN_FRAME = 600;
+  // Match Zeal ZoneMap defaults (kDefaultZLevelHeightScale / MapFadedZLevelAlpha).
+  var Z_HEIGHT_SCALE = 10;
+  var Z_FADED_ALPHA = 0.2;
+  var SPAWN_OFFLEVEL_OPACITY = 0.35;
 
   function rgbCss(r, g, b) {
     return 'rgb(' + r + ',' + g + ',' + b + ')';
@@ -28,12 +33,15 @@
       if (type === 'L' && parts.length >= 9) {
         lines.push({
           points: [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[3]), parseFloat(parts[4])],
+          z0: parseFloat(parts[2]),
+          z1: parseFloat(parts[5]),
           color: rgbCss(parseInt(parts[6], 10) || 0, parseInt(parts[7], 10) || 0, parseInt(parts[8], 10) || 0)
         });
       } else if (type === 'P' && parts.length >= 8) {
         points.push({
           x: parseFloat(parts[0]),
           y: parseFloat(parts[1]),
+          z: parseFloat(parts[2]),
           color: rgbCss(parseInt(parts[3], 10) || 0, parseInt(parts[4], 10) || 0, parseInt(parts[5], 10) || 0),
           label: parts.slice(7).join(',').trim().replace(/_/g, ' ')
         });
@@ -63,6 +71,52 @@
     if (y > b.maxY) b.maxY = y;
   }
 
+  function hasFiniteZ(z) {
+    return typeof z === 'number' && isFinite(z);
+  }
+
+  /** Zeal render_get_line_color_and_opacity autofade: distance of focusZ to [z0,z1]. */
+  function lineOpacity(z0, z1, focusZ, scale, faded) {
+    if (!hasFiniteZ(focusZ) || !hasFiniteZ(z0) || !hasFiniteZ(z1)) return 1;
+    var lineMax = Math.max(z0, z1);
+    var lineMin = Math.min(z0, z1);
+    var maxDelta = Math.max(lineMax - focusZ, focusZ - lineMax);
+    var minDelta = Math.max(lineMin - focusZ, focusZ - lineMin);
+    var minDistance = Math.min(maxDelta, minDelta);
+    if (minDistance >= 2 * scale) return faded;
+    if (minDistance > scale) {
+      var fraction = minDistance / scale; // 1..2
+      return faded + (1 - faded) * (2 - fraction);
+    }
+    return 1;
+  }
+
+  function pointOpacity(z, focusZ, scale, faded) {
+    return lineOpacity(z, z, focusZ, scale, faded);
+  }
+
+  /** Quantize spawn Zs into clusters spaced by heightScale. */
+  function buildZClusters(spawnPoints, scale) {
+    var zs = [];
+    var i;
+    for (i = 0; i < spawnPoints.length; i++) {
+      if (hasFiniteZ(spawnPoints[i].z)) zs.push(spawnPoints[i].z);
+    }
+    zs.sort(function (a, b) { return a - b; });
+    var clusters = [];
+    for (i = 0; i < zs.length; i++) {
+      var z = zs[i];
+      if (!clusters.length || Math.abs(z - clusters[clusters.length - 1].z) >= scale) {
+        clusters.push({ z: z, count: 1 });
+      } else {
+        var c = clusters[clusters.length - 1];
+        c.z = (c.z * c.count + z) / (c.count + 1);
+        c.count += 1;
+      }
+    }
+    return clusters;
+  }
+
   function AllacloneMap(options) {
     this.opts = options || {};
     this.container = document.getElementById(this.opts.containerId || 'konva-container');
@@ -79,12 +133,28 @@
     this.wheelActive = false;
     this.fileLayers = {};
     this.spawnRings = [];
+    this.spawnLabelNodes = [];
     this.spawnAnim = null;
     this.bounds = emptyBounds();
+    this.focusSpawnIndex = -1;
+    this.zClusters = buildZClusters(this.spawnPoints, Z_HEIGHT_SCALE);
+    this.zFadeEnabled = !!this.opts.zFadeDefault;
+    this.focusZ = this._defaultFocusZ();
     this._initStage();
     this._bindControls();
     this._loadAll();
   }
+
+  AllacloneMap.prototype._defaultFocusZ = function () {
+    var i;
+    for (i = 0; i < this.spawnPoints.length; i++) {
+      if (hasFiniteZ(this.spawnPoints[i].z)) {
+        this.focusSpawnIndex = i;
+        return this.spawnPoints[i].z;
+      }
+    }
+    return null;
+  };
 
   AllacloneMap.prototype._initStage = function () {
     this.stage = new Konva.Stage({
@@ -190,6 +260,7 @@
       weight.addEventListener('input', function () {
         self.strokeWidth = parseInt(weight.value, 10) || 2;
         self._applyStrokeWidth();
+        self._applyZFade();
       });
     }
 
@@ -197,6 +268,26 @@
     if (animToggle) {
       animToggle.addEventListener('change', function () {
         self._setSpawnAnim(!!animToggle.checked);
+      });
+    }
+
+    var zFade = root.querySelector('[data-map-control="z-fade"]');
+    if (zFade) {
+      this.zFadeEnabled = !!zFade.checked;
+      zFade.addEventListener('change', function () {
+        self.zFadeEnabled = !!zFade.checked;
+        self._applyZFade();
+      });
+    }
+
+    var zFocus = root.querySelector('[data-map-control="z-focus"]');
+    if (zFocus) {
+      zFocus.addEventListener('change', function () {
+        var val = parseFloat(zFocus.value);
+        if (!isFinite(val)) return;
+        self.focusZ = val;
+        self.focusSpawnIndex = self._nearestSpawnIndex(val);
+        self._applyZFade();
       });
     }
 
@@ -221,6 +312,58 @@
     }
   };
 
+  AllacloneMap.prototype._nearestSpawnIndex = function (z) {
+    var best = -1;
+    var bestDist = Infinity;
+    for (var i = 0; i < this.spawnPoints.length; i++) {
+      var sz = this.spawnPoints[i].z;
+      if (!hasFiniteZ(sz)) continue;
+      var d = Math.abs(sz - z);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  AllacloneMap.prototype._syncZFocusSelect = function () {
+    var root = document.getElementById(this.opts.controlsId || 'map-controls');
+    var sel = root ? root.querySelector('[data-map-control="z-focus"]') : null;
+    if (!sel || !hasFiniteZ(this.focusZ)) return;
+    var bestIdx = -1;
+    var bestDist = Infinity;
+    for (var i = 0; i < sel.options.length; i++) {
+      var oz = parseFloat(sel.options[i].value);
+      if (!isFinite(oz)) continue;
+      var d = Math.abs(oz - this.focusZ);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) sel.selectedIndex = bestIdx;
+  };
+
+  AllacloneMap.prototype._setFocusFromSpawn = function (index) {
+    if (index < 0 || index >= this.spawnPoints.length) return;
+    var pt = this.spawnPoints[index];
+    if (!hasFiniteZ(pt.z)) return;
+    this.focusSpawnIndex = index;
+    this.focusZ = pt.z;
+    this._syncZFocusSelect();
+    // Enable fade when the user picks a floor via spawn click.
+    var root = document.getElementById(this.opts.controlsId || 'map-controls');
+    var zFade = root ? root.querySelector('[data-map-control="z-fade"]') : null;
+    if (zFade && !zFade.checked) {
+      zFade.checked = true;
+      this.zFadeEnabled = true;
+    } else if (!zFade) {
+      this.zFadeEnabled = true;
+    }
+    this._applyZFade();
+  };
+
   AllacloneMap.prototype._layerChecked = function (key) {
     var root = document.getElementById(this.opts.controlsId || 'map-controls');
     var el = root ? root.querySelector('[data-map-layer="' + key + '"]') : null;
@@ -242,6 +385,7 @@
       self._drawPaths();
       self._drawRoamBoxes();
       self._drawSpawns();
+      self._applyZFade();
       self._fitView();
     });
   };
@@ -279,19 +423,71 @@
         lineJoin: 'round'
       });
       shape.setAttr('isMapLine', true);
+      shape.setAttr('mapZ0', line.z0);
+      shape.setAttr('mapZ1', line.z1);
       layer.add(shape);
     }
     for (i = 0; i < parsed.points.length; i++) {
       var pt = parsed.points[i];
-      layer.add(new Konva.Circle({ x: pt.x, y: pt.y, radius: 4, fill: pt.color }));
-      layer.add(new Konva.Text({
+      var circle = new Konva.Circle({ x: pt.x, y: pt.y, radius: 4, fill: pt.color });
+      circle.setAttr('isMapLabel', true);
+      circle.setAttr('mapZ', pt.z);
+      layer.add(circle);
+      var text = new Konva.Text({
         x: pt.x + 8,
         y: pt.y - 6,
         text: pt.label,
         fontSize: 12,
         fill: pt.color
-      }));
+      });
+      text.setAttr('isMapLabel', true);
+      text.setAttr('mapZ', pt.z);
+      layer.add(text);
     }
+  };
+
+  AllacloneMap.prototype._applyZFade = function () {
+    var enabled = this.zFadeEnabled && hasFiniteZ(this.focusZ);
+    var focusZ = this.focusZ;
+    var key;
+    for (key in this.fileLayers) {
+      if (!Object.prototype.hasOwnProperty.call(this.fileLayers, key)) continue;
+      var layer = this.fileLayers[key];
+      var nodes = layer.getChildren();
+      for (var i = 0; i < nodes.length; i++) {
+        var node = nodes[i];
+        if (node.getAttr('isMapLine')) {
+          node.opacity(enabled
+            ? lineOpacity(node.getAttr('mapZ0'), node.getAttr('mapZ1'), focusZ, Z_HEIGHT_SCALE, Z_FADED_ALPHA)
+            : 1);
+        } else if (node.getAttr('isMapLabel')) {
+          node.opacity(enabled
+            ? pointOpacity(node.getAttr('mapZ'), focusZ, Z_HEIGHT_SCALE, Z_FADED_ALPHA)
+            : 1);
+        }
+      }
+    }
+
+    for (var r = 0; r < this.spawnRings.length; r++) {
+      var ring = this.spawnRings[r];
+      var pt = this.spawnPoints[r];
+      var focused = (r === this.focusSpawnIndex);
+      var onLevel = !enabled || !hasFiniteZ(pt.z) ||
+        Math.abs(pt.z - focusZ) <= Z_HEIGHT_SCALE;
+      ring.opacity(enabled && !onLevel ? SPAWN_OFFLEVEL_OPACITY : 1);
+      ring.strokeWidth(focused ? 5 : 3);
+      ring.stroke(focused ? '#c00000' : 'red');
+    }
+    for (var t = 0; t < this.spawnLabelNodes.length; t++) {
+      var lab = this.spawnLabelNodes[t];
+      var idx = lab.getAttr('spawnIndex');
+      var spt = this.spawnPoints[idx];
+      var labOn = !enabled || !spt || !hasFiniteZ(spt.z) ||
+        Math.abs(spt.z - focusZ) <= Z_HEIGHT_SCALE;
+      lab.opacity(enabled && !labOn ? SPAWN_OFFLEVEL_OPACITY : 1);
+    }
+
+    this.stage.batchDraw();
   };
 
   AllacloneMap.prototype._drawGrid = function () {
@@ -356,6 +552,8 @@
   AllacloneMap.prototype._drawSpawns = function () {
     this.spawnLayer.destroyChildren();
     this.spawnRings = [];
+    this.spawnLabelNodes = [];
+    var self = this;
     for (var i = 0; i < this.spawnPoints.length; i++) {
       var pt = this.spawnPoints[i];
       var ring = new Konva.Ring({
@@ -367,16 +565,29 @@
         stroke: 'red',
         strokeWidth: 3
       });
+      ring.setAttr('spawnIndex', i);
+      ring.on('click tap', function () {
+        self._setFocusFromSpawn(this.getAttr('spawnIndex'));
+      });
+      ring.on('mouseenter', function () {
+        self.container.style.cursor = 'pointer';
+      });
+      ring.on('mouseleave', function () {
+        self.container.style.cursor = 'grab';
+      });
       this.spawnLayer.add(ring);
       this.spawnRings.push(ring);
       if (pt.label) {
-        this.spawnLayer.add(new Konva.Text({
+        var label = new Konva.Text({
           x: pt.x + 20,
           y: pt.y - 8,
           text: pt.label,
           fontSize: 14,
           fill: '#b00000'
-        }));
+        });
+        label.setAttr('spawnIndex', i);
+        this.spawnLayer.add(label);
+        this.spawnLabelNodes.push(label);
       }
     }
     var rings = this.spawnRings;

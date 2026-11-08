@@ -102,6 +102,7 @@ if (!function_exists('render_interactive_map')) {
 		$layers = map_txt_layers($short_name);
 
 		$safe_points = array();
+		$z_values = array();
 		foreach ($spawn_points as $pt) {
 			if (!isset($pt['x']) || !isset($pt['y'])) {
 				continue;
@@ -110,14 +111,33 @@ if (!function_exists('render_interactive_map')) {
 				'x' => (float)$pt['x'],
 				'y' => (float)$pt['y'],
 			);
-			if (isset($pt['z'])) {
+			if (isset($pt['z']) && is_numeric($pt['z'])) {
 				$entry['z'] = (float)$pt['z'];
+				$z_values[] = (float)$pt['z'];
 			}
 			if (!empty($pt['label'])) {
 				$entry['label'] = (string)$pt['label'];
 			}
 			$safe_points[] = $entry;
 		}
+
+		// Cluster spawn Zs by Zeal-style height scale (10) for the floor-focus select.
+		$z_height_scale = 10.0;
+		sort($z_values, SORT_NUMERIC);
+		$z_clusters = array();
+		foreach ($z_values as $z) {
+			$n = count($z_clusters);
+			if ($n === 0 || abs($z - $z_clusters[$n - 1]['z']) >= $z_height_scale) {
+				$z_clusters[] = array('z' => $z, 'count' => 1);
+			} else {
+				$c = &$z_clusters[$n - 1];
+				$c['z'] = ($c['z'] * $c['count'] + $z) / ($c['count'] + 1);
+				$c['count'] += 1;
+				unset($c);
+			}
+		}
+		$has_spawn_z = count($z_values) > 0;
+		$z_fade_default = $has_spawn_z;
 
 		$config = array(
 			'containerId' => 'konva-container',
@@ -128,6 +148,7 @@ if (!function_exists('render_interactive_map')) {
 			'pathPoints' => $path_points ? $path_points : new stdClass(),
 			'roamBoxes' => $roam_boxes,
 			'fit' => ($fit === 'zone') ? 'zone' : 'spawns',
+			'zFadeDefault' => $z_fade_default,
 		);
 
 		echo "<div class='interactive-map-wrap'>\n";
@@ -135,6 +156,20 @@ if (!function_exists('render_interactive_map')) {
 		echo "<label>Line weight <input type='range' min='1' max='6' value='2' data-map-control='line-weight'></label>\n";
 		if (count($safe_points) > 0) {
 			echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
+		}
+		if ($has_spawn_z) {
+			$z_checked = $z_fade_default ? ' checked' : '';
+			echo "<label><input type='checkbox' data-map-control='z-fade'$z_checked> Z fade</label>\n";
+			if (count($z_clusters) >= 2) {
+				echo "<label>Floor <select data-map-control='z-focus'>\n";
+				foreach ($z_clusters as $idx => $cluster) {
+					$zval = $cluster['z'];
+					$selected = ($idx === 0) ? ' selected' : '';
+					$label = 'Z ≈ ' . (abs($zval - round($zval)) < 0.05 ? (string)(int)round($zval) : number_format($zval, 1));
+					echo "<option value='" . htmlspecialchars((string)$zval, ENT_QUOTES) . "'$selected>" . htmlspecialchars($label) . "</option>\n";
+				}
+				echo "</select></label>\n";
+			}
 		}
 
 		// _1 files in Brewall packs hold the place-name labels; they start hidden to keep the map readable.
@@ -155,7 +190,11 @@ if (!function_exists('render_interactive_map')) {
 
 		echo "</div>\n";
 		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
-		echo "<p class='map-hint'>Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).</p>\n";
+		$hint = 'Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).';
+		if ($has_spawn_z) {
+			$hint .= ' Click a spawn ring to focus that floor (Z fade).';
+		}
+		echo "<p class='map-hint'>" . htmlspecialchars($hint) . "</p>\n";
 		echo "</div>\n";
 
 		$js_base = htmlspecialchars($root_url . 'js/', ENT_QUOTES);
