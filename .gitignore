@@ -1,2 +1,7 @@
 includes/config.php
 .idea/
+
+# Brewall / Miragul map geometry — third-party; keep local/Docker only.
+# Populate from Zeal zone_map_src/map_files or https://www.eqmaps.info/
+map_txt/*
+!map_txt/README.txt

@@ -13,6 +13,7 @@ include('./includes/config.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'quest_helpers.php');
+include($includes_dir . 'map_helpers.php');
 
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
@@ -370,7 +371,19 @@ if (mysqli_num_rows($result) > 0) {
 	print "<p><strong>This NPC spawns in:</strong></p>";
 	print "<ul>";
 	print "<li class='spawn-zone'><a href='zone.php?name=$short_name'><u>$long_name</u></a></li>";
+	if (map_txt_available($short_name)) {
+		print "<li class='spawn-zone'><a href='zone.php?name=$short_name&mode=map'><u>$long_name Interactive Map</u></a></li>";
+	}
 	print "</ul>";
+
+	if (map_txt_available($short_name)) {
+		$map_spawns = fetch_npc_map_spawns($id, $short_name);
+		if (count($map_spawns) > 0) {
+			print "<h3>Spawn Map</h3>";
+			render_interactive_map($short_name, $map_spawns);
+		}
+	}
+
 	if ($DisplaySpawnGroupInfo == TRUE) {
 		// Some spawngroups have multiple spawntimes in spawn2. List each set separately
 		print "<ul class='spawn-group'>";
