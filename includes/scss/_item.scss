@@ -112,4 +112,27 @@
       margin-top: 1rem;
     }
   }
+
+  .item-quest-sources {
+    margin-top: 1rem;
+
+    ul li {
+      padding-top: 2px;
+      padding-bottom: 2px;
+      line-height: 1.35;
+
+      a {
+        display: inline;
+        padding: 0;
+      }
+    }
+
+    .item-quest-trades {
+      margin: 2px 0 6px;
+
+      li {
+        padding-left: 20px;
+      }
+    }
+  }
 }
