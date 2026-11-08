@@ -8,7 +8,7 @@ include('../includes/quest_helpers.php');
 if (empty($AllowQuestsNPC)) {
 	$Title = "Quests";
 	include('../includes/headers.php');
-	print "<p>Quest browsing is disabled. Set \$AllowQuestsNPC=TRUE in config.php and run quests/import_lua_quests.php.</p>";
+	print "<div class='container quests'><p>Quest browsing is disabled.</p></div></div>";
 	include('../includes/footers.php');
 	exit;
 }
@@ -20,17 +20,17 @@ $searchName = isset($_REQUEST['q']) ? trim($_REQUEST['q']) : '';
 $Title = "Quests by zone";
 include('../includes/headers.php');
 
+print "<div class='container quests'>";
+
 if (!quest_tables_ready($db)) {
-	print "<p>Quest tables are missing. Run: <code>php quests/import_lua_quests.php --quests &lt;quest_root&gt;</code></p>";
+	print "<p>Quest data has not been imported yet.</p></div></div>";
 	include('../includes/footers.php');
 	exit;
 }
 
-print "<center><table border=0>";
-print "<form method=GET action='$PHP_SELF'>";
-print "<tr><td nowrap><b>Zone:</b></td><td>";
-print "<select name=aZone>";
-print "<option value=\"\">-- all / search --</option>";
+print "<form class='quest-search' method='get' action='{$root_url}quests/zones.php'>";
+print "<label>Zone <select name='aZone'>";
+print "<option value=\"\">All zones</option>";
 $query = "SELECT DISTINCT qn.zone_short, $tbzones.long_name
 	FROM $tbquestnpc qn
 	JOIN $tbzones ON $tbzones.short_name = qn.zone_short
@@ -45,13 +45,14 @@ while ($row = mysqli_fetch_array($result)) {
 	}
 	print ">" . htmlspecialchars($label) . "</option>";
 }
-print "</select></td></tr>";
-print "<tr><td nowrap><b>Search NPC:</b></td><td><input type=text name=q value=\"" . htmlspecialchars($searchName) . "\" class=form></td></tr>";
-print "<tr><td nowrap><b>Item ID:</b></td><td><input type=text name=item_id value=\"" . ($searchItem > 0 ? $searchItem : '') . "\" class=form size=8> (hand-in or reward)</td></tr>";
-print "<tr align=center><td colspan=2><input type=submit value=Search name=isearch class=form></td></tr>";
-print "</form></table></center>";
-
-print "<p><a href='{$root_url}quests/zones.php'>All quest zones</a></p>";
+print "</select></label>";
+print "<label>NPC name <input type='text' name='q' value=\"" . htmlspecialchars($searchName) . "\" placeholder='e.g. Lanhern'></label>";
+print "<label>Item ID <input type='text' name='item_id' inputmode='numeric' value=\"" . ($searchItem > 0 ? $searchItem : '') . "\" placeholder='hand-in or reward'></label>";
+print "<input type='submit' value='Search'>";
+if ($aZone != '' || $searchName != '' || $searchItem > 0) {
+	print "<a class='quest-search-reset' href='{$root_url}quests/zones.php'>Clear</a>";
+}
+print "</form>";
 
 $where = "1=1";
 if ($aZone != "") {
@@ -96,42 +97,37 @@ if ($rows == 0) {
 		$zn = GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='" . addslashes($aZone) . "'");
 		print "<h3>" . htmlspecialchars($zn ? $zn : $aZone) . " ($rows NPCs)</h3>";
 	} else {
-		print "<h3>Results ($rows)</h3>";
+		print "<h3>Quest NPCs ($rows)</h3>";
 	}
 	if ($truncated) {
 		print "<p>Showing the first $maxRows quest NPCs. Pick a zone or search by name or item to narrow the list.</p>";
 	}
-	print "<table border=0 width=100%>";
-	$cpt = 0;
+	print "<ul class='quest-npc-list'>";
 	$shown = 0;
 	while ($shown < $rows && ($row = mysqli_fetch_assoc($result))) {
 		$shown++;
-		$cpt++;
-		if ($cpt == 1) {
-			print "<tr>";
-		}
-		$npcDisp = quest_npc_display_name($row['npc_name']);
 		$meta = array();
-		if ((int)$row['trade_count'] > 0) {
-			$meta[] = (int)$row['trade_count'] . ' turn-in(s)';
+		$trades = (int)$row['trade_count'];
+		$says = (int)$row['say_count'];
+		if ($trades > 0) {
+			$meta[] = $trades . ($trades == 1 ? ' turn-in' : ' turn-ins');
 		}
-		if ((int)$row['say_count'] > 0) {
-			$meta[] = (int)$row['say_count'] . ' say';
+		if ($says > 0) {
+			$meta[] = $says . ($says == 1 ? ' dialogue line' : ' dialogue lines');
 		}
-		$metaStr = $meta ? ' <small>(' . implode(', ', $meta) . ')</small>' : '';
-		print "<td width=25%><a href='index.php?npc_id=" . (int)$row['npc_id'] . "&zone=" . urlencode($row['zone_short']) . "'>" .
-			htmlspecialchars($npcDisp) . "</a>$metaStr<br><small>" .
-			htmlspecialchars($row['long_name'] ? $row['long_name'] : $row['zone_short']) . "</small></td>";
-		if ($cpt == 4) {
-			print "</tr>";
-			$cpt = 0;
+		print "<li><a href='{$root_url}quests/index.php?npc_id=" . (int)$row['npc_id'] . "&zone=" . urlencode($row['zone_short']) . "'>" .
+			htmlspecialchars(quest_npc_display_name($row['npc_name'])) . "</a>";
+		if ($meta) {
+			print "<span class='quest-npc-meta'>" . implode(' · ', $meta) . "</span>";
 		}
+		if ($aZone == '') {
+			print "<span class='quest-npc-zone'>" . htmlspecialchars($row['long_name'] ? $row['long_name'] : $row['zone_short']) . "</span>";
+		}
+		print "</li>";
 	}
-	if ($cpt > 0) {
-		print "</tr>";
-	}
-	print "</table>";
+	print "</ul>";
 }
 
+print "</div></div>"; // container, #main
 include('../includes/footers.php');
 ?>

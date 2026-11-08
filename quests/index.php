@@ -30,7 +30,7 @@ if ($npc_id <= 0 || in_array($npc_id, array_map('intval', $hide_npc_id))) {
 if (!quest_tables_ready($db)) {
 	$Title = "Quest";
 	include('../includes/headers.php');
-	print "<p>Quest tables missing. Run import_lua_quests.php first.</p>";
+	print "<div class='container quests'><p>Quest data has not been imported yet.</p></div></div>";
 	include('../includes/footers.php');
 	exit;
 }
@@ -58,15 +58,16 @@ $myzone = $qn['long_name'];
 $Title = "Quest: " . htmlspecialchars($dispName);
 include('../includes/headers.php');
 
+print "<div class='container quests quest-detail'>";
 print "<p class='quest-breadcrumb'>";
-print "<a href='zones.php?aZone=" . urlencode($zone) . "'>" . htmlspecialchars($myzone ? $myzone : $zone) . "</a>";
-print " — <a href='{$root_url}npc.php?id=$npc_id'>NPC page</a>";
+print "<a href='{$root_url}quests/zones.php?aZone=" . urlencode($zone) . "'>" . htmlspecialchars($myzone ? $myzone : $zone) . " quests</a>";
+print " · <a href='{$root_url}npc.php?id=$npc_id'>NPC page</a>";
 print "</p>";
-print "<p><em>Offline extract from Lua quest scripts (approximate).</em></p>";
-
+print "<p class='quest-note'>Summarized automatically from the server's quest scripts; details may be incomplete.";
 if (!empty($qn['script_paths'])) {
-	print "<p><strong>Scripts:</strong> " . htmlspecialchars($qn['script_paths']) . "</p>";
+	print " Source: " . htmlspecialchars(str_replace(',', ', ', $qn['script_paths']));
 }
+print "</p>";
 
 // Primary / required factions
 $pf = (int)$qn['primary_faction_id'];
@@ -127,7 +128,7 @@ if ($tradeRes && mysqli_num_rows($tradeRes) > 0) {
 		print "<p><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)') . "</p>";
 		$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward'), quest_trade_reward_extras($t));
 		print "<p><strong>Reward:</strong> " . ($rewards ? implode(', ', $rewards) : '(none extracted)') . "</p>";
-		print "<p><small>" . htmlspecialchars($t['script_file']) . ":" . (int)$t['line_no'] . "</small></p>";
+		print "<p class='quest-source'>" . htmlspecialchars($t['script_file']) . ", line " . (int)$t['line_no'] . "</p>";
 		print "</div>";
 	}
 	mysqli_free_result($tradeRes);
@@ -145,5 +146,6 @@ if ($sayRes && mysqli_num_rows($sayRes) > 0) {
 	mysqli_free_result($sayRes);
 }
 
+print "</div></div>"; // container, #main
 include('../includes/footers.php');
 ?>
