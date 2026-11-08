@@ -99,25 +99,7 @@ if ($reqRes && mysqli_num_rows($reqRes) > 0) {
 	mysqli_free_result($reqRes);
 }
 
-// Faction hits summary
-$hitRes = mysqli_query($db, "SELECT h.faction_id, h.delta, f.name AS faction_name, SUM(1) AS cnt
-	FROM $tbquestfactionhit h
-	LEFT JOIN $tbfactionlist f ON f.id=h.faction_id
-	WHERE h.quest_npc_id=$questNpcId
-	GROUP BY h.faction_id, h.delta, f.name
-	ORDER BY h.delta DESC, f.name");
-if ($hitRes && mysqli_num_rows($hitRes) > 0) {
-	print "<h3>Faction hits</h3><ul>";
-	while ($h = mysqli_fetch_assoc($hitRes)) {
-		$fn = $h['faction_name'] ? $h['faction_name'] : ('#' . $h['faction_id']);
-		$cls = ((int)$h['delta'] >= 0) ? 'good' : 'bad';
-		print "<li class='$cls'><a href='{$root_url}faction.php?id=" . (int)$h['faction_id'] . "'>" . htmlspecialchars($fn) . "</a> (" . (int)$h['delta'] . ")</li>";
-	}
-	print "</ul>";
-	mysqli_free_result($hitRes);
-}
-
-// Turn-ins
+// Turn-ins (faction hits are per turn-in via trade_id)
 $tradeRes = mysqli_query($db, "SELECT * FROM $tbquesttrade WHERE quest_npc_id=$questNpcId ORDER BY line_no");
 if ($tradeRes && mysqli_num_rows($tradeRes) > 0) {
 	print "<h3>Turn-ins</h3>";
@@ -128,10 +110,83 @@ if ($tradeRes && mysqli_num_rows($tradeRes) > 0) {
 		print "<p><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)') . "</p>";
 		$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward'), quest_trade_reward_extras($t));
 		print "<p><strong>Reward:</strong> " . ($rewards ? implode(', ', $rewards) : '(none extracted)') . "</p>";
+		$tradeHits = mysqli_query($db, "SELECT h.faction_id, h.delta, f.name AS faction_name
+			FROM $tbquestfactionhit h
+			LEFT JOIN $tbfactionlist f ON f.id=h.faction_id
+			WHERE h.trade_id=$tid
+			ORDER BY h.delta DESC, f.name");
+		if ($tradeHits && mysqli_num_rows($tradeHits) > 0) {
+			print "<p><strong>Faction:</strong></p><ul>";
+			while ($h = mysqli_fetch_assoc($tradeHits)) {
+				$fn = $h['faction_name'] ? $h['faction_name'] : ('#' . $h['faction_id']);
+				$cls = ((int)$h['delta'] >= 0) ? 'good' : 'bad';
+				print "<li class='$cls'><a href='{$root_url}faction.php?id=" . (int)$h['faction_id'] . "'>" . htmlspecialchars($fn) . "</a> (" . (int)$h['delta'] . ")</li>";
+			}
+			print "</ul>";
+			mysqli_free_result($tradeHits);
+		}
 		print "<p class='quest-source'>" . htmlspecialchars($t['script_file']) . ", line " . (int)$t['line_no'] . "</p>";
 		print "</div>";
 	}
 	mysqli_free_result($tradeRes);
+}
+
+// Scripted faction hits not tied to a recognized turn-in
+$otherHits = mysqli_query($db, "SELECT h.faction_id, h.delta, f.name AS faction_name
+	FROM $tbquestfactionhit h
+	LEFT JOIN $tbfactionlist f ON f.id=h.faction_id
+	WHERE h.quest_npc_id=$questNpcId AND h.trade_id=0
+	ORDER BY h.delta DESC, f.name");
+if ($otherHits && mysqli_num_rows($otherHits) > 0) {
+	print "<h3>Other scripted faction hits</h3><ul>";
+	while ($h = mysqli_fetch_assoc($otherHits)) {
+		$fn = $h['faction_name'] ? $h['faction_name'] : ('#' . $h['faction_id']);
+		$cls = ((int)$h['delta'] >= 0) ? 'good' : 'bad';
+		print "<li class='$cls'><a href='{$root_url}faction.php?id=" . (int)$h['faction_id'] . "'>" . htmlspecialchars($fn) . "</a> (" . (int)$h['delta'] . ")</li>";
+	}
+	print "</ul>";
+	mysqli_free_result($otherHits);
+}
+
+// Kill faction (npc_faction_entries) — separate from quest turn-in rewards
+$npcFactionId = (int)GetFieldByQuery('npc_faction_id', "SELECT npc_faction_id FROM $tbnpctypes WHERE id=$npc_id");
+if ($npcFactionId > 0) {
+	$killLower = mysqli_query($db, "SELECT $tbfactionlist.name, $tbfactionlist.id, $tbnpcfactionentries.value
+		FROM $tbfactionlist, $tbnpcfactionentries
+		WHERE $tbnpcfactionentries.npc_faction_id=$npcFactionId
+		AND $tbnpcfactionentries.faction_id=$tbfactionlist.id
+		AND $tbnpcfactionentries.value<0
+		GROUP BY $tbfactionlist.id");
+	if ($killLower && mysqli_num_rows($killLower) > 0) {
+		print "<h3>Killing this NPC lowers factions with</h3><ul>";
+		while ($row = mysqli_fetch_assoc($killLower)) {
+			if (!empty($ShowNPCFactionHits)) {
+				print "<li class='bad'><a href='{$root_url}faction.php?id=" . (int)$row['id'] . "'>" . htmlspecialchars($row['name']) . "</a> (" . (int)$row['value'] . ")</li>";
+			} else {
+				print "<li class='bad'><a href='{$root_url}faction.php?id=" . (int)$row['id'] . "'>" . htmlspecialchars($row['name']) . "</a></li>";
+			}
+		}
+		print "</ul>";
+		mysqli_free_result($killLower);
+	}
+	$killRaise = mysqli_query($db, "SELECT $tbfactionlist.name, $tbfactionlist.id, $tbnpcfactionentries.value
+		FROM $tbfactionlist, $tbnpcfactionentries
+		WHERE $tbnpcfactionentries.npc_faction_id=$npcFactionId
+		AND $tbnpcfactionentries.faction_id=$tbfactionlist.id
+		AND $tbnpcfactionentries.value>0
+		GROUP BY $tbfactionlist.id");
+	if ($killRaise && mysqli_num_rows($killRaise) > 0) {
+		print "<h3>Killing this NPC raises factions with</h3><ul>";
+		while ($row = mysqli_fetch_assoc($killRaise)) {
+			if (!empty($ShowNPCFactionHits)) {
+				print "<li class='good'><a href='{$root_url}faction.php?id=" . (int)$row['id'] . "'>" . htmlspecialchars($row['name']) . "</a> (" . (int)$row['value'] . ")</li>";
+			} else {
+				print "<li class='good'><a href='{$root_url}faction.php?id=" . (int)$row['id'] . "'>" . htmlspecialchars($row['name']) . "</a></li>";
+			}
+		}
+		print "</ul>";
+		mysqli_free_result($killRaise);
+	}
 }
 
 // Say branches

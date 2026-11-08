@@ -335,6 +335,36 @@ function parse_quest_reward($line) {
 	return null;
 }
 
+/**
+ * Last line index still belonging to this turn-in's if/elseif branch.
+ * Stops before the next check_turn_in, or a sibling elseif/else/end at the same indent.
+ */
+function turn_in_branch_end($lines, $start) {
+	$n = count($lines);
+	$indent = strlen($lines[$start]) - strlen(ltrim($lines[$start]));
+	$end = $n - 1;
+	for ($j = $start + 1; $j < $n; $j++) {
+		$line = $lines[$j];
+		if (preg_match('/item_lib\.check_turn_in\s*\(/i', $line)) {
+			$end = $j - 1;
+			break;
+		}
+		$trimmed = ltrim($line);
+		if ($trimmed === '') {
+			continue;
+		}
+		$jIndent = strlen($line) - strlen($trimmed);
+		if ($jIndent > $indent) {
+			continue;
+		}
+		if (preg_match('/^(elseif|else|end)\b/i', $trimmed)) {
+			$end = $j - 1;
+			break;
+		}
+	}
+	return $end;
+}
+
 function parse_lua_file($path, $rel) {
 	$raw = @file_get_contents($path);
 	if ($raw === false) {
@@ -378,7 +408,7 @@ function parse_lua_file($path, $rel) {
 			'platinum' => 0,
 			'faction_hits' => array(),
 		);
-		$lim = min($i + 28, $n - 1);
+		$lim = turn_in_branch_end($lines, $i);
 		for ($j = $i; $j <= $lim; $j++) {
 			$qr = parse_quest_reward($lines[$j]);
 			if ($qr !== null) {
@@ -386,7 +416,7 @@ function parse_lua_file($path, $rel) {
 				break;
 			}
 		}
-		// Faction hits near this turn-in
+		// Faction hits belonging to this turn-in branch only
 		$localHits = array();
 		for ($j = $i; $j <= $lim; $j++) {
 			if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$j], $fm, PREG_SET_ORDER)) {
