@@ -3521,6 +3521,24 @@ form.item-refine div .checkbox input:checked + span::after {
 .drop-information ul + h3 {
   margin-top: 1rem;
 }
+.drop-information .item-quest-sources {
+  margin-top: 1rem;
+}
+.drop-information .item-quest-sources ul li {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  line-height: 1.35;
+}
+.drop-information .item-quest-sources ul li a {
+  display: inline;
+  padding: 0;
+}
+.drop-information .item-quest-sources .item-quest-trades {
+  margin: 2px 0 6px;
+}
+.drop-information .item-quest-sources .item-quest-trades li {
+  padding-left: 20px;
+}
 
 .spell-search {
   grid-area: pageContent;

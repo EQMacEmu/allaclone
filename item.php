@@ -123,8 +123,6 @@ if (mysqli_num_rows($result) > 0) {
 }
 echo $TradeskillResults;
 
-quest_print_item_sources($db, $id);
-
 $Separator = "";
 
 if ($ItemFoundInfo) {
@@ -324,6 +322,8 @@ if ($ItemFoundInfo) {
 		}
 	}
 }
+
+quest_print_item_sources($db, $id);
 
 
 // Other bard items with this skill

@@ -137,6 +137,7 @@ function quest_print_item_trades($db, $itemId, $role) {
 		return;
 	}
 
+	echo "<div class='item-quest-sources'>";
 	echo ($role === 'reward') ? "<h3>Quest reward from:</h3><ul>" : "<h3>Handed in for quests:</h3><ul>";
 	while ($row = mysqli_fetch_assoc($res)) {
 		$npcId = (int)$row['npc_id'];
@@ -155,13 +156,13 @@ function quest_print_item_trades($db, $itemId, $role) {
 			ORDER BY t.line_no, t.id";
 		$tr = mysqli_query($db, $tq);
 		if ($tr && mysqli_num_rows($tr) > 0) {
-			echo "<ul>";
+			echo "<ul class='item-quest-trades'>";
 			while ($trade = mysqli_fetch_assoc($tr)) {
 				$tid = (int)$trade['id'];
 				$give = quest_trade_item_links($db, $tid, 'give', $itemId);
 				$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward', $itemId), quest_trade_reward_extras($trade));
 				echo "<li><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)');
-				echo "<br><strong>Reward:</strong> ";
+				echo " · <strong>Reward:</strong> ";
 				if ($rewards) {
 					echo implode(', ', $rewards);
 				} elseif (!empty($AllowQuestsNPC)) {
@@ -178,7 +179,7 @@ function quest_print_item_trades($db, $itemId, $role) {
 		}
 		echo "</li>";
 	}
-	echo "</ul>";
+	echo "</ul></div>";
 	mysqli_free_result($res);
 }
 
