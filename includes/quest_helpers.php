@@ -42,8 +42,56 @@ function quest_npc_detail_url($npcId, $zoneShort) {
 	return $root_url . "quests/index.php?npc_id=$npcId&zone=$zoneShort";
 }
 
+/** HTML item links for trade_id + role (give|reward). Optionally skip one item id. */
+function quest_trade_item_links($db, $tradeId, $role, $skipItemId = 0) {
+	global $tbquesttradeitem, $tbitems, $root_url;
+
+	$tradeId = (int)$tradeId;
+	$skipItemId = (int)$skipItemId;
+	$role = ($role === 'reward') ? 'reward' : 'give';
+	$q = "SELECT ti.item_id, it.Name FROM $tbquesttradeitem ti
+		LEFT JOIN $tbitems it ON it.id = ti.item_id
+		WHERE ti.trade_id=$tradeId AND ti.role='$role'";
+	if ($skipItemId > 0) {
+		$q .= " AND ti.item_id != $skipItemId";
+	}
+	$q .= " ORDER BY ti.ord";
+	$res = mysqli_query($db, $q);
+	$parts = array();
+	while ($res && ($row = mysqli_fetch_assoc($res))) {
+		$iid = (int)$row['item_id'];
+		$iname = $row['Name'] ? $row['Name'] : "Item #$iid";
+		$parts[] = "<a href='{$root_url}item.php?id=$iid'>" . htmlspecialchars($iname) . "</a>";
+	}
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	return $parts;
+}
+
+/** Money / exp / faction extras from a quest_trade row. */
+function quest_trade_reward_extras($tradeRow) {
+	$parts = array();
+	$money = quest_format_money(
+		(int)$tradeRow['copper'],
+		(int)$tradeRow['silver'],
+		(int)$tradeRow['gold'],
+		(int)$tradeRow['platinum']
+	);
+	if ($money) {
+		$parts[] = $money;
+	}
+	if ((int)$tradeRow['reward_exp'] > 0) {
+		$parts[] = (int)$tradeRow['reward_exp'] . ' exp';
+	}
+	if ((int)$tradeRow['reward_faction_flag']) {
+		$parts[] = 'faction hits';
+	}
+	return $parts;
+}
+
 function quest_print_item_sources($db, $itemId) {
-	global $tbquestitems, $AllowQuestsNPC, $ItemQuestSource, $root_url;
+	global $tbquestitems, $tbquesttrade, $tbquesttradeitem, $AllowQuestsNPC, $ItemQuestSource, $root_url;
 
 	if (empty($ItemQuestSource) && empty($AllowQuestsNPC)) {
 		return;
@@ -54,7 +102,7 @@ function quest_print_item_sources($db, $itemId) {
 
 	$itemId = (int)$itemId;
 
-	// Rewarded by
+	// Rewarded by — NPC + give set / extras that produce this item
 	$q = "SELECT DISTINCT qi.npc_id, qi.npc, qi.zone, z.long_name
 		FROM $tbquestitems qi
 		LEFT JOIN zone z ON z.short_name = qi.zone
@@ -75,13 +123,38 @@ function quest_print_item_sources($db, $itemId) {
 				echo htmlspecialchars($npcName);
 			}
 			echo " — <a href='{$root_url}zone.php?name=" . urlencode($row['zone']) . "'>" . htmlspecialchars($zoneLabel) . "</a>";
+
+			if ($npcId > 0) {
+				$tq = "SELECT t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag
+					FROM $tbquesttrade t
+					JOIN $tbquesttradeitem ti ON ti.trade_id = t.id AND ti.role='reward' AND ti.item_id=$itemId
+					WHERE t.npc_id=$npcId
+					ORDER BY t.line_no, t.id";
+				$tr = mysqli_query($db, $tq);
+				if ($tr && mysqli_num_rows($tr) > 0) {
+					echo "<ul>";
+					while ($trade = mysqli_fetch_assoc($tr)) {
+						$tid = (int)$trade['id'];
+						$give = quest_trade_item_links($db, $tid, 'give');
+						$extras = quest_trade_reward_extras($trade);
+						echo "<li>";
+						echo "<strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)');
+						if ($extras) {
+							echo " — also " . implode(', ', $extras);
+						}
+						echo "</li>";
+					}
+					echo "</ul>";
+					mysqli_free_result($tr);
+				}
+			}
 			echo "</li>";
 		}
 		echo "</ul>";
 		mysqli_free_result($res);
 	}
 
-	// Handed in for
+	// Handed in for — NPC + peer gives + what you receive
 	$q = "SELECT DISTINCT qi.npc_id, qi.npc, qi.zone, z.long_name
 		FROM $tbquestitems qi
 		LEFT JOIN zone z ON z.short_name = qi.zone
@@ -102,30 +175,42 @@ function quest_print_item_sources($db, $itemId) {
 				echo htmlspecialchars($npcName);
 			}
 			echo " — <a href='{$root_url}zone.php?name=" . urlencode($row['zone']) . "'>" . htmlspecialchars($zoneLabel) . "</a>";
-			echo "</li>";
 
-			// Peer give-items on the same trades (how to gather the set)
 			if ($npcId > 0) {
-				$tq = "SELECT DISTINCT ti2.item_id, it.Name
-					FROM quest_trade_item ti
-					JOIN quest_trade t ON t.id = ti.trade_id
-					JOIN quest_trade_item ti2 ON ti2.trade_id = t.id AND ti2.role='give'
-					LEFT JOIN items it ON it.id = ti2.item_id
-					WHERE ti.item_id=$itemId AND ti.role='give' AND t.npc_id=$npcId AND ti2.item_id != $itemId
-					ORDER BY ti2.ord";
+				$tq = "SELECT t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag
+					FROM $tbquesttrade t
+					JOIN $tbquesttradeitem ti ON ti.trade_id = t.id AND ti.role='give' AND ti.item_id=$itemId
+					WHERE t.npc_id=$npcId
+					ORDER BY t.line_no, t.id";
 				$tr = mysqli_query($db, $tq);
 				if ($tr && mysqli_num_rows($tr) > 0) {
-					echo "<ul><li>Also required:";
-					$parts = array();
-					while ($peer = mysqli_fetch_assoc($tr)) {
-						$pid = (int)$peer['item_id'];
-						$pname = $peer['Name'] ? $peer['Name'] : "Item #$pid";
-						$parts[] = "<a href='{$root_url}item.php?id=$pid'>" . htmlspecialchars($pname) . "</a>";
+					echo "<ul>";
+					while ($trade = mysqli_fetch_assoc($tr)) {
+						$tid = (int)$trade['id'];
+						$peers = quest_trade_item_links($db, $tid, 'give', $itemId);
+						$rewards = quest_trade_item_links($db, $tid, 'reward');
+						$extras = quest_trade_reward_extras($trade);
+						$rewardParts = array_merge($rewards, $extras);
+						echo "<li>";
+						if ($peers) {
+							echo "<strong>Also required:</strong> " . implode(', ', $peers);
+							echo " — see each item for drop/vendor/craft sources";
+							if ($rewardParts) {
+								echo "<br>";
+							}
+						}
+						if ($rewardParts) {
+							echo "<strong>Reward:</strong> " . implode(', ', $rewardParts);
+						} elseif (!$peers) {
+							echo "<strong>Reward:</strong> (none resolved)";
+						}
+						echo "</li>";
 					}
-					echo " " . implode(', ', $parts) . " — see each item for drop/vendor/craft sources</li></ul>";
+					echo "</ul>";
 					mysqli_free_result($tr);
 				}
 			}
+			echo "</li>";
 		}
 		echo "</ul>";
 		mysqli_free_result($res);
