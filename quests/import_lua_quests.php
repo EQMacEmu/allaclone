@@ -7,11 +7,11 @@
  * Runtime site pages only query MySQL — they never call this script.
  *
  * Usage:
- *   php import_lua_quests.php --quests C:\TAKP\quests
  *   php import_lua_quests.php --quests /path/to/quests --host localhost --user root --pass root --db peq
- *   php import_lua_quests.php --quests C:\TAKP\quests --zones qeynos,freporte
+ *   php import_lua_quests.php --quests /path/to/quests --zones qeynos,freporte
  *
- * Optional: place includes/config.php so DB credentials are loaded automatically.
+ * Scripts bind to NPCs the way the server loads them: <npc_id>.lua, or <npc_name>.lua matched
+ * against NPCs that belong to the script's zone, plus eq.register_npc_event ids.
  *
  * Heuristic limits: regex extraction; misses concatenated strings, variable item
  * ids, deep nesting, and non-literal npc id bindings.
@@ -35,6 +35,7 @@ $opts = getopt('', array(
 
 if (isset($opts['help']) || empty($opts['quests'])) {
 	fwrite(STDOUT, "Usage: php import_lua_quests.php --quests <quest_root> [--host H] [--user U] [--pass P] [--db D] [--zones z1,z2] [--dry-run]\n");
+	fwrite(STDOUT, "DB settings fall back to ALLACLONE_DB_HOST / _USER / _PASS / _NAME, then localhost / root / root / peq.\n");
 	exit(isset($opts['help']) ? 0 : 1);
 }
 
@@ -44,10 +45,19 @@ if (!is_dir($questRoot)) {
 	exit(1);
 }
 
-$dbhost = isset($opts['host']) ? $opts['host'] : 'localhost';
-$dbuser = isset($opts['user']) ? $opts['user'] : 'root';
-$dbpasswd = isset($opts['pass']) ? $opts['pass'] : 'root';
-$dbname = isset($opts['db']) ? $opts['db'] : 'peq';
+// Command-line flags win, then ALLACLONE_DB_* environment variables (also how an empty password is passed).
+function cli_setting($opts, $flag, $envName, $default) {
+	if (isset($opts[$flag])) {
+		return $opts[$flag];
+	}
+	$env = getenv($envName);
+	return ($env !== false) ? $env : $default;
+}
+$dbhost = cli_setting($opts, 'host', 'ALLACLONE_DB_HOST', 'localhost');
+$dbuser = cli_setting($opts, 'user', 'ALLACLONE_DB_USER', 'root');
+// getopt() drops "--pass=" (empty value), so treat it as an explicit empty password.
+$dbpasswd = in_array('--pass=', $argv, true) ? '' : cli_setting($opts, 'pass', 'ALLACLONE_DB_PASS', 'root');
+$dbname = cli_setting($opts, 'db', 'ALLACLONE_DB_NAME', 'peq');
 $dryRun = isset($opts['dry-run']);
 $zoneFilter = array();
 if (!empty($opts['zones'])) {
@@ -94,8 +104,11 @@ function sql_escape($db, $s) {
 	return mysqli_real_escape_string($db, $s);
 }
 
-function load_npc_name_map($db) {
-	$map = array(); // key => list of [id, name, primary_faction_id]
+/**
+ * NPC lookup tables: 'by_id' => id => meta, 'exact' => name => [ids], 'norm' => normalized name => [ids].
+ */
+function load_npc_maps($db) {
+	$maps = array('by_id' => array(), 'exact' => array(), 'norm' => array());
 	$q = "SELECT n.id, n.name,
 		IFNULL(nf.primaryfaction, 0) AS primary_faction_id
 		FROM npc_types n
@@ -106,21 +119,102 @@ function load_npc_name_map($db) {
 		exit(1);
 	}
 	while ($row = mysqli_fetch_assoc($res)) {
-		$key = normalize_npc_key($row['name']);
-		if ($key === '') {
-			continue;
-		}
-		if (!isset($map[$key])) {
-			$map[$key] = array();
-		}
-		$map[$key][] = array(
-			'id' => (int)$row['id'],
+		$id = (int)$row['id'];
+		$maps['by_id'][$id] = array(
+			'id' => $id,
 			'name' => $row['name'],
 			'primary_faction_id' => (int)$row['primary_faction_id'],
 		);
+		$maps['exact'][$row['name']][] = $id;
+		$key = normalize_npc_key($row['name']);
+		if ($key !== '') {
+			$maps['norm'][$key][] = $id;
+		}
 	}
 	mysqli_free_result($res);
-	return $map;
+	return $maps;
+}
+
+/** zone short_name (lowercase) => zoneidnumber */
+function load_zone_ids($db) {
+	$zones = array();
+	$res = mysqli_query($db, "SELECT short_name, zoneidnumber FROM zone");
+	if (!$res) {
+		fwrite(STDERR, "Failed loading zone: " . mysqli_error($db) . "\n");
+		exit(1);
+	}
+	while ($row = mysqli_fetch_assoc($res)) {
+		$zones[strtolower($row['short_name'])] = (int)$row['zoneidnumber'];
+	}
+	mysqli_free_result($res);
+	return $zones;
+}
+
+/** npc id => [zone short_name (lowercase) => true] for every zone the NPC has a spawn point in. */
+function load_npc_spawn_zones($db) {
+	$spawnZones = array();
+	$res = mysqli_query($db, "SELECT DISTINCT se.npcID, s2.zone
+		FROM spawnentry se
+		JOIN spawn2 s2 ON s2.spawngroupID = se.spawngroupID");
+	if (!$res) {
+		fwrite(STDERR, "Failed loading spawn zones: " . mysqli_error($db) . "\n");
+		exit(1);
+	}
+	while ($row = mysqli_fetch_row($res)) {
+		$spawnZones[(int)$row[0]][strtolower($row[1])] = true;
+	}
+	mysqli_free_result($res);
+	return $spawnZones;
+}
+
+/** NPC ids belong to a zone by id range (id DIV 1000 = zoneidnumber) or by having a spawn point there. */
+function npc_in_zone($npcId, $zoneShort, $zoneIds, $spawnZones) {
+	$zoneShort = strtolower($zoneShort);
+	if (isset($zoneIds[$zoneShort]) && intdiv($npcId, 1000) === $zoneIds[$zoneShort]) {
+		return true;
+	}
+	return isset($spawnZones[$npcId][$zoneShort]);
+}
+
+/**
+ * Resolve which npc_types rows a script file belongs to, mirroring how the server picks scripts:
+ * a numeric file name is an npc id, otherwise the file name is the NPC name. Exact names win over
+ * normalized ones, so #Lanhern_Firepride.lua and Lanhern_Firepride.lua stay on separate NPCs.
+ */
+function resolve_script_npcs($stem, $zoneShort, $registeredIds, $npcMaps, $zoneIds, $spawnZones) {
+	$ids = array();
+	if (ctype_digit($stem)) {
+		$ids[] = (int)$stem;
+	} else {
+		$candidates = isset($npcMaps['exact'][$stem]) ? $npcMaps['exact'][$stem] : array();
+		$inZone = array();
+		foreach ($candidates as $id) {
+			if (npc_in_zone($id, $zoneShort, $zoneIds, $spawnZones)) {
+				$inZone[] = $id;
+			}
+		}
+		if (count($inZone) === 0) {
+			$key = normalize_npc_key($stem);
+			$candidates = ($key !== '' && isset($npcMaps['norm'][$key])) ? $npcMaps['norm'][$key] : array();
+			foreach ($candidates as $id) {
+				if (npc_in_zone($id, $zoneShort, $zoneIds, $spawnZones)) {
+					$inZone[] = $id;
+				}
+			}
+		}
+		$ids = $inZone;
+	}
+	foreach ($registeredIds as $id) {
+		$ids[] = (int)$id;
+	}
+
+	$targets = array();
+	foreach ($ids as $id) {
+		if (isset($npcMaps['by_id'][$id])) {
+			$targets[$id] = $npcMaps['by_id'][$id];
+		}
+	}
+	return $targets;
 }
 
 function load_item_ids($db) {
@@ -151,30 +245,22 @@ function load_faction_ids($db) {
 	return $set;
 }
 
-function extract_literal_npc_ids($text) {
+/**
+ * NPC ids whose events this script handles via eq.register_npc_event (encounter scripts).
+ * Ids that a script only spawns, signals or depops are not bound: those NPCs have their own scripts.
+ */
+function extract_registered_npc_ids($text) {
 	$ids = array();
-	$patterns = array(
-		'/\beq\.spawn2\s*\(\s*(\d+)/i',
-		'/\beq\.unique_spawn\s*\(\s*(\d+)/i',
-		'/\bquest::spawn2\s*\(\s*(\d+)/i',
-		'/\beq\.depop_all\s*\(\s*(\d+)/i',
-		'/\beq\.signal\s*\(\s*(\d+)/i',
-		'/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*(\d+)/i',
-	);
-	foreach ($patterns as $rx) {
-		if (preg_match_all($rx, $text, $m)) {
-			foreach ($m[1] as $id) {
-				$ids[(int)$id] = true;
-			}
+	if (preg_match_all('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*(\d+)/i', $text, $m)) {
+		foreach ($m[1] as $id) {
+			$ids[(int)$id] = true;
 		}
 	}
-	// local NAME = 1234 then used as spawn — capture simple locals that look like npc ids
+	// local NAME = 1234 then passed to register_npc_event
 	if (preg_match_all('/\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d{3,})\b/', $text, $m, PREG_SET_ORDER)) {
 		foreach ($m as $hit) {
-			$var = $hit[1];
-			$id = (int)$hit[2];
-			if (preg_match('/\beq\.(?:spawn2|unique_spawn|depop_all|signal)\s*\(\s*' . preg_quote($var, '/') . '\b/', $text)) {
-				$ids[$id] = true;
+			if (preg_match('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*' . preg_quote($hit[1], '/') . '\b/', $text)) {
+				$ids[(int)$hit[2]] = true;
 			}
 		}
 	}
@@ -263,7 +349,7 @@ function parse_lua_file($path, $rel) {
 		'faction_hits' => array(),
 		'faction_reqs' => array(),
 		'say_branches' => array(),
-		'literal_npc_ids' => extract_literal_npc_ids($raw),
+		'registered_npc_ids' => extract_registered_npc_ids($raw),
 	);
 
 	// Trade turn-ins
@@ -479,11 +565,13 @@ function collect_lua_files($zonePath) {
 	return $files;
 }
 
-fwrite(STDOUT, "Loading npc_types / items / faction_list...\n");
-$npcMap = load_npc_name_map($db);
+fwrite(STDOUT, "Loading npc_types / zones / spawns / items / faction_list...\n");
+$npcMaps = load_npc_maps($db);
+$zoneIds = load_zone_ids($db);
+$spawnZones = load_npc_spawn_zones($db);
 $itemIds = load_item_ids($db);
 $factionIds = load_faction_ids($db);
-fwrite(STDOUT, "  npcs keys=" . count($npcMap) . " items=" . count($itemIds) . " factions=" . count($factionIds) . "\n");
+fwrite(STDOUT, "  npcs=" . count($npcMaps['by_id']) . " zones=" . count($zoneIds) . " items=" . count($itemIds) . " factions=" . count($factionIds) . "\n");
 
 if (!$dryRun) {
 	$schema = dirname(__DIR__) . '/includes/sql/quests.sql';
@@ -520,28 +608,7 @@ foreach ($zones as $zone) {
 		if ($parsed === null) {
 			continue;
 		}
-		$targets = array(); // npc_id => meta
-		$stemKey = normalize_npc_key($file['stem']);
-		if ($stemKey !== '' && isset($npcMap[$stemKey])) {
-			foreach ($npcMap[$stemKey] as $cand) {
-				$targets[$cand['id']] = $cand;
-			}
-		}
-		foreach ($parsed['literal_npc_ids'] as $lid) {
-			// Look up by id
-			$q = mysqli_query($db, "SELECT n.id, n.name, IFNULL(nf.primaryfaction,0) AS primary_faction_id
-				FROM npc_types n LEFT JOIN npc_faction nf ON nf.id=n.npc_faction_id WHERE n.id=" . (int)$lid . " LIMIT 1");
-			if ($q && ($row = mysqli_fetch_assoc($q))) {
-				$targets[(int)$row['id']] = array(
-					'id' => (int)$row['id'],
-					'name' => $row['name'],
-					'primary_faction_id' => (int)$row['primary_faction_id'],
-				);
-			}
-			if ($q) {
-				mysqli_free_result($q);
-			}
-		}
+		$targets = resolve_script_npcs($file['stem'], $zn, $parsed['registered_npc_ids'], $npcMaps, $zoneIds, $spawnZones);
 		if (count($targets) === 0) {
 			continue;
 		}
@@ -668,7 +735,7 @@ foreach ($npcRows as $row) {
 			}
 			mysqli_query($db, "INSERT INTO quest_trade_item (trade_id,role,item_id,ord) VALUES ($tradeId,'give',$iid,$ord)");
 			$ord++;
-			$ik = $iid . '|' . $row['npc_name'] . '|' . $row['zone_short'];
+			$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
 			if (!isset($itemIndex[$ik])) {
 				$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
 			}
@@ -686,7 +753,7 @@ foreach ($npcRows as $row) {
 			}
 			mysqli_query($db, "INSERT INTO quest_trade_item (trade_id,role,item_id,ord) VALUES ($tradeId,'reward',$iid,$ord)");
 			$ord++;
-			$ik = $iid . '|' . $row['npc_name'] . '|' . $row['zone_short'];
+			$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
 			if (!isset($itemIndex[$ik])) {
 				$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
 			}
@@ -752,7 +819,7 @@ foreach ($itemIndex as $ix) {
 	$hd = (int)$ix['handed'];
 	mysqli_query($db, "INSERT INTO quest_items (item_id,npc,zone,npc_id,rewarded,handed)
 		VALUES ($iid,'$npc','$zone',$nid,$rw,$hd)
-		ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd), npc_id=$nid");
+		ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd)");
 }
 
 fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} skipped_unknown_items={$stats['skipped_items']}\n");

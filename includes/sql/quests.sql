@@ -110,7 +110,7 @@ CREATE TABLE `quest_items` (
   `npc_id` int(11) NOT NULL DEFAULT '0',
   `rewarded` tinyint(4) NOT NULL DEFAULT '0',
   `handed` tinyint(4) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`item_id`,`npc`,`zone`),
+  PRIMARY KEY (`item_id`,`npc_id`,`zone`),
   KEY `item_id` (`item_id`),
   KEY `npc_id` (`npc_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;

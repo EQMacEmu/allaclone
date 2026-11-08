@@ -1,45 +1,71 @@
 <?php
 /**
  * Interactive Brewall map helpers for allaclone (Konva viewer).
- * Uses $map_txt_dir / $map_txt_url — does not touch Zeal.
+ * Map files are read from $map_txt_dir and served from $map_txt_url.
  */
 
-if (!function_exists('map_txt_base_path')) {
-	function map_txt_base_path($short_name)
+if (!function_exists('map_txt_index')) {
+	/**
+	 * Lowercase filename => on-disk filename for every .txt in $map_txt_dir.
+	 * Brewall packs mix case (Qeynos_1.txt), which matters on case-sensitive filesystems.
+	 */
+	function map_txt_index()
 	{
 		global $map_txt_dir;
+		static $index = null;
+		if ($index !== null) {
+			return $index;
+		}
+		$index = array();
+		$dir = rtrim((string)$map_txt_dir, '/\\');
+		if ($dir === '' || !is_dir($dir)) {
+			return $index;
+		}
+		foreach (scandir($dir) as $file) {
+			if (strcasecmp(substr($file, -4), '.txt') === 0) {
+				$index[strtolower($file)] = $file;
+			}
+		}
+		return $index;
+	}
+}
+
+if (!function_exists('map_txt_file')) {
+	/** On-disk filename for a zone map file, or null. $suffix '' is the base file. */
+	function map_txt_file($short_name, $suffix = '')
+	{
 		$short_name = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$short_name);
 		if ($short_name === '') {
 			return null;
 		}
-		$path = rtrim($map_txt_dir, '/\\') . DIRECTORY_SEPARATOR . $short_name . '.txt';
-		return is_file($path) ? $path : null;
+		$name = strtolower($short_name . ($suffix === '' ? '' : '_' . $suffix) . '.txt');
+		$index = map_txt_index();
+		return isset($index[$name]) ? $index[$name] : null;
 	}
 }
 
 if (!function_exists('map_txt_available')) {
 	function map_txt_available($short_name)
 	{
-		return map_txt_base_path($short_name) !== null;
+		return map_txt_file($short_name) !== null;
 	}
 }
 
-if (!function_exists('map_txt_layer_suffixes')) {
+if (!function_exists('map_txt_layers')) {
 	/**
-	 * Return layer file suffixes that exist: '' (base), '1', '2', ... up to 10.
+	 * Existing map files for a zone: list of ['key' => 'base'|'1'..'10', 'file' => on-disk name].
 	 */
-	function map_txt_layer_suffixes($short_name)
+	function map_txt_layers($short_name)
 	{
-		global $map_txt_dir;
-		$short_name = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$short_name);
 		$layers = array();
-		$dir = rtrim($map_txt_dir, '/\\') . DIRECTORY_SEPARATOR;
-		if (is_file($dir . $short_name . '.txt')) {
-			$layers[] = '';
+		$base = map_txt_file($short_name);
+		if ($base !== null) {
+			$layers[] = array('key' => 'base', 'file' => $base);
 		}
 		for ($i = 1; $i <= 10; $i++) {
-			if (is_file($dir . $short_name . '_' . $i . '.txt')) {
-				$layers[] = (string)$i;
+			$file = map_txt_file($short_name, (string)$i);
+			if ($file !== null) {
+				$layers[] = array('key' => (string)$i, 'file' => $file);
 			}
 		}
 		return $layers;
@@ -62,8 +88,9 @@ if (!function_exists('render_interactive_map')) {
 	 * @param array  $spawn_points list of ['x'=>,'y'=>,'z'=>optional,'label'=>optional] in spawn2 /loc axes
 	 * @param array  $path_points  optional map of path id => list of {x,y}
 	 * @param array  $roam_boxes   optional list of min_x,max_x,min_y,max_y (spawn2/loc axes)
+	 * @param string $fit          initial view: 'spawns' (frame spawn points) or 'zone' (whole map)
 	 */
-	function render_interactive_map($short_name, $spawn_points = array(), $path_points = array(), $roam_boxes = array())
+	function render_interactive_map($short_name, $spawn_points = array(), $path_points = array(), $roam_boxes = array(), $fit = 'spawns')
 	{
 		global $map_txt_url, $root_url;
 
@@ -72,11 +99,7 @@ if (!function_exists('render_interactive_map')) {
 			return;
 		}
 
-		$layers = map_txt_layer_suffixes($short_name);
-		$layer_files = array();
-		foreach ($layers as $suffix) {
-			$layer_files[] = $suffix;
-		}
+		$layers = map_txt_layers($short_name);
 
 		$safe_points = array();
 		foreach ($spawn_points as $pt) {
@@ -100,31 +123,39 @@ if (!function_exists('render_interactive_map')) {
 			'containerId' => 'konva-container',
 			'controlsId' => 'map-controls',
 			'mapBaseUrl' => $map_txt_url,
-			'mapBaseName' => $short_name,
-			'layerFiles' => $layer_files,
+			'layerFiles' => $layers,
 			'spawnPoints' => $safe_points,
 			'pathPoints' => $path_points ? $path_points : new stdClass(),
 			'roamBoxes' => $roam_boxes,
+			'fit' => ($fit === 'zone') ? 'zone' : 'spawns',
 		);
 
 		echo "<div class='interactive-map-wrap'>\n";
 		echo "<div id='map-controls' class='map-controls'>\n";
 		echo "<label>Line weight <input type='range' min='1' max='6' value='2' data-map-control='line-weight'></label>\n";
-		echo "<label><input type='checkbox' data-map-control='show-pois'> Show POI labels</label>\n";
-		echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
-		echo "<label>Floor <select data-map-control='floor'><option value='all'>All floors</option></select></label>\n";
-
-		foreach ($layers as $suffix) {
-			$label = ($suffix === '') ? 'Base' : ('Layer ' . $suffix);
-			$key = ($suffix === '') ? 'base' : $suffix;
-			$checked = ' checked';
-			// Base stays on; extra layers on by default
-			echo "<label><input type='checkbox' data-map-layer='" . htmlspecialchars($key, ENT_QUOTES) . "'$checked> " . htmlspecialchars($label) . "</label>\n";
+		if (count($safe_points) > 0) {
+			echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
 		}
 
+		// _1 files in Brewall packs hold the place-name labels; they start hidden to keep the map readable.
+		foreach ($layers as $layer) {
+			if ($layer['key'] === 'base') {
+				$label = 'Map';
+				$checked = ' checked';
+			} elseif ($layer['key'] === '1') {
+				$label = 'Labels';
+				$checked = '';
+			} else {
+				$label = 'Layer ' . $layer['key'];
+				$checked = ' checked';
+			}
+			echo "<label><input type='checkbox' data-map-layer='" . htmlspecialchars($layer['key'], ENT_QUOTES) . "'$checked> " . htmlspecialchars($label) . "</label>\n";
+		}
+		echo "<button type='button' data-map-control='reset'>Reset view</button>\n";
+
 		echo "</div>\n";
-		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map'></div>\n";
-		echo "<p class='map-hint'>Drag to pan, scroll to zoom. Coordinates are /loc order (Y, X). Spawns use canvas = (−x, −y).</p>\n";
+		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
+		echo "<p class='map-hint'>Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).</p>\n";
 		echo "</div>\n";
 
 		$js_base = htmlspecialchars($root_url . 'js/', ENT_QUOTES);

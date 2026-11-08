@@ -22,7 +22,7 @@ if ($npc_id <= 0 && $npcName != '' && $zone != '') {
 	$npc_id = (int)GetFieldByQuery('npc_id', $q);
 }
 
-if ($npc_id <= 0) {
+if ($npc_id <= 0 || in_array($npc_id, array_map('intval', $hide_npc_id))) {
 	header('Location: zones.php');
 	exit;
 }
@@ -35,10 +35,16 @@ if (!quest_tables_ready($db)) {
 	exit;
 }
 
-$whereZone = $zone != '' ? " AND zone_short='" . addslashes($zone) . "'" : '';
-$qn = GetRowByQuery("SELECT * FROM $tbquestnpc WHERE npc_id=$npc_id $whereZone ORDER BY id LIMIT 1");
+$questNpcQuery = "SELECT $tbquestnpc.*, $tbzones.long_name
+	FROM $tbquestnpc
+	JOIN $tbzones ON $tbzones.short_name = $tbquestnpc.zone_short
+	WHERE $tbquestnpc.npc_id=$npc_id " . quest_visibility_filter("$tbquestnpc.npc_id");
+$qn = null;
+if ($zone != '') {
+	$qn = GetRowByQuery($questNpcQuery . " AND $tbquestnpc.zone_short='" . addslashes($zone) . "' ORDER BY $tbquestnpc.id LIMIT 1");
+}
 if (!$qn) {
-	$qn = GetRowByQuery("SELECT * FROM $tbquestnpc WHERE npc_id=$npc_id ORDER BY id LIMIT 1");
+	$qn = GetRowByQuery($questNpcQuery . " ORDER BY $tbquestnpc.id LIMIT 1");
 }
 if (!$qn) {
 	header('Location: zones.php');
@@ -46,8 +52,8 @@ if (!$qn) {
 }
 $zone = $qn['zone_short'];
 $questNpcId = (int)$qn['id'];
-$dispName = str_replace('_', ' ', $qn['npc_name']);
-$myzone = GetFieldByQuery('long_name', "SELECT long_name FROM $tbzones WHERE short_name='" . addslashes($zone) . "'");
+$dispName = quest_npc_display_name($qn['npc_name']);
+$myzone = $qn['long_name'];
 
 $Title = "Quest: " . htmlspecialchars($dispName);
 include('../includes/headers.php');
@@ -116,44 +122,11 @@ if ($tradeRes && mysqli_num_rows($tradeRes) > 0) {
 	print "<h3>Turn-ins</h3>";
 	while ($t = mysqli_fetch_assoc($tradeRes)) {
 		$tid = (int)$t['id'];
-		print "<div style='margin-bottom:1em;padding:0.5em;border:1px solid #ccc'>";
-		print "<p><strong>Give:</strong> ";
-		$gi = mysqli_query($db, "SELECT ti.item_id, it.Name FROM $tbquesttradeitem ti
-			LEFT JOIN $tbitems it ON it.id=ti.item_id
-			WHERE ti.trade_id=$tid AND ti.role='give' ORDER BY ti.ord");
-		$parts = array();
-		while ($gi && ($g = mysqli_fetch_assoc($gi))) {
-			$iid = (int)$g['item_id'];
-			$iname = $g['Name'] ? $g['Name'] : "Item #$iid";
-			$parts[] = "<a href='{$root_url}item.php?id=$iid'>" . htmlspecialchars($iname) . "</a>";
-		}
-		if ($gi) mysqli_free_result($gi);
-		print $parts ? implode(', ', $parts) : '(none resolved)';
-		print "</p>";
-
-		print "<p><strong>Reward:</strong> ";
-		$ri = mysqli_query($db, "SELECT ti.item_id, it.Name FROM $tbquesttradeitem ti
-			LEFT JOIN $tbitems it ON it.id=ti.item_id
-			WHERE ti.trade_id=$tid AND ti.role='reward' ORDER BY ti.ord");
-		$parts = array();
-		while ($ri && ($g = mysqli_fetch_assoc($ri))) {
-			$iid = (int)$g['item_id'];
-			$iname = $g['Name'] ? $g['Name'] : "Item #$iid";
-			$parts[] = "<a href='{$root_url}item.php?id=$iid'>" . htmlspecialchars($iname) . "</a>";
-		}
-		if ($ri) mysqli_free_result($ri);
-		$money = quest_format_money((int)$t['copper'], (int)$t['silver'], (int)$t['gold'], (int)$t['platinum']);
-		if ($money) {
-			$parts[] = $money;
-		}
-		if ((int)$t['reward_exp'] > 0) {
-			$parts[] = (int)$t['reward_exp'] . ' exp';
-		}
-		if ((int)$t['reward_faction_flag']) {
-			$parts[] = 'NPC faction hit list applied';
-		}
-		print $parts ? implode(', ', $parts) : '(none)';
-		print "</p>";
+		print "<div class='quest-trade'>";
+		$give = quest_trade_item_links($db, $tid, 'give');
+		print "<p><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)') . "</p>";
+		$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward'), quest_trade_reward_extras($t));
+		print "<p><strong>Reward:</strong> " . ($rewards ? implode(', ', $rewards) : '(none extracted)') . "</p>";
 		print "<p><small>" . htmlspecialchars($t['script_file']) . ":" . (int)$t['line_no'] . "</small></p>";
 		print "</div>";
 	}

@@ -1,7 +1,3 @@
-<?php if (!empty($AllowQuestsNPC)) : ?>
-<a href="<?php echo $root_url; ?>quests/zones.php">Quests by Zone</a>
-<?php endif; ?>
-
 <?php if($ShowAccount) : ?>
 <a href="<?php echo $root_url; ?>accounts.php">Player Accounts</a>
 <?php endif; ?>

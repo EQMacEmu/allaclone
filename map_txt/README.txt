@@ -1,12 +1,14 @@
-Interactive map geometry for allaclone (Brewall .txt + Miragul label layers).
+Interactive map geometry for allaclone (Brewall-format .txt map files).
 
-These files are NOT committed (third-party cartography). Place zone short-name
-files here as <short>.txt, <short>_1.txt, etc.
+These files are NOT committed (third-party cartography). Place zone files here
+named by zone short name: <short>.txt for the map lines, <short>_1.txt for place
+labels, <short>_2.txt etc. for extra layers. Filename case does not matter
+(Qeynos_1.txt and qeynos_1.txt both work).
 
-Copy from a local Zeal checkout:
-  robocopy C:\TAKP\Zeal\Zeal\zone_map_src\map_files C:\TAKP\allaclone\map_txt /E
+Get them from the Brewall map packs at https://www.eqmaps.info/eq-map-files/
+and copy the zones you need. Any EverQuest client map folder in the same format
+also works (for example the zone_map_src/map_files folder of a Zeal checkout).
 
-Or download Brewall packs from https://www.eqmaps.info/eq-map-files/
-and copy the PoP-era zone files you need.
+Zones without a file here simply don't show the "Interactive Map" link.
 
 Credit: Brewall (eqmaps.info); label layers may come from Project Miragul.

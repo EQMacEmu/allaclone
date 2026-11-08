@@ -3793,6 +3793,16 @@ table#resists-table th,
   padding: 10px;
 }
 
+/* DB-backed quest pages */
+.quest-trade {
+  margin-bottom: 1em;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+}
+.quest-trade p {
+  margin: 0.25em 0;
+}
+
 /* Interactive Brewall / Konva maps */
 .interactive-map-wrap {
   clear: both;
@@ -3816,6 +3826,13 @@ table#resists-table th,
   gap: 6px;
   white-space: nowrap;
 }
+.map-controls button {
+  padding: 3px 10px;
+  border: 1px solid #888;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
 .konva-container {
   position: relative;
   width: 100%;
@@ -3824,6 +3841,12 @@ table#resists-table th,
   border: 1px solid #888;
   overflow: hidden;
   touch-action: none;
+  cursor: grab;
+}
+.konva-container.map-active,
+.konva-container:focus {
+  outline: 2px solid #2a5d77;
+  outline-offset: -2px;
 }
 .map-coord-display {
   position: absolute;

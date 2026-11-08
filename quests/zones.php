@@ -31,10 +31,11 @@ print "<form method=GET action='$PHP_SELF'>";
 print "<tr><td nowrap><b>Zone:</b></td><td>";
 print "<select name=aZone>";
 print "<option value=\"\">-- all / search --</option>";
-$query = "SELECT DISTINCT qn.zone_short, z.long_name
+$query = "SELECT DISTINCT qn.zone_short, $tbzones.long_name
 	FROM $tbquestnpc qn
-	LEFT JOIN $tbzones z ON z.short_name = qn.zone_short
-	ORDER BY z.long_name ASC, qn.zone_short ASC";
+	JOIN $tbzones ON $tbzones.short_name = qn.zone_short
+	WHERE 1=1 " . quest_visibility_filter('qn.npc_id') . "
+	ORDER BY $tbzones.long_name ASC, qn.zone_short ASC";
 $result = mysqli_query($db, $query) or message_die('quests/zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 while ($row = mysqli_fetch_array($result)) {
 	$label = $row['long_name'] ? $row['long_name'] : $row['zone_short'];
@@ -66,22 +67,28 @@ if ($searchItem > 0) {
 		WHERE ti.item_id=$searchItem)";
 }
 
-$query = "SELECT qn.npc_id, qn.npc_name, qn.zone_short, z.long_name,
+$maxRows = 500;
+$query = "SELECT qn.npc_id, qn.npc_name, qn.zone_short, $tbzones.long_name,
 	(SELECT COUNT(*) FROM $tbquesttrade t WHERE t.quest_npc_id=qn.id) AS trade_count,
 	(SELECT COUNT(*) FROM $tbquestsaybranch s WHERE s.quest_npc_id=qn.id) AS say_count
 	FROM $tbquestnpc qn
-	LEFT JOIN $tbzones z ON z.short_name=qn.zone_short
+	JOIN $tbzones ON $tbzones.short_name=qn.zone_short
 	WHERE $where
+	" . quest_visibility_filter('qn.npc_id') . "
 	AND (
 		EXISTS (SELECT 1 FROM $tbquesttrade t WHERE t.quest_npc_id=qn.id)
 		OR EXISTS (SELECT 1 FROM $tbquestsaybranch s WHERE s.quest_npc_id=qn.id)
 		OR EXISTS (SELECT 1 FROM $tbquestfactionhit h WHERE h.quest_npc_id=qn.id)
 	)
-	ORDER BY z.long_name ASC, qn.npc_name ASC
-	LIMIT 500";
+	ORDER BY $tbzones.long_name ASC, qn.npc_name ASC
+	LIMIT " . ($maxRows + 1);
 $result = mysqli_query($db, $query) or message_die('quests/zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 $rows = mysqli_num_rows($result);
+$truncated = $rows > $maxRows;
+if ($truncated) {
+	$rows = $maxRows;
+}
 if ($rows == 0) {
 	print "<p>No quest NPCs found. Import Lua quests or broaden the search.</p>";
 } else {
@@ -91,14 +98,19 @@ if ($rows == 0) {
 	} else {
 		print "<h3>Results ($rows)</h3>";
 	}
+	if ($truncated) {
+		print "<p>Showing the first $maxRows quest NPCs. Pick a zone or search by name or item to narrow the list.</p>";
+	}
 	print "<table border=0 width=100%>";
 	$cpt = 0;
-	while ($row = mysqli_fetch_assoc($result)) {
+	$shown = 0;
+	while ($shown < $rows && ($row = mysqli_fetch_assoc($result))) {
+		$shown++;
 		$cpt++;
 		if ($cpt == 1) {
 			print "<tr>";
 		}
-		$npcDisp = str_replace('_', ' ', $row['npc_name']);
+		$npcDisp = quest_npc_display_name($row['npc_name']);
 		$meta = array();
 		if ((int)$row['trade_count'] > 0) {
 			$meta[] = (int)$row['trade_count'] . ' turn-in(s)';

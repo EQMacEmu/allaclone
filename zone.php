@@ -42,7 +42,7 @@ if ($mode == "map") {
 	if (map_txt_available($name)) {
 		print "<h3>" . htmlspecialchars($zone["long_name"]) . " Map</h3>";
 		$spawn_pts = fetch_zone_succor_spawn($zone);
-		render_interactive_map($name, $spawn_pts);
+		render_interactive_map($name, $spawn_pts, array(), array(), 'zone');
 	} else {
 		print "<p>No interactive map data for this zone.</p>";
 		if (file_exists($maps_dir . $name . ".jpg")) {
