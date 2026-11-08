@@ -1,5 +1,5 @@
-<?php  if($AllowQuestsNPC) : ?>
-<a href='".$root_url."quests/zones.php'>Quests by Zone</a>
+<?php if (!empty($AllowQuestsNPC)) : ?>
+<a href="<?php echo $root_url; ?>quests/zones.php">Quests by Zone</a>
 <?php endif; ?>
 
 <?php if($ShowAccount) : ?>

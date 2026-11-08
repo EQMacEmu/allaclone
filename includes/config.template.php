@@ -28,7 +28,7 @@ $icons_url=$root_url."/icons/";
 $images_url=$root_url."/images/";
 $charbrowser_url=""; // Set to "" to disable CharBrowser links for character names
 
-$DefaultCSS = "2017";
+$DefaultCSS = "2022";
 $CssStyle = $DefaultCSS;
 
 // NPC and Loot IDs to hide from searches in the case of server secrets
@@ -53,8 +53,9 @@ $ShowNpcDropChances=FALSE; // if TRUE, chances of droping of each item will be s
 $MerchantsDontDropStuff=TRUE; // if TRUE, you won't see merchants drops, damned PEQ word builders ! :)
 $ShowNPCNumberInZoneLevelList=TRUE; // choose between number and x for npcs in zone levels list
 $SortZoneLevelList=TRUE; // sort or not the zones in zone levels list
-$AllowQuestsNPC=FALSE; // quests for npcs are available from NPC's page
-$AlwaysBuildQuest=FALSE; // rebuilds the quest each time a visitor browse it, put false if you don't modify them anymore
+$AllowQuestsNPC=TRUE; // DB-backed quest pages (quest_* tool tables from quests/import_lua_quests.php)
+$ItemQuestSource=TRUE; // show quest reward / hand-in links on item.php
+$AlwaysBuildQuest=FALSE; // legacy Perl live-parse (unused for Lua DB quests; leave FALSE)
 $GroupNpcsByName=TRUE; // groups the NPCs by their name in zone npcs lists
 $HideInvisibleMen=TRUE; // hide the invisible mens in bestiaries
 $ItemAddChanceToDrop=FALSE; // shows what are the chances to see the item droped by the npcs 

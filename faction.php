@@ -11,6 +11,7 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'mysql.php');
+include($includes_dir . 'quest_helpers.php');
 
 /** Formats the npc/zone info selected in '$QueryResult' to display them by zone
  *  The top-level sort must be on the zone.
@@ -120,6 +121,9 @@ $Query = "SELECT $tbnpctypes.id,$tbnpctypes.name,$tbzones.long_name,$tbzones.sho
 $QueryResult = mysqli_query($db, $Query) or message_die('faction.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 PrintNpcsByZone($QueryResult);
 echo '</div>'; // lower
+
+quest_print_faction_section($db, $id);
+
 echo '</div>'; // faction-list
 echo '</div>'; // faction-details
 echo '</div>';

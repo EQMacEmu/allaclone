@@ -11,6 +11,7 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
+include($includes_dir . 'quest_helpers.php');
 
 $id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
@@ -122,15 +123,7 @@ if (mysqli_num_rows($result) > 0) {
 }
 echo $TradeskillResults;
 
-if ($ItemQuestSource) {
-
-	$query = "SELECT * FROM $tbquestitems WHERE item_id=$id AND rewarded > 0";
-	$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-
-	if (mysqli_num_rows($result) > 0) {
-		echo "<p>This item is the result of a quest.</p>";
-	}
-}
+quest_print_item_sources($db, $id);
 
 $Separator = "";
 

@@ -27,7 +27,13 @@
       }
     ?></title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
-	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css?v=<?php echo date("ymd-Gi", filemtime('includes/2022.css')) ?>" type="text/css" />
+	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css?v=<?php
+		$cssFile = __DIR__ . DIRECTORY_SEPARATOR . $CssStyle . '.css';
+		if (!is_file($cssFile)) {
+			$cssFile = __DIR__ . DIRECTORY_SEPARATOR . '2022.css';
+		}
+		echo is_file($cssFile) ? date('ymd-Gi', filemtime($cssFile)) : '1';
+	?>" type="text/css" />
 </head>
 
 <body>
@@ -49,7 +55,7 @@
 						</form>
 					</div>
 					<div class="quick-search">
-						<form name="fullsearch" method="GET" action="fullsearch.php">
+						<form name="fullsearch" method="GET" action="<?php echo $root_url; ?>fullsearch.php">
 							<input name="isearchtype" value="" type="hidden">
 							<input onfocus="if(this.value == 'Quick Search...') { this.value = ''; }" onkeypress="var key=event.keyCode || event.which; if(key==13){ this.form.isearchtype.value = 'name'; this.form.submit(); } else {return true;}" name="iname" placeholder="Quick Search..." type="text">
 						</form>
@@ -59,8 +65,8 @@
 					<a href="<?php echo $root_url; ?>" title="Home"><?php echo $PageTitle; ?></a>
 				</div>
 			</div>
-			<?php include("navbar.php"); ?>
+			<?php include(__DIR__ . '/navbar.php'); ?>
 		</header>
 		<div id="main">
-			<?php include("menu.php"); ?>
+			<?php include(__DIR__ . '/menu.php'); ?>
 			<h2 class="page_title"><?php echo $Title; ?></h2>

@@ -12,6 +12,7 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'mysql.php');
+include($includes_dir . 'quest_helpers.php');
 
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
@@ -520,6 +521,8 @@ if ($npc["npc_spells_id"] > 0) {
 		print "</ul></div>"; // list-wrapper
 	}
 }
+
+quest_print_npc_section($db, $id);
 
 // factions
 if ($npc["npc_faction_id"] > 0) {
