@@ -15,9 +15,36 @@
   var Z_HEIGHT_SCALE = 10;
   var Z_FADED_ALPHA = 0.2;
   var SPAWN_OFFLEVEL_OPACITY = 0.35;
+  // Spawn ring outerRadius in map units (see _drawSpawns). Screen size follows the map,
+  // then clamps so zoom-out stays readable without covering half the zone.
+  var SPAWN_OUTER_RADIUS = 18;
+  var SPAWN_MIN_SCREEN_PX = 12;
+  var SPAWN_MAX_SCREEN_PX = 30;
+  var INVALID_LEVEL_ID = -128;
+  // Brewall mapping-standards colors → level ids (Zeal maps_to_cpp.py).
+  var BREWALL_LEVEL_LUT = {
+    '255,168,102': 6,
+    '204,102,0': 5,
+    '102,255,102': 4,
+    '0,204,0': 3,
+    '102,255,255': 2,
+    '0,204,204': 1,
+    '0,0,0': 0,
+    '255,102,255': -1,
+    '204,0,204': -2,
+    '178,102,255': -3,
+    '102,0,204': -4
+  };
 
   function rgbCss(r, g, b) {
     return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  function brewLevelId(r, g, b) {
+    var key = r + ',' + g + ',' + b;
+    return Object.prototype.hasOwnProperty.call(BREWALL_LEVEL_LUT, key)
+      ? BREWALL_LEVEL_LUT[key]
+      : INVALID_LEVEL_ID;
   }
 
   function parseMapContent(content) {
@@ -31,11 +58,15 @@
       if (type !== 'L' && type !== 'P') continue;
       var parts = raw.substring(1).split(',');
       if (type === 'L' && parts.length >= 9) {
+        var r = parseInt(parts[6], 10) || 0;
+        var g = parseInt(parts[7], 10) || 0;
+        var b = parseInt(parts[8], 10) || 0;
         lines.push({
           points: [parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[3]), parseFloat(parts[4])],
           z0: parseFloat(parts[2]),
           z1: parseFloat(parts[5]),
-          color: rgbCss(parseInt(parts[6], 10) || 0, parseInt(parts[7], 10) || 0, parseInt(parts[8], 10) || 0)
+          color: rgbCss(r, g, b),
+          levelId: brewLevelId(r, g, b)
         });
       } else if (type === 'P' && parts.length >= 8) {
         points.push({
@@ -95,26 +126,70 @@
     return lineOpacity(z, z, focusZ, scale, faded);
   }
 
-  /** Quantize spawn Zs into clusters spaced by heightScale. */
-  function buildZClusters(spawnPoints, scale) {
-    var zs = [];
-    var i;
-    for (i = 0; i < spawnPoints.length; i++) {
-      if (hasFiniteZ(spawnPoints[i].z)) zs.push(spawnPoints[i].z);
+  function formatZ(z) {
+    if (!hasFiniteZ(z)) return '?';
+    return Math.abs(z - Math.round(z)) < 0.05 ? String(Math.round(z)) : z.toFixed(1);
+  }
+
+  function floorLabel(level) {
+    if (level.kind === 'z') {
+      return 'Z ≈ ' + formatZ(level.mid);
     }
-    zs.sort(function (a, b) { return a - b; });
+    var name = level.id === 0 ? 'Main' : ('L' + (level.id > 0 ? '+' : '') + level.id);
+    return name + ' (Z ' + formatZ(level.min) + '…' + formatZ(level.max) + ')';
+  }
+
+  /** Brewall color floors present in geometry; fallback = dense Z bands when colors are missing. */
+  function finalizeMapFloors(levelStats, lineMids) {
+    var floors = [];
+    var id;
+    for (id in levelStats) {
+      if (!Object.prototype.hasOwnProperty.call(levelStats, id)) continue;
+      var sid = parseInt(id, 10);
+      if (sid === INVALID_LEVEL_ID) continue;
+      var st = levelStats[id];
+      if (!st || st.count < 1) continue;
+      floors.push({
+        kind: 'level',
+        id: sid,
+        min: st.min,
+        max: st.max,
+        mid: (st.min + st.max) / 2,
+        count: st.count
+      });
+    }
+    floors.sort(function (a, b) { return b.id - a.id; });
+    if (floors.length >= 2) return floors;
+
+    // Fallback: cluster line mid-Z so single-color maps still get floor steps.
+    var zs = (lineMids || []).slice().sort(function (a, b) { return a - b; });
+    if (zs.length < 20) return floors;
+    var scale = Z_HEIGHT_SCALE * 2;
+    var minCount = Math.max(15, Math.floor(zs.length * 0.02));
     var clusters = [];
+    var i;
     for (i = 0; i < zs.length; i++) {
       var z = zs[i];
-      if (!clusters.length || Math.abs(z - clusters[clusters.length - 1].z) >= scale) {
-        clusters.push({ z: z, count: 1 });
+      if (!clusters.length || Math.abs(z - clusters[clusters.length - 1].mid) >= scale) {
+        clusters.push({ kind: 'z', id: clusters.length, min: z, max: z, mid: z, count: 1, _sum: z });
       } else {
         var c = clusters[clusters.length - 1];
-        c.z = (c.z * c.count + z) / (c.count + 1);
+        c.min = Math.min(c.min, z);
+        c.max = Math.max(c.max, z);
+        c._sum += z;
         c.count += 1;
+        c.mid = c._sum / c.count;
       }
     }
-    return clusters;
+    var dense = [];
+    for (i = 0; i < clusters.length; i++) {
+      if (clusters[i].count >= minCount) {
+        delete clusters[i]._sum;
+        dense.push(clusters[i]);
+      }
+    }
+    dense.sort(function (a, b) { return b.mid - a.mid; });
+    return dense.length >= 2 ? dense : floors;
   }
 
   function AllacloneMap(options) {
@@ -137,7 +212,11 @@
     this.spawnAnim = null;
     this.bounds = emptyBounds();
     this.focusSpawnIndex = -1;
-    this.zClusters = buildZClusters(this.spawnPoints, Z_HEIGHT_SCALE);
+    this.levelStats = {};
+    this.lineMids = [];
+    this.mapFloors = [];
+    this.focusFloorIndex = -1;
+    this.focusLevelId = null;
     this.zFadeEnabled = !!this.opts.zFadeDefault;
     this.focusZ = this._defaultFocusZ();
     this._initStage();
@@ -154,6 +233,24 @@
       }
     }
     return null;
+  };
+
+  AllacloneMap.prototype._recordLineLevel = function (line) {
+    var z0 = line.z0;
+    var z1 = line.z1;
+    if (hasFiniteZ(z0) && hasFiniteZ(z1)) {
+      this.lineMids.push((z0 + z1) / 2);
+    }
+    var id = line.levelId;
+    if (id === INVALID_LEVEL_ID) return;
+    var st = this.levelStats[id];
+    if (!st) {
+      st = { min: Infinity, max: -Infinity, count: 0 };
+      this.levelStats[id] = st;
+    }
+    st.min = Math.min(st.min, z0, z1);
+    st.max = Math.max(st.max, z0, z1);
+    st.count += 1;
   };
 
   AllacloneMap.prototype._initStage = function () {
@@ -232,6 +329,7 @@
       x: pointer.x - mousePointTo.x * newScale,
       y: pointer.y - mousePointTo.y * newScale
     });
+    this._syncSpawnScreenScale(1);
     this.stage.batchDraw();
   };
 
@@ -247,7 +345,34 @@
     };
     this.stage.size({ width: w, height: h });
     this.stage.position({ x: w / 2 - center.x * scale, y: h / 2 - center.y * scale });
+    this._syncSpawnScreenScale(1);
     this.stage.batchDraw();
+  };
+
+  // Keep spawn rings/labels readable across zoom without locking a fixed screen size.
+  AllacloneMap.prototype._syncSpawnScreenScale = function (pulse) {
+    if (!this.stage) return;
+    var stageScale = this.stage.scaleX();
+    if (!stageScale) return;
+    var p = (pulse == null || !(pulse > 0)) ? 1 : pulse;
+    var naturalScreen = SPAWN_OUTER_RADIUS * stageScale;
+    var targetScreen = naturalScreen;
+    if (targetScreen < SPAWN_MIN_SCREEN_PX) targetScreen = SPAWN_MIN_SCREEN_PX;
+    if (targetScreen > SPAWN_MAX_SCREEN_PX) targetScreen = SPAWN_MAX_SCREEN_PX;
+    var scale = (targetScreen / (SPAWN_OUTER_RADIUS * stageScale)) * p;
+    var labelOff = 20 / stageScale;
+    var labelUp = 8 / stageScale;
+    for (var r = 0; r < this.spawnRings.length; r++) {
+      this.spawnRings[r].scale({ x: scale, y: scale });
+    }
+    for (var t = 0; t < this.spawnLabelNodes.length; t++) {
+      var lab = this.spawnLabelNodes[t];
+      var idx = lab.getAttr('spawnIndex');
+      var pt = this.spawnPoints[idx];
+      if (!pt) continue;
+      lab.scale({ x: scale, y: scale });
+      lab.position({ x: pt.x + labelOff, y: pt.y - labelUp });
+    }
   };
 
   AllacloneMap.prototype._bindControls = function () {
@@ -283,11 +408,22 @@
     var zFocus = root.querySelector('[data-map-control="z-focus"]');
     if (zFocus) {
       zFocus.addEventListener('change', function () {
-        var val = parseFloat(zFocus.value);
-        if (!isFinite(val)) return;
-        self.focusZ = val;
-        self.focusSpawnIndex = self._nearestSpawnIndex(val);
-        self._applyZFade();
+        var idx = parseInt(zFocus.value, 10);
+        if (!isFinite(idx)) return;
+        self._setFocusFloor(idx, true);
+      });
+    }
+
+    var zPrev = root.querySelector('[data-map-control="z-prev"]');
+    if (zPrev) {
+      zPrev.addEventListener('click', function () {
+        self._stepFocusFloor(-1);
+      });
+    }
+    var zNext = root.querySelector('[data-map-control="z-next"]');
+    if (zNext) {
+      zNext.addEventListener('click', function () {
+        self._stepFocusFloor(1);
       });
     }
 
@@ -327,22 +463,59 @@
     return best;
   };
 
+  AllacloneMap.prototype._bestFloorIndexForZ = function (z) {
+    if (!hasFiniteZ(z) || !this.mapFloors.length) return -1;
+    var best = -1;
+    var bestScore = Infinity;
+    for (var i = 0; i < this.mapFloors.length; i++) {
+      var f = this.mapFloors[i];
+      var score;
+      if (z >= f.min && z <= f.max) {
+        // Prefer the tightest band that contains z.
+        score = (f.max - f.min) * 0.001;
+      } else {
+        score = 1000 + Math.min(Math.abs(z - f.min), Math.abs(z - f.max), Math.abs(z - f.mid));
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  AllacloneMap.prototype._enableZFade = function () {
+    var root = document.getElementById(this.opts.controlsId || 'map-controls');
+    var zFade = root ? root.querySelector('[data-map-control="z-fade"]') : null;
+    this.zFadeEnabled = true;
+    if (zFade) zFade.checked = true;
+  };
+
   AllacloneMap.prototype._syncZFocusSelect = function () {
     var root = document.getElementById(this.opts.controlsId || 'map-controls');
     var sel = root ? root.querySelector('[data-map-control="z-focus"]') : null;
-    if (!sel || !hasFiniteZ(this.focusZ)) return;
-    var bestIdx = -1;
-    var bestDist = Infinity;
-    for (var i = 0; i < sel.options.length; i++) {
-      var oz = parseFloat(sel.options[i].value);
-      if (!isFinite(oz)) continue;
-      var d = Math.abs(oz - this.focusZ);
-      if (d < bestDist) {
-        bestDist = d;
-        bestIdx = i;
-      }
-    }
-    if (bestIdx >= 0) sel.selectedIndex = bestIdx;
+    if (!sel || this.focusFloorIndex < 0) return;
+    sel.value = String(this.focusFloorIndex);
+  };
+
+  AllacloneMap.prototype._setFocusFloor = function (index, enableFade) {
+    if (index < 0 || index >= this.mapFloors.length) return;
+    var floor = this.mapFloors[index];
+    this.focusFloorIndex = index;
+    this.focusZ = floor.mid;
+    this.focusLevelId = floor.kind === 'level' ? floor.id : null;
+    this.focusSpawnIndex = this._nearestSpawnIndex(floor.mid);
+    this._syncZFocusSelect();
+    if (enableFade) this._enableZFade();
+    this._applyZFade();
+  };
+
+  AllacloneMap.prototype._stepFocusFloor = function (delta) {
+    if (this.mapFloors.length < 2) return;
+    var idx = this.focusFloorIndex;
+    if (idx < 0) idx = 0;
+    var next = (idx + delta + this.mapFloors.length) % this.mapFloors.length;
+    this._setFocusFloor(next, true);
   };
 
   AllacloneMap.prototype._setFocusFromSpawn = function (index) {
@@ -351,17 +524,63 @@
     if (!hasFiniteZ(pt.z)) return;
     this.focusSpawnIndex = index;
     this.focusZ = pt.z;
-    this._syncZFocusSelect();
-    // Enable fade when the user picks a floor via spawn click.
-    var root = document.getElementById(this.opts.controlsId || 'map-controls');
-    var zFade = root ? root.querySelector('[data-map-control="z-fade"]') : null;
-    if (zFade && !zFade.checked) {
-      zFade.checked = true;
-      this.zFadeEnabled = true;
-    } else if (!zFade) {
-      this.zFadeEnabled = true;
+    var floorIdx = this._bestFloorIndexForZ(pt.z);
+    if (floorIdx >= 0) {
+      var floor = this.mapFloors[floorIdx];
+      this.focusFloorIndex = floorIdx;
+      this.focusLevelId = floor.kind === 'level' ? floor.id : null;
+      // Prefer exact spawn Z for continuous fade when the floor is a Z-band fallback.
+      if (floor.kind === 'z') this.focusLevelId = null;
+      this._syncZFocusSelect();
+    } else {
+      this.focusFloorIndex = -1;
+      this.focusLevelId = null;
     }
+    this._enableZFade();
     this._applyZFade();
+  };
+
+  AllacloneMap.prototype._rebuildFloorControls = function () {
+    var root = document.getElementById(this.opts.controlsId || 'map-controls');
+    if (!root) return;
+    var wrap = root.querySelector('[data-map-control-wrap="z-floor"]');
+    var sel = root.querySelector('[data-map-control="z-focus"]');
+    var fadeWrap = root.querySelector('[data-map-control-wrap="z-fade"]');
+    var multi = this.mapFloors.length >= 2;
+    if (wrap) {
+      if (multi) wrap.removeAttribute('hidden');
+      else wrap.setAttribute('hidden', 'hidden');
+    }
+    if (fadeWrap) fadeWrap.style.display = '';
+    if (!sel) return;
+    sel.innerHTML = '';
+    for (var i = 0; i < this.mapFloors.length; i++) {
+      var opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = floorLabel(this.mapFloors[i]);
+      sel.appendChild(opt);
+    }
+    if (this.focusFloorIndex >= 0) sel.value = String(this.focusFloorIndex);
+  };
+
+  AllacloneMap.prototype._initFloorFocus = function () {
+    this.mapFloors = finalizeMapFloors(this.levelStats, this.lineMids);
+    var floorIdx = -1;
+    // Default to Brewall main (0). Spawn Z may be a basement; don't auto-select L-3 / fade.
+    for (var i = 0; i < this.mapFloors.length; i++) {
+      if (this.mapFloors[i].kind === 'level' && this.mapFloors[i].id === 0) {
+        floorIdx = i;
+        break;
+      }
+    }
+    if (floorIdx < 0 && this.mapFloors.length) floorIdx = 0;
+    if (floorIdx >= 0) {
+      var floor = this.mapFloors[floorIdx];
+      this.focusFloorIndex = floorIdx;
+      this.focusZ = floor.mid;
+      this.focusLevelId = floor.kind === 'level' ? floor.id : null;
+    }
+    this._rebuildFloorControls();
   };
 
   AllacloneMap.prototype._layerChecked = function (key) {
@@ -385,6 +604,7 @@
       self._drawPaths();
       self._drawRoamBoxes();
       self._drawSpawns();
+      self._initFloorFocus();
       self._applyZFade();
       self._fitView();
     });
@@ -415,6 +635,7 @@
     var i;
     for (i = 0; i < parsed.lines.length; i++) {
       var line = parsed.lines[i];
+      this._recordLineLevel(line);
       var shape = new Konva.Line({
         points: line.points,
         stroke: line.color,
@@ -425,6 +646,7 @@
       shape.setAttr('isMapLine', true);
       shape.setAttr('mapZ0', line.z0);
       shape.setAttr('mapZ1', line.z1);
+      shape.setAttr('mapLevelId', line.levelId);
       layer.add(shape);
     }
     for (i = 0; i < parsed.points.length; i++) {
@@ -446,8 +668,27 @@
     }
   };
 
+  AllacloneMap.prototype._lineFadeOpacity = function (z0, z1, levelId) {
+    var focusZ = this.focusZ;
+    var faded = Z_FADED_ALPHA;
+    // Discrete Brewall floor (Zeal set_level mode).
+    if (this.focusLevelId != null) {
+      var floor = this.mapFloors[this.focusFloorIndex];
+      var clipMin = floor ? floor.min : focusZ - Z_HEIGHT_SCALE;
+      var clipMax = floor ? floor.max + 10 : focusZ + Z_HEIGHT_SCALE;
+      if (levelId === INVALID_LEVEL_ID) {
+        var lineMax = Math.max(z0, z1);
+        var lineMin = Math.min(z0, z1);
+        if (lineMax < clipMin || lineMin > clipMax) return faded;
+        return 1;
+      }
+      return levelId === this.focusLevelId ? 1 : faded;
+    }
+    return lineOpacity(z0, z1, focusZ, Z_HEIGHT_SCALE, faded);
+  };
+
   AllacloneMap.prototype._applyZFade = function () {
-    var enabled = this.zFadeEnabled && hasFiniteZ(this.focusZ);
+    var enabled = this.zFadeEnabled && (hasFiniteZ(this.focusZ) || this.focusLevelId != null);
     var focusZ = this.focusZ;
     var key;
     for (key in this.fileLayers) {
@@ -458,7 +699,7 @@
         var node = nodes[i];
         if (node.getAttr('isMapLine')) {
           node.opacity(enabled
-            ? lineOpacity(node.getAttr('mapZ0'), node.getAttr('mapZ1'), focusZ, Z_HEIGHT_SCALE, Z_FADED_ALPHA)
+            ? this._lineFadeOpacity(node.getAttr('mapZ0'), node.getAttr('mapZ1'), node.getAttr('mapLevelId'))
             : 1);
         } else if (node.getAttr('isMapLabel')) {
           node.opacity(enabled
@@ -468,12 +709,19 @@
       }
     }
 
+    var floor = (this.focusFloorIndex >= 0) ? this.mapFloors[this.focusFloorIndex] : null;
     for (var r = 0; r < this.spawnRings.length; r++) {
       var ring = this.spawnRings[r];
       var pt = this.spawnPoints[r];
       var focused = (r === this.focusSpawnIndex);
-      var onLevel = !enabled || !hasFiniteZ(pt.z) ||
-        Math.abs(pt.z - focusZ) <= Z_HEIGHT_SCALE;
+      var onLevel = true;
+      if (enabled && hasFiniteZ(pt.z)) {
+        if (floor && this.focusLevelId != null) {
+          onLevel = pt.z >= floor.min - Z_HEIGHT_SCALE && pt.z <= floor.max + Z_HEIGHT_SCALE;
+        } else {
+          onLevel = Math.abs(pt.z - focusZ) <= Z_HEIGHT_SCALE;
+        }
+      }
       ring.opacity(enabled && !onLevel ? SPAWN_OFFLEVEL_OPACITY : 1);
       ring.strokeWidth(focused ? 5 : 3);
       ring.stroke(focused ? '#c00000' : 'red');
@@ -482,8 +730,14 @@
       var lab = this.spawnLabelNodes[t];
       var idx = lab.getAttr('spawnIndex');
       var spt = this.spawnPoints[idx];
-      var labOn = !enabled || !spt || !hasFiniteZ(spt.z) ||
-        Math.abs(spt.z - focusZ) <= Z_HEIGHT_SCALE;
+      var labOn = true;
+      if (enabled && spt && hasFiniteZ(spt.z)) {
+        if (floor && this.focusLevelId != null) {
+          labOn = spt.z >= floor.min - Z_HEIGHT_SCALE && spt.z <= floor.max + Z_HEIGHT_SCALE;
+        } else {
+          labOn = Math.abs(spt.z - focusZ) <= Z_HEIGHT_SCALE;
+        }
+      }
       lab.opacity(enabled && !labOn ? SPAWN_OFFLEVEL_OPACITY : 1);
     }
 
@@ -590,12 +844,10 @@
         this.spawnLabelNodes.push(label);
       }
     }
-    var rings = this.spawnRings;
+    this._syncSpawnScreenScale(1);
     this.spawnAnim = new Konva.Animation(function (frame) {
-      var scale = Math.sin((frame.time * 2 * Math.PI) / 4000) * 0.35 + 1;
-      for (var r = 0; r < rings.length; r++) {
-        rings[r].scale({ x: scale, y: scale });
-      }
+      var pulse = Math.sin((frame.time * 2 * Math.PI) / 4000) * 0.35 + 1;
+      self._syncSpawnScreenScale(pulse);
     }, this.spawnLayer);
   };
 
@@ -606,9 +858,7 @@
       return;
     }
     this.spawnAnim.stop();
-    for (var r = 0; r < this.spawnRings.length; r++) {
-      this.spawnRings[r].scale({ x: 1, y: 1 });
-    }
+    this._syncSpawnScreenScale(1);
     this.spawnLayer.batchDraw();
   };
 
@@ -642,6 +892,7 @@
       x: this.stage.width() / 2 - midX * scale,
       y: this.stage.height() / 2 - midY * scale
     });
+    this._syncSpawnScreenScale(1);
     this.stage.batchDraw();
   };
 

@@ -102,7 +102,6 @@ if (!function_exists('render_interactive_map')) {
 		$layers = map_txt_layers($short_name);
 
 		$safe_points = array();
-		$z_values = array();
 		foreach ($spawn_points as $pt) {
 			if (!isset($pt['x']) || !isset($pt['y'])) {
 				continue;
@@ -113,7 +112,6 @@ if (!function_exists('render_interactive_map')) {
 			);
 			if (isset($pt['z']) && is_numeric($pt['z'])) {
 				$entry['z'] = (float)$pt['z'];
-				$z_values[] = (float)$pt['z'];
 			}
 			if (!empty($pt['label'])) {
 				$entry['label'] = (string)$pt['label'];
@@ -121,23 +119,9 @@ if (!function_exists('render_interactive_map')) {
 			$safe_points[] = $entry;
 		}
 
-		// Cluster spawn Zs by Zeal-style height scale (10) for the floor-focus select.
-		$z_height_scale = 10.0;
-		sort($z_values, SORT_NUMERIC);
-		$z_clusters = array();
-		foreach ($z_values as $z) {
-			$n = count($z_clusters);
-			if ($n === 0 || abs($z - $z_clusters[$n - 1]['z']) >= $z_height_scale) {
-				$z_clusters[] = array('z' => $z, 'count' => 1);
-			} else {
-				$c = &$z_clusters[$n - 1];
-				$c['z'] = ($c['z'] * $c['count'] + $z) / ($c['count'] + 1);
-				$c['count'] += 1;
-				unset($c);
-			}
-		}
-		$has_spawn_z = count($z_values) > 0;
-		$z_fade_default = $has_spawn_z;
+		// Floor list is filled in JS from Brewall color levels in the map files.
+		// Start on Main with Z fade off; user can enable fade / pick floors in the controls.
+		$z_fade_default = false;
 
 		$config = array(
 			'containerId' => 'konva-container',
@@ -157,20 +141,13 @@ if (!function_exists('render_interactive_map')) {
 		if (count($safe_points) > 0) {
 			echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
 		}
-		if ($has_spawn_z) {
-			$z_checked = $z_fade_default ? ' checked' : '';
-			echo "<label><input type='checkbox' data-map-control='z-fade'$z_checked> Z fade</label>\n";
-			if (count($z_clusters) >= 2) {
-				echo "<label>Floor <select data-map-control='z-focus'>\n";
-				foreach ($z_clusters as $idx => $cluster) {
-					$zval = $cluster['z'];
-					$selected = ($idx === 0) ? ' selected' : '';
-					$label = 'Z ≈ ' . (abs($zval - round($zval)) < 0.05 ? (string)(int)round($zval) : number_format($zval, 1));
-					echo "<option value='" . htmlspecialchars((string)$zval, ENT_QUOTES) . "'$selected>" . htmlspecialchars($label) . "</option>\n";
-				}
-				echo "</select></label>\n";
-			}
-		}
+		$z_checked = $z_fade_default ? ' checked' : '';
+		echo "<label data-map-control-wrap='z-fade'><input type='checkbox' data-map-control='z-fade'$z_checked> Z fade</label>\n";
+		echo "<label data-map-control-wrap='z-floor' class='map-z-floor' hidden>Floor ";
+		echo "<button type='button' data-map-control='z-prev' title='Previous floor'>&lt;</button> ";
+		echo "<select data-map-control='z-focus'></select> ";
+		echo "<button type='button' data-map-control='z-next' title='Next floor'>&gt;</button>";
+		echo "</label>\n";
 
 		// _1 files in Brewall packs hold the place-name labels; they start hidden to keep the map readable.
 		foreach ($layers as $layer) {
@@ -191,9 +168,7 @@ if (!function_exists('render_interactive_map')) {
 		echo "</div>\n";
 		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
 		$hint = 'Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).';
-		if ($has_spawn_z) {
-			$hint .= ' Click a spawn ring to focus that floor (Z fade).';
-		}
+		$hint .= ' Use Floor to step through Brewall map levels; click a spawn ring to focus that height.';
 		echo "<p class='map-hint'>" . htmlspecialchars($hint) . "</p>\n";
 		echo "</div>\n";
 
@@ -239,6 +214,69 @@ if (!function_exists('fetch_npc_map_spawns')) {
 			);
 		}
 		return $points;
+	}
+}
+
+if (!function_exists('fetch_npc_quest_map_spawns')) {
+	/**
+	 * Literal quest-script spawn points (eq.spawn2 / unique_spawn) for an NPC in a zone.
+	 */
+	function fetch_npc_quest_map_spawns($npc_id, $zone_short)
+	{
+		global $db, $tbquestspawn;
+
+		$npc_id = (int)$npc_id;
+		$zone_short = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$zone_short);
+		if ($npc_id <= 0 || $zone_short === '' || empty($tbquestspawn)) {
+			return array();
+		}
+		$res = @mysqli_query($db, "SHOW TABLES LIKE '" . addslashes($tbquestspawn) . "'");
+		if (!$res || mysqli_num_rows($res) === 0) {
+			if ($res) {
+				mysqli_free_result($res);
+			}
+			return array();
+		}
+		mysqli_free_result($res);
+
+		$query = "SELECT DISTINCT x, y, z
+			FROM $tbquestspawn
+			WHERE npc_id = $npc_id
+			AND zone_short = '" . addslashes($zone_short) . "'
+			LIMIT 256";
+		$result = mysqli_query($db, $query);
+		if (!$result) {
+			return array();
+		}
+		$points = array();
+		while ($row = mysqli_fetch_assoc($result)) {
+			$points[] = array(
+				'x' => (float)$row['x'],
+				'y' => (float)$row['y'],
+				'z' => (float)$row['z'],
+			);
+		}
+		mysqli_free_result($result);
+		return $points;
+	}
+}
+
+if (!function_exists('fetch_npc_display_map_spawns')) {
+	/**
+	 * Prefer static spawn2 points; fall back to quest-script spawn coords.
+	 * @return array{source: string|null, points: array}
+	 */
+	function fetch_npc_display_map_spawns($npc_id, $zone_short)
+	{
+		$points = fetch_npc_map_spawns($npc_id, $zone_short);
+		if (count($points) > 0) {
+			return array('source' => 'spawn2', 'points' => $points);
+		}
+		$points = fetch_npc_quest_map_spawns($npc_id, $zone_short);
+		if (count($points) > 0) {
+			return array('source' => 'quest', 'points' => $points);
+		}
+		return array('source' => null, 'points' => array());
 	}
 }
 
