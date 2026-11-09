@@ -15,6 +15,8 @@
   var Z_HEIGHT_SCALE = 10;
   var Z_FADED_ALPHA = 0.2;
   var SPAWN_OFFLEVEL_OPACITY = 0.35;
+  // Pad around per-floor line AABB when assigning spawns (localized Brewall wings, e.g. ToV L-3).
+  var FLOOR_XY_PAD = 40;
   // Spawn ring outerRadius in map units (see _drawSpawns). Screen size follows the map,
   // then clamps so zoom-out stays readable without covering half the zone.
   var SPAWN_OUTER_RADIUS = 18;
@@ -135,7 +137,8 @@
     if (level.kind === 'z') {
       return 'Z ≈ ' + formatZ(level.mid);
     }
-    var name = level.id === 0 ? 'Main' : ('L' + (level.id > 0 ? '+' : '') + level.id);
+    // Uniform Brewall ids: L-3, L0, L+1 (no special "Main" label).
+    var name = 'L' + (level.id > 0 ? '+' : '') + level.id;
     return name + ' (Z ' + formatZ(level.min) + '…' + formatZ(level.max) + ')';
   }
 
@@ -149,16 +152,24 @@
       if (sid === INVALID_LEVEL_ID) continue;
       var st = levelStats[id];
       if (!st || st.count < 1) continue;
-      floors.push({
+      var floor = {
         kind: 'level',
         id: sid,
         min: st.min,
         max: st.max,
         mid: (st.min + st.max) / 2,
         count: st.count
-      });
+      };
+      if (st.minX <= st.maxX && st.minY <= st.maxY) {
+        floor.minX = st.minX;
+        floor.maxX = st.maxX;
+        floor.minY = st.minY;
+        floor.maxY = st.maxY;
+      }
+      floors.push(floor);
     }
-    floors.sort(function (a, b) { return b.id - a.id; });
+    // Low → high so Floor < / > and the dropdown match elevation order.
+    floors.sort(function (a, b) { return a.id - b.id; });
     if (floors.length >= 2) return floors;
 
     // Fallback: cluster line mid-Z so single-color maps still get floor steps.
@@ -188,7 +199,7 @@
         dense.push(clusters[i]);
       }
     }
-    dense.sort(function (a, b) { return b.mid - a.mid; });
+    dense.sort(function (a, b) { return a.mid - b.mid; });
     return dense.length >= 2 ? dense : floors;
   }
 
@@ -245,11 +256,24 @@
     if (id === INVALID_LEVEL_ID) return;
     var st = this.levelStats[id];
     if (!st) {
-      st = { min: Infinity, max: -Infinity, count: 0 };
+      st = {
+        min: Infinity,
+        max: -Infinity,
+        minX: Infinity,
+        maxX: -Infinity,
+        minY: Infinity,
+        maxY: -Infinity,
+        count: 0
+      };
       this.levelStats[id] = st;
     }
     st.min = Math.min(st.min, z0, z1);
     st.max = Math.max(st.max, z0, z1);
+    var p = line.points;
+    if (p && p.length >= 4) {
+      addToBounds(st, p[0], p[1]);
+      addToBounds(st, p[2], p[3]);
+    }
     st.count += 1;
   };
 
@@ -463,25 +487,71 @@
     return best;
   };
 
+  AllacloneMap.prototype._floorHasXy = function (floor) {
+    return !!(floor && isFinite(floor.minX) && isFinite(floor.maxX) && isFinite(floor.minY) &&
+      isFinite(floor.maxY) && floor.minX <= floor.maxX && floor.minY <= floor.maxY);
+  };
+
+  /** True when map-space (x,y) sits in the floor's line AABB (padded). No AABB → unrestricted. */
+  AllacloneMap.prototype._floorXyContains = function (floor, x, y) {
+    if (!this._floorHasXy(floor)) return true;
+    var pad = FLOOR_XY_PAD;
+    return x >= floor.minX - pad && x <= floor.maxX + pad && y >= floor.minY - pad &&
+      y <= floor.maxY + pad;
+  };
+
+  AllacloneMap.prototype._scoreFloorForZ = function (floor, z) {
+    if (z >= floor.min && z <= floor.max) {
+      // Prefer the tightest band that contains z.
+      return (floor.max - floor.min) * 0.001;
+    }
+    if (z > floor.max) {
+      // Above the band (e.g. Z 74 vs L0/L+1 max 64): prefer the higher floor on a tie.
+      return 1000 + (z - floor.max) - (floor.kind === 'level' ? floor.id : floor.mid) * 0.0001;
+    }
+    // Below the band: prefer the lower floor on a tie.
+    return 1000 + (floor.min - z) + (floor.kind === 'level' ? floor.id : floor.mid) * 0.0001;
+  };
+
   AllacloneMap.prototype._bestFloorIndexForZ = function (z) {
     if (!hasFiniteZ(z) || !this.mapFloors.length) return -1;
     var best = -1;
     var bestScore = Infinity;
     for (var i = 0; i < this.mapFloors.length; i++) {
-      var f = this.mapFloors[i];
-      var score;
-      if (z >= f.min && z <= f.max) {
-        // Prefer the tightest band that contains z.
-        score = (f.max - f.min) * 0.001;
-      } else {
-        score = 1000 + Math.min(Math.abs(z - f.min), Math.abs(z - f.max), Math.abs(z - f.mid));
-      }
+      var score = this._scoreFloorForZ(this.mapFloors[i], z);
       if (score < bestScore) {
         bestScore = score;
         best = i;
       }
     }
     return best;
+  };
+
+  /**
+   * Pick floor for a spawn using Z scoring, but skip localized Brewall floors whose
+   * line AABB does not contain the spawn XY (ToV L-3 wing vs Dozekar same-Z).
+   */
+  AllacloneMap.prototype._bestFloorIndexForSpawn = function (pt) {
+    if (!pt || !hasFiniteZ(pt.z) || !this.mapFloors.length) return -1;
+    var best = -1;
+    var bestScore = Infinity;
+    for (var i = 0; i < this.mapFloors.length; i++) {
+      var f = this.mapFloors[i];
+      if (!this._floorXyContains(f, pt.x, pt.y)) continue;
+      var score = this._scoreFloorForZ(f, pt.z);
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  /** Spawn is on the selected Brewall floor when Z matches and XY is in that floor's region. */
+  AllacloneMap.prototype._spawnOnSelectedFloor = function (pt, floor) {
+    if (!pt || !hasFiniteZ(pt.z) || !floor) return true;
+    if (pt.z < floor.min - Z_HEIGHT_SCALE || pt.z > floor.max + Z_HEIGHT_SCALE) return false;
+    return this._floorXyContains(floor, pt.x, pt.y);
   };
 
   AllacloneMap.prototype._enableZFade = function () {
@@ -524,7 +594,7 @@
     if (!hasFiniteZ(pt.z)) return;
     this.focusSpawnIndex = index;
     this.focusZ = pt.z;
-    var floorIdx = this._bestFloorIndexForZ(pt.z);
+    var floorIdx = this._bestFloorIndexForSpawn(pt);
     if (floorIdx >= 0) {
       var floor = this.mapFloors[floorIdx];
       this.focusFloorIndex = floorIdx;
@@ -566,18 +636,27 @@
   AllacloneMap.prototype._initFloorFocus = function () {
     this.mapFloors = finalizeMapFloors(this.levelStats, this.lineMids);
     var floorIdx = -1;
-    // Default to Brewall main (0). Spawn Z may be a basement; don't auto-select L-3 / fade.
-    for (var i = 0; i < this.mapFloors.length; i++) {
-      if (this.mapFloors[i].kind === 'level' && this.mapFloors[i].id === 0) {
-        floorIdx = i;
-        break;
+    // NPC/spawn pages: pick Brewall floor from spawn Z + XY (localized wings need both).
+    if (this.focusSpawnIndex >= 0 && this.focusSpawnIndex < this.spawnPoints.length) {
+      floorIdx = this._bestFloorIndexForSpawn(this.spawnPoints[this.focusSpawnIndex]);
+    } else if (hasFiniteZ(this.focusZ)) {
+      floorIdx = this._bestFloorIndexForZ(this.focusZ);
+    }
+    if (floorIdx < 0) {
+      for (var i = 0; i < this.mapFloors.length; i++) {
+        if (this.mapFloors[i].kind === 'level' && this.mapFloors[i].id === 0) {
+          floorIdx = i;
+          break;
+        }
       }
     }
+    // No L0 in the file: pick the lowest floor (list is ascending).
     if (floorIdx < 0 && this.mapFloors.length) floorIdx = 0;
     if (floorIdx >= 0) {
       var floor = this.mapFloors[floorIdx];
       this.focusFloorIndex = floorIdx;
-      this.focusZ = floor.mid;
+      // Keep spawn Z when present (better continuous fade); else floor mid.
+      if (!hasFiniteZ(this.focusZ)) this.focusZ = floor.mid;
       this.focusLevelId = floor.kind === 'level' ? floor.id : null;
     }
     this._rebuildFloorControls();
@@ -717,7 +796,7 @@
       var onLevel = true;
       if (enabled && hasFiniteZ(pt.z)) {
         if (floor && this.focusLevelId != null) {
-          onLevel = pt.z >= floor.min - Z_HEIGHT_SCALE && pt.z <= floor.max + Z_HEIGHT_SCALE;
+          onLevel = this._spawnOnSelectedFloor(pt, floor);
         } else {
           onLevel = Math.abs(pt.z - focusZ) <= Z_HEIGHT_SCALE;
         }
@@ -733,7 +812,7 @@
       var labOn = true;
       if (enabled && spt && hasFiniteZ(spt.z)) {
         if (floor && this.focusLevelId != null) {
-          labOn = spt.z >= floor.min - Z_HEIGHT_SCALE && spt.z <= floor.max + Z_HEIGHT_SCALE;
+          labOn = this._spawnOnSelectedFloor(spt, floor);
         } else {
           labOn = Math.abs(spt.z - focusZ) <= Z_HEIGHT_SCALE;
         }
