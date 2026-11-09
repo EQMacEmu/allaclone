@@ -33,13 +33,16 @@ From each zone’s `*.lua` scripts:
 - `e.other:Faction(e.self, id, delta)` hits
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction)
 - `event_say` / `:findi("keyword")` dialogue branches
+- Literal `eq.spawn2` / `eq.unique_spawn` (and `quest::` equivalents) with numeric x/y/z into `quest_spawn` (used when an NPC has no static `spawn2` geometry)
 
-Scripts are bound to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched exactly (then case/prefix-insensitively) against NPCs belonging to that zone (id range or a spawn point there), plus ids passed to `eq.register_npc_event`. NPCs a script only spawns or signals are not bound to it.
+Scripts are bound to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched exactly (then case/prefix-insensitively) against NPCs belonging to that zone (id range or a spawn point there), plus ids passed to `eq.register_npc_event`. NPCs a script only spawns or signals are not bound to it as quest NPCs, but their literal spawn coordinates are still stored in `quest_spawn` for map display.
+
+Quest and NPC pages prefer `spawn2` map points; if none exist in the zone, they fall back to `quest_spawn`. Quest pages also link the NPC display name to `npc.php`.
 
 Quest pages honor `$hide_npc_id` / `$hide_item_id` and the expansion selector (by zone expansion).
 
-Limits: regex-based; may miss concatenated strings, variable item ids, and deep nesting. Treat summaries as approximate.
+Limits: regex-based; may miss concatenated strings, variable item ids, `GetX()`/dynamic locs, and deep nesting. Treat summaries as approximate.
 
 ## Tables
 
-Defined in `includes/sql/quests.sql`. Runtime pages JOIN these to `items`, `npc_types`, `faction_list`, and `zone`.
+Defined in `includes/sql/quests.sql` (`quest_npc`, `quest_trade*`, `quest_faction_*`, `quest_say_branch`, `quest_spawn`, `quest_items`). Runtime pages JOIN these to `items`, `npc_types`, `faction_list`, `spawn2`/`spawnentry`, and `zone`.

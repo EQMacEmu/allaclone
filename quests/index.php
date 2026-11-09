@@ -4,6 +4,7 @@ include('../includes/config.php');
 include('../includes/functions.php');
 include('../includes/mysql.php');
 include('../includes/quest_helpers.php');
+include('../includes/map_helpers.php');
 
 if (empty($AllowQuestsNPC)) {
 	print "<script>document.location=\"../index.php\";</script>";
@@ -61,13 +62,26 @@ include('../includes/headers.php');
 print "<div class='container quests quest-detail'>";
 print "<p class='quest-breadcrumb'>";
 print "<a href='{$root_url}quests/zones.php?aZone=" . urlencode($zone) . "'>" . htmlspecialchars($myzone ? $myzone : $zone) . " quests</a>";
-print " · <a href='{$root_url}npc.php?id=$npc_id'>NPC page</a>";
+print " · <a href='{$root_url}npc.php?id=$npc_id'>" . htmlspecialchars($dispName) . "</a>";
 print "</p>";
 print "<p class='quest-note'>Summarized automatically from the server's quest scripts; details may be incomplete.";
 if (!empty($qn['script_paths'])) {
 	print " Source: " . htmlspecialchars(str_replace(',', ', ', $qn['script_paths']));
 }
 print "</p>";
+
+if (map_txt_available($zone)) {
+	$mapInfo = fetch_npc_display_map_spawns($npc_id, $zone);
+	if (count($mapInfo['points']) > 0) {
+		if ($mapInfo['source'] === 'quest') {
+			print "<h3>Quest spawn location</h3>";
+			print "<p class='quest-note'>No static spawn point in this zone; location taken from quest script spawn calls.</p>";
+		} else {
+			print "<h3>Spawn Map</h3>";
+		}
+		render_interactive_map($zone, $mapInfo['points']);
+	}
+}
 
 // Primary / required factions
 $pf = (int)$qn['primary_faction_id'];

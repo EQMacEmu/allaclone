@@ -374,10 +374,15 @@ if (mysqli_num_rows($result) > 0) {
 	print "</ul>";
 
 	if (map_txt_available($short_name)) {
-		$map_spawns = fetch_npc_map_spawns($id, $short_name);
-		if (count($map_spawns) > 0) {
-			print "<h3>Spawn Map</h3>";
-			render_interactive_map($short_name, $map_spawns);
+		$mapInfo = fetch_npc_display_map_spawns($id, $short_name);
+		if (count($mapInfo['points']) > 0) {
+			if ($mapInfo['source'] === 'quest') {
+				print "<h3>Quest spawn location</h3>";
+				print "<p class='quest-note'>No static spawn point in this zone; location taken from quest script spawn calls.</p>";
+			} else {
+				print "<h3>Spawn Map</h3>";
+			}
+			render_interactive_map($short_name, $mapInfo['points']);
 		}
 	}
 

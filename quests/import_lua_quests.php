@@ -246,6 +246,74 @@ function load_faction_ids($db) {
 }
 
 /**
+ * Build local NAME => digits map from a Lua script (first assignment wins).
+ */
+function extract_lua_local_int_consts($text) {
+	$map = array();
+	if (preg_match_all('/\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d{3,})\b/', $text, $m, PREG_SET_ORDER)) {
+		foreach ($m as $hit) {
+			if (!isset($map[$hit[1]])) {
+				$map[$hit[1]] = (int)$hit[2];
+			}
+		}
+	}
+	return $map;
+}
+
+/**
+ * Literal eq.spawn2 / unique_spawn (and quest::) calls with numeric x,y,z.
+ * First arg may be a digit id or a local const resolved in-file. Skips GetX()/variables.
+ */
+function extract_literal_quest_spawns($text, $rel) {
+	$locals = extract_lua_local_int_consts($text);
+	$text = str_replace(array("\r\n", "\r"), "\n", $text);
+	$lines = explode("\n", $text);
+	$out = array();
+	$seen = array();
+	// (eq|quest::).(spawn2|unique_spawn)( npcId|Const, grid, guild, x, y, z [, heading] )
+	$re = '/\b(?:eq\.|quest::)(spawn2|unique_spawn)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*[^,]+,\s*[^,]+,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)(?:\s*,\s*(-?\d+(?:\.\d+)?))?/i';
+	foreach ($lines as $i => $line) {
+		if (!preg_match_all($re, $line, $matches, PREG_SET_ORDER)) {
+			continue;
+		}
+		foreach ($matches as $m) {
+			$callKind = strtolower($m[1]);
+			$first = $m[2];
+			if (ctype_digit($first)) {
+				$npcId = (int)$first;
+			} elseif (isset($locals[$first])) {
+				$npcId = $locals[$first];
+			} else {
+				continue;
+			}
+			if ($npcId <= 0) {
+				continue;
+			}
+			$x = (float)$m[3];
+			$y = (float)$m[4];
+			$z = (float)$m[5];
+			$heading = isset($m[6]) && $m[6] !== '' ? (float)$m[6] : 0.0;
+			$key = $npcId . '|' . $x . '|' . $y . '|' . $z;
+			if (isset($seen[$key])) {
+				continue;
+			}
+			$seen[$key] = true;
+			$out[] = array(
+				'npc_id' => $npcId,
+				'x' => $x,
+				'y' => $y,
+				'z' => $z,
+				'heading' => $heading,
+				'script_file' => $rel,
+				'line_no' => $i + 1,
+				'call_kind' => $callKind,
+			);
+		}
+	}
+	return $out;
+}
+
+/**
  * NPC ids whose events this script handles via eq.register_npc_event (encounter scripts).
  * Ids that a script only spawns, signals or depops are not bound: those NPCs have their own scripts.
  */
@@ -257,11 +325,10 @@ function extract_registered_npc_ids($text) {
 		}
 	}
 	// local NAME = 1234 then passed to register_npc_event
-	if (preg_match_all('/\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d{3,})\b/', $text, $m, PREG_SET_ORDER)) {
-		foreach ($m as $hit) {
-			if (preg_match('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*' . preg_quote($hit[1], '/') . '\b/', $text)) {
-				$ids[(int)$hit[2]] = true;
-			}
+	$locals = extract_lua_local_int_consts($text);
+	foreach ($locals as $name => $id) {
+		if (preg_match('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*' . preg_quote($name, '/') . '\b/', $text)) {
+			$ids[$id] = true;
 		}
 	}
 	return array_keys($ids);
@@ -621,10 +688,12 @@ if (!$dryRun) {
 }
 
 $zones = list_zone_dirs($questRoot, $zoneFilter);
-$stats = array('zones' => 0, 'npcs' => 0, 'trades' => 0, 'says' => 0, 'hits' => 0, 'reqs' => 0, 'skipped_items' => 0);
+$stats = array('zones' => 0, 'npcs' => 0, 'trades' => 0, 'says' => 0, 'hits' => 0, 'reqs' => 0, 'skipped_items' => 0, 'spawns' => 0);
 
 // Aggregate per zone+npc_id
 $npcRows = array(); // key zone|npcid => data
+// Literal quest-popped spawn points (independent of script→NPC binding)
+$spawnRows = array(); // key zone|npcid|x|y|z => row
 
 foreach ($zones as $zone) {
 	$zn = $zone['name'];
@@ -634,6 +703,16 @@ foreach ($zones as $zone) {
 	}
 	$stats['zones']++;
 	foreach ($files as $file) {
+		$raw = @file_get_contents($file['full']);
+		if ($raw !== false) {
+			foreach (extract_literal_quest_spawns($raw, $file['rel']) as $sp) {
+				$sk = $zn . '|' . $sp['npc_id'] . '|' . $sp['x'] . '|' . $sp['y'] . '|' . $sp['z'];
+				if (!isset($spawnRows[$sk])) {
+					$sp['zone_short'] = $zn;
+					$spawnRows[$sk] = $sp;
+				}
+			}
+		}
 		$parsed = parse_lua_file($file['full'], $file['rel']);
 		if ($parsed === null) {
 			continue;
@@ -677,11 +756,11 @@ foreach ($zones as $zone) {
 }
 
 if ($dryRun) {
-	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " quest NPCs\n");
+	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " quest NPCs, " . count($spawnRows) . " quest spawn points\n");
 	exit(0);
 }
 
-fwrite(STDOUT, "Writing " . count($npcRows) . " quest NPCs...\n");
+fwrite(STDOUT, "Writing " . count($npcRows) . " quest NPCs and " . count($spawnRows) . " quest spawn points...\n");
 
 $itemIndex = array(); // item_id|npc|zone => [rewarded, handed, npc_id, npc]
 
@@ -852,6 +931,21 @@ foreach ($itemIndex as $ix) {
 		ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd)");
 }
 
-fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} skipped_unknown_items={$stats['skipped_items']}\n");
+foreach ($spawnRows as $sp) {
+	$zn = sql_escape($db, $sp['zone_short']);
+	$npcId = (int)$sp['npc_id'];
+	$x = (float)$sp['x'];
+	$y = (float)$sp['y'];
+	$z = (float)$sp['z'];
+	$h = (float)$sp['heading'];
+	$sf = sql_escape($db, substr($sp['script_file'], 0, 255));
+	$ln = (int)$sp['line_no'];
+	$ck = sql_escape($db, substr($sp['call_kind'], 0, 32));
+	mysqli_query($db, "INSERT INTO quest_spawn (zone_short,npc_id,x,y,z,heading,script_file,line_no,call_kind)
+		VALUES ('$zn',$npcId,$x,$y,$z,$h,'$sf',$ln,'$ck')");
+	$stats['spawns']++;
+}
+
+fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} skipped_unknown_items={$stats['skipped_items']}\n");
 mysqli_close($db);
 exit(0);

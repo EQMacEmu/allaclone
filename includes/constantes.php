@@ -42,6 +42,7 @@ $tbquesttradeitem = "quest_trade_item"; // Tool Specific Table
 $tbquestfactionhit = "quest_faction_hit"; // Tool Specific Table
 $tbquestfactionreq = "quest_faction_req"; // Tool Specific Table
 $tbquestsaybranch = "quest_say_branch"; // Tool Specific Table
+$tbquestspawn = "quest_spawn"; // Tool Specific Table (literal quest-script spawn coords)
 $tbraces = "races"; // Tool Specific Table
 
 
