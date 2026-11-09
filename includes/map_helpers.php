@@ -120,8 +120,8 @@ if (!function_exists('render_interactive_map')) {
 		}
 
 		// Floor list is filled in JS from Brewall color levels in the map files.
-		// Start on Main with Z fade off; user can enable fade / pick floors in the controls.
-		$z_fade_default = false;
+		// Stepped Z fade: 0/5/10/15/20/50/off (index 6 = off). Start off.
+		$z_fade_step = 6;
 
 		$config = array(
 			'containerId' => 'konva-container',
@@ -132,7 +132,7 @@ if (!function_exists('render_interactive_map')) {
 			'pathPoints' => $path_points ? $path_points : new stdClass(),
 			'roamBoxes' => $roam_boxes,
 			'fit' => ($fit === 'zone') ? 'zone' : 'spawns',
-			'zFadeDefault' => $z_fade_default,
+			'zFadeStep' => $z_fade_step,
 		);
 
 		echo "<div class='interactive-map-wrap'>\n";
@@ -141,8 +141,9 @@ if (!function_exists('render_interactive_map')) {
 		if (count($safe_points) > 0) {
 			echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
 		}
-		$z_checked = $z_fade_default ? ' checked' : '';
-		echo "<label data-map-control-wrap='z-fade'><input type='checkbox' data-map-control='z-fade'$z_checked> Z fade</label>\n";
+		echo "<label data-map-control-wrap='z-fade' class='map-z-fade' title='Off-level opacity: 0 / 5 / 10 / 15 / 20 / 50 / off'>";
+		echo "Z fade <input type='range' min='0' max='6' step='1' value='" . (int)$z_fade_step . "' data-map-control='z-fade'>";
+		echo " <span data-map-control='z-fade-value'>off</span></label>\n";
 		echo "<label data-map-control-wrap='z-floor' class='map-z-floor' hidden>Floor ";
 		echo "<button type='button' data-map-control='z-prev' title='Previous floor'>&lt;</button> ";
 		echo "<select data-map-control='z-focus'></select> ";
@@ -169,6 +170,7 @@ if (!function_exists('render_interactive_map')) {
 		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
 		$hint = 'Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).';
 		$hint .= ' Use Floor to step through Brewall map levels; click a spawn ring to focus that height.';
+		$hint .= ' Z fade steps off-level opacity: 0 / 5 / 10 / 15 / 20 / 50 / off.';
 		echo "<p class='map-hint'>" . htmlspecialchars($hint) . "</p>\n";
 		echo "</div>\n";
 

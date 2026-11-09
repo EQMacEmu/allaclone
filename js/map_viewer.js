@@ -13,7 +13,10 @@
   var MIN_SPAWN_FRAME = 600;
   // Match Zeal ZoneMap defaults (kDefaultZLevelHeightScale / MapFadedZLevelAlpha).
   var Z_HEIGHT_SCALE = 10;
-  var Z_FADED_ALPHA = 0.2;
+  // Stepped off-level opacity % (null = off). Dense in the useful 0–20 band.
+  var Z_FADE_STEPS = [0, 5, 10, 15, 20, 50, null];
+  var Z_FADE_STEP_OFF = Z_FADE_STEPS.length - 1;
+  var Z_FADE_STEP_DEFAULT_ON = 4; // 20%
   var SPAWN_OFFLEVEL_OPACITY = 0.35;
   // Pad around per-floor line AABB when assigning spawns (localized Brewall wings, e.g. ToV L-3).
   var FLOOR_XY_PAD = 40;
@@ -108,6 +111,18 @@
     return typeof z === 'number' && isFinite(z);
   }
 
+  function clampZFadeStep(idx) {
+    idx = parseInt(idx, 10);
+    if (!isFinite(idx) || idx < 0) return Z_FADE_STEP_OFF;
+    if (idx >= Z_FADE_STEPS.length) return Z_FADE_STEP_OFF;
+    return idx;
+  }
+
+  function zFadeStepLabel(idx) {
+    var pct = Z_FADE_STEPS[clampZFadeStep(idx)];
+    return pct == null ? 'off' : pct + '%';
+  }
+
   /** Zeal render_get_line_color_and_opacity autofade: distance of focusZ to [z0,z1]. */
   function lineOpacity(z0, z1, focusZ, scale, faded) {
     if (!hasFiniteZ(focusZ) || !hasFiniteZ(z0) || !hasFiniteZ(z1)) return 1;
@@ -142,6 +157,14 @@
     return name + ' (Z ' + formatZ(level.min) + '…' + formatZ(level.max) + ')';
   }
 
+  /** Median of numeric samples (sorted copy). */
+  function medianZ(samples) {
+    if (!samples || !samples.length) return 0;
+    var zs = samples.slice().sort(function (a, b) { return a - b; });
+    var mid = Math.floor(zs.length / 2);
+    return zs.length % 2 ? zs[mid] : (zs[mid - 1] + zs[mid]) / 2;
+  }
+
   /** Brewall color floors present in geometry; fallback = dense Z bands when colors are missing. */
   function finalizeMapFloors(levelStats, lineMids) {
     var floors = [];
@@ -152,12 +175,13 @@
       if (sid === INVALID_LEVEL_ID) continue;
       var st = levelStats[id];
       if (!st || st.count < 1) continue;
+      // Median focus Z — (min+max)/2 is useless for bloated floors (Vex Thal L0 -102…64).
       var floor = {
         kind: 'level',
         id: sid,
         min: st.min,
         max: st.max,
-        mid: (st.min + st.max) / 2,
+        mid: st.zMids && st.zMids.length ? medianZ(st.zMids) : (st.min + st.max) / 2,
         count: st.count
       };
       if (st.minX <= st.maxX && st.minY <= st.maxY) {
@@ -228,7 +252,9 @@
     this.mapFloors = [];
     this.focusFloorIndex = -1;
     this.focusLevelId = null;
-    this.zFadeEnabled = !!this.opts.zFadeDefault;
+    this.zFadeStepIndex = clampZFadeStep(
+      this.opts.zFadeStep != null ? this.opts.zFadeStep : Z_FADE_STEP_OFF
+    );
     this.focusZ = this._defaultFocusZ();
     this._initStage();
     this._bindControls();
@@ -263,12 +289,14 @@
         maxX: -Infinity,
         minY: Infinity,
         maxY: -Infinity,
+        zMids: [],
         count: 0
       };
       this.levelStats[id] = st;
     }
     st.min = Math.min(st.min, z0, z1);
     st.max = Math.max(st.max, z0, z1);
+    if (hasFiniteZ(z0) && hasFiniteZ(z1)) st.zMids.push((z0 + z1) / 2);
     var p = line.points;
     if (p && p.length >= 4) {
       addToBounds(st, p[0], p[1]);
@@ -421,11 +449,15 @@
     }
 
     var zFade = root.querySelector('[data-map-control="z-fade"]');
+    var zFadeVal = root.querySelector('[data-map-control="z-fade-value"]');
     if (zFade) {
-      this.zFadeEnabled = !!zFade.checked;
-      zFade.addEventListener('change', function () {
-        self.zFadeEnabled = !!zFade.checked;
-        self._applyZFade();
+      zFade.min = '0';
+      zFade.max = String(Z_FADE_STEPS.length - 1);
+      zFade.step = '1';
+      zFade.value = String(this.zFadeStepIndex);
+      if (zFadeVal) zFadeVal.textContent = zFadeStepLabel(this.zFadeStepIndex);
+      zFade.addEventListener('input', function () {
+        self._setZFadeStep(zFade.value, false);
       });
     }
 
@@ -554,11 +586,34 @@
     return this._floorXyContains(floor, pt.x, pt.y);
   };
 
-  AllacloneMap.prototype._enableZFade = function () {
+  AllacloneMap.prototype._zFadePreset = function () {
+    return Z_FADE_STEPS[clampZFadeStep(this.zFadeStepIndex)];
+  };
+
+  AllacloneMap.prototype._zFadeEnabled = function () {
+    return this._zFadePreset() != null;
+  };
+
+  AllacloneMap.prototype._zFadedAlpha = function () {
+    var pct = this._zFadePreset();
+    return pct == null ? 1 : pct / 100;
+  };
+
+  AllacloneMap.prototype._setZFadeStep = function (index, syncSlider) {
+    this.zFadeStepIndex = clampZFadeStep(index);
     var root = document.getElementById(this.opts.controlsId || 'map-controls');
-    var zFade = root ? root.querySelector('[data-map-control="z-fade"]') : null;
-    this.zFadeEnabled = true;
-    if (zFade) zFade.checked = true;
+    if (root) {
+      var zFade = root.querySelector('[data-map-control="z-fade"]');
+      var zFadeVal = root.querySelector('[data-map-control="z-fade-value"]');
+      if (syncSlider !== false && zFade) zFade.value = String(this.zFadeStepIndex);
+      if (zFadeVal) zFadeVal.textContent = zFadeStepLabel(this.zFadeStepIndex);
+    }
+    this._applyZFade();
+  };
+
+  /** If fade is off, snap to the useful 20% preset (floor/spawn focus). */
+  AllacloneMap.prototype._enableZFade = function () {
+    if (!this._zFadeEnabled()) this._setZFadeStep(Z_FADE_STEP_DEFAULT_ON, true);
   };
 
   AllacloneMap.prototype._syncZFocusSelect = function () {
@@ -572,9 +627,17 @@
     if (index < 0 || index >= this.mapFloors.length) return;
     var floor = this.mapFloors[index];
     this.focusFloorIndex = index;
-    this.focusZ = floor.mid;
+    // Bloated Brewall floors (Vex Thal L0 spans ~160 Z): keep current focus if it sits
+    // inside the floor so doors/detail near the camera stay; otherwise use mid.
+    var span = floor.max - floor.min;
+    if (span > Z_HEIGHT_SCALE * 4 && hasFiniteZ(this.focusZ) &&
+        this.focusZ >= floor.min && this.focusZ <= floor.max) {
+      // keep this.focusZ
+    } else {
+      this.focusZ = floor.mid;
+    }
     this.focusLevelId = floor.kind === 'level' ? floor.id : null;
-    this.focusSpawnIndex = this._nearestSpawnIndex(floor.mid);
+    this.focusSpawnIndex = this._nearestSpawnIndex(this.focusZ);
     this._syncZFocusSelect();
     if (enableFade) this._enableZFade();
     this._applyZFade();
@@ -725,6 +788,8 @@
       shape.setAttr('isMapLine', true);
       shape.setAttr('mapZ0', line.z0);
       shape.setAttr('mapZ1', line.z1);
+      shape.setAttr('mapMidX', (line.points[0] + line.points[2]) / 2);
+      shape.setAttr('mapMidY', (line.points[1] + line.points[3]) / 2);
       shape.setAttr('mapLevelId', line.levelId);
       layer.add(shape);
     }
@@ -733,6 +798,8 @@
       var circle = new Konva.Circle({ x: pt.x, y: pt.y, radius: 4, fill: pt.color });
       circle.setAttr('isMapLabel', true);
       circle.setAttr('mapZ', pt.z);
+      circle.setAttr('mapX', pt.x);
+      circle.setAttr('mapY', pt.y);
       layer.add(circle);
       var text = new Konva.Text({
         x: pt.x + 8,
@@ -743,31 +810,76 @@
       });
       text.setAttr('isMapLabel', true);
       text.setAttr('mapZ', pt.z);
+      text.setAttr('mapX', pt.x);
+      text.setAttr('mapY', pt.y);
       layer.add(text);
     }
   };
 
-  AllacloneMap.prototype._lineFadeOpacity = function (z0, z1, levelId) {
+  /** Nearest Brewall color floor for an unleveled Z (doors/traps). */
+  AllacloneMap.prototype._nearestFloorIndexForZ = function (z) {
+    if (!hasFiniteZ(z) || !this.mapFloors.length) return -1;
+    var best = -1;
+    var bestScore = Infinity;
+    for (var i = 0; i < this.mapFloors.length; i++) {
+      var f = this.mapFloors[i];
+      if (f.kind !== 'level') continue;
+      var d = Math.abs(z - f.mid);
+      var inRange = z >= f.min - Z_HEIGHT_SCALE && z <= f.max + Z_HEIGHT_SCALE;
+      // Prefer floors whose Z band contains the sample; then closest median.
+      var score = inRange ? d : d + 1e6;
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    }
+    return best;
+  };
+
+  /**
+   * Non-floor-colored geometry (doors/traps/gray detail).
+   * Discrete floor: assign to nearest Brewall floor by Z — upper-deck doors (Z≈124 on
+   * Vex Thal green) fade on L0 instead of staying solid over faded walls.
+   * Continuous autofade: opacity vs focusZ.
+   */
+  AllacloneMap.prototype._unleveledFadeOpacity = function (z0, z1, midX, midY) {
+    var faded = this._zFadedAlpha();
+    var zMid = (Number(z0) + Number(z1)) / 2;
+    if (this.focusLevelId != null) {
+      var idx = this._nearestFloorIndexForZ(zMid);
+      if (idx >= 0 && this.mapFloors[idx].id !== this.focusLevelId) return faded;
+      var floor = this.mapFloors[this.focusFloorIndex];
+      if (floor && this._floorHasXy(floor) && hasFiniteZ(midX) && hasFiniteZ(midY) &&
+          !this._floorXyContains(floor, midX, midY)) {
+        return faded;
+      }
+      return 1;
+    }
+    return lineOpacity(z0, z1, this.focusZ, Z_HEIGHT_SCALE, faded);
+  };
+
+  AllacloneMap.prototype._lineFadeOpacity = function (z0, z1, levelId, midX, midY) {
     var focusZ = this.focusZ;
-    var faded = Z_FADED_ALPHA;
+    var faded = this._zFadedAlpha();
     // Discrete Brewall floor (Zeal set_level mode).
     if (this.focusLevelId != null) {
-      var floor = this.mapFloors[this.focusFloorIndex];
-      var clipMin = floor ? floor.min : focusZ - Z_HEIGHT_SCALE;
-      var clipMax = floor ? floor.max + 10 : focusZ + Z_HEIGHT_SCALE;
       if (levelId === INVALID_LEVEL_ID) {
-        var lineMax = Math.max(z0, z1);
-        var lineMin = Math.min(z0, z1);
-        if (lineMax < clipMin || lineMin > clipMax) return faded;
-        return 1;
+        return this._unleveledFadeOpacity(z0, z1, midX, midY);
       }
       return levelId === this.focusLevelId ? 1 : faded;
+    }
+    if (levelId === INVALID_LEVEL_ID) {
+      return this._unleveledFadeOpacity(z0, z1, midX, midY);
     }
     return lineOpacity(z0, z1, focusZ, Z_HEIGHT_SCALE, faded);
   };
 
+  AllacloneMap.prototype._labelFadeOpacity = function (z, x, y) {
+    return this._unleveledFadeOpacity(z, z, x, y);
+  };
+
   AllacloneMap.prototype._applyZFade = function () {
-    var enabled = this.zFadeEnabled && (hasFiniteZ(this.focusZ) || this.focusLevelId != null);
+    var enabled = this._zFadeEnabled() && (hasFiniteZ(this.focusZ) || this.focusLevelId != null);
     var focusZ = this.focusZ;
     var key;
     for (key in this.fileLayers) {
@@ -778,11 +890,17 @@
         var node = nodes[i];
         if (node.getAttr('isMapLine')) {
           node.opacity(enabled
-            ? this._lineFadeOpacity(node.getAttr('mapZ0'), node.getAttr('mapZ1'), node.getAttr('mapLevelId'))
+            ? this._lineFadeOpacity(
+              node.getAttr('mapZ0'),
+              node.getAttr('mapZ1'),
+              node.getAttr('mapLevelId'),
+              node.getAttr('mapMidX'),
+              node.getAttr('mapMidY')
+            )
             : 1);
         } else if (node.getAttr('isMapLabel')) {
           node.opacity(enabled
-            ? pointOpacity(node.getAttr('mapZ'), focusZ, Z_HEIGHT_SCALE, Z_FADED_ALPHA)
+            ? this._labelFadeOpacity(node.getAttr('mapZ'), node.getAttr('mapX'), node.getAttr('mapY'))
             : 1);
         }
       }

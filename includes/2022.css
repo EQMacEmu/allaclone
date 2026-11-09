@@ -3922,6 +3922,14 @@ table#resists-table th,
 .map-controls .map-z-floor[hidden] {
   display: none !important;
 }
+.map-controls .map-z-fade input[type="range"] {
+  width: 7rem;
+  vertical-align: middle;
+}
+.map-controls .map-z-fade [data-map-control="z-fade-value"] {
+  min-width: 2.5rem;
+  font-variant-numeric: tabular-nums;
+}
 .map-controls select[data-map-control="z-focus"] {
   max-width: 14rem;
   padding: 2px 4px;
