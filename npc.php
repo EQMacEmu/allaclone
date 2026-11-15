@@ -402,10 +402,15 @@ if (mysqli_num_rows($result) > 0) {
 			JOIN $tbspawn2 ON $tbspawnentry.spawngroupID = $tbspawn2.spawngroupID
 			WHERE $tbspawnentry.npcID = $id
 			$spawnentryfilter
-			GROUP BY $tbspawngroup.id, $tbspawn2.respawntime
+			GROUP BY $tbspawngroup.id, $tbspawngroup.name, $tbspawnentry.chance,
+				$tbspawn2.respawntime, $tbspawn2.variance, $tbspawn2.boot_respawntime, $tbspawn2.boot_variance
 			ORDER BY $tbspawngroup.name
 			";
-		$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+		$result = mysqli_query($db, $query);
+		if ($result === false) {
+			message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+			exit;
+		}
 		if (mysqli_num_rows($result) > 0) {
 			while ($sgrow = mysqli_fetch_array($result)) {
 				$spawngroupID = $sgrow["spawngroupID"];

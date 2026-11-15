@@ -10,6 +10,7 @@ function message_die($t1, $t2, $t3, $t4) {
 	print "<tr><td align=left>$t4</td></tr>\n";
 	print "<tr><td align=center><font color=red><b>Have you sourced the eqbrowser tables in your database ?</b></font></td></tr>\n";
 	print "</table></p>\n";
+	exit;
 }
 
 /** 
