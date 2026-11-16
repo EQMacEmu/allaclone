@@ -56,10 +56,13 @@ function epic_npc_spawn_loc($db, $npcId, $zoneShort = '') {
 		return $cache[$key];
 	}
 
+	global $tbspawnentry, $tbspawn2;
+	$seTable = !empty($tbspawnentry) ? $tbspawnentry : 'spawnentry';
+	$s2Table = !empty($tbspawn2) ? $tbspawn2 : 'spawn2';
 	$zoneSql = $zoneShort !== '' ? (" AND s2.zone='" . addslashes($zoneShort) . "'") : '';
 	$row = GetRowByQuery(
-		"SELECT s2.x, s2.y, s2.z, s2.zone FROM spawnentry se
-		JOIN spawn2 s2 ON s2.spawngroupID = se.spawngroupID
+		"SELECT s2.x, s2.y, s2.z, s2.zone FROM $seTable se
+		JOIN $s2Table s2 ON s2.spawngroupID = se.spawngroupID
 		WHERE se.npcID=$npcId AND s2.enabled=1 $zoneSql
 		ORDER BY s2.id LIMIT 1"
 	);

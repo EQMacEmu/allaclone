@@ -589,6 +589,7 @@ if (mysqli_num_rows($result) > 0) {
 	print "</div>"; // list-wrapper
 }
 
+// Interactive map uses the first spawn zone found for this NPC (multi-zone NPCs: one map only).
 if ($npc_map_short_name !== '' && map_txt_available($npc_map_short_name)) {
 	$mapInfo = fetch_npc_display_map_spawns($id, $npc_map_short_name);
 	if (count($mapInfo['points']) > 0) {

@@ -9,8 +9,7 @@ $catalog = epic_catalog();
 <div class="container epics epic-hub">
 	<p class="epic-intro">
 		Class Epic 1.0 guides for TAKP (classic 14 + Beastlord), with items, NPCs, zones, and factions linked into AllaClone.
-		Steps are checked against the local quest scripts under <code>quests/</code>.
-		All listed class guides are complete.
+		Each guide lists specific turn-ins and item IDs that were checked against local quest scripts; narrative steps may still include unverified flavor. Prefer each page’s “Verified against…” note over assuming the whole walkthrough is script-proven.
 	</p>
 
 	<table class="epic-table">
