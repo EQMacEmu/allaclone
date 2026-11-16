@@ -204,6 +204,142 @@ function table_exists($db, $name) {
 	return $ok;
 }
 
+/**
+ * True when live quest_items is the pre-npc_id schema
+ * (PRIMARY KEY (item_id, npc, zone) without npc_id), or otherwise not the
+ * current (item_id, npc_id, zone) primary key. Never mutates the live table.
+ */
+function quest_items_is_legacy($db) {
+	if (!table_exists($db, 'quest_items')) {
+		return false;
+	}
+	$res = mysqli_query($db, "SHOW COLUMNS FROM quest_items LIKE 'npc_id'");
+	$hasNpcId = ($res && mysqli_num_rows($res) > 0);
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	if (!$hasNpcId) {
+		return true;
+	}
+	$res = mysqli_query($db, "SHOW KEYS FROM quest_items WHERE Key_name='PRIMARY'");
+	$pk = array();
+	while ($res && ($row = mysqli_fetch_assoc($res))) {
+		$pk[(int)$row['Seq_in_index']] = $row['Column_name'];
+	}
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	ksort($pk);
+	$expected = array(1 => 'item_id', 2 => 'npc_id', 3 => 'zone');
+	return $pk !== $expected;
+}
+
+/** New-schema DDL for quest_items_stg (matches includes/sql/quests.sql). */
+function quest_items_stg_new_ddl() {
+	return "CREATE TABLE `quest_items_stg` (
+  `item_id` int(11) NOT NULL DEFAULT '0',
+  `npc` varchar(64) NOT NULL DEFAULT '',
+  `zone` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `rewarded` tinyint(4) NOT NULL DEFAULT '0',
+  `handed` tinyint(4) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`item_id`,`npc_id`,`zone`),
+  KEY `item_id` (`item_id`),
+  KEY `npc_id` (`npc_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1";
+}
+
+/**
+ * Resolve legacy quest_items.npc + zone to npc_types.id.
+ * Prefers an existing quest_npc row, then npc_types that spawn in the zone.
+ * Returns 0 when unresolved (caller must omit the row; never invent npc_id=0).
+ */
+function resolve_legacy_quest_item_npc_id($db, $npcName, $zone) {
+	$npcName = (string)$npcName;
+	$zone = (string)$zone;
+	if ($npcName === '' || $zone === '') {
+		return 0;
+	}
+	$escName = mysqli_real_escape_string($db, $npcName);
+	$escUnder = mysqli_real_escape_string($db, str_replace(' ', '_', $npcName));
+	$escZone = mysqli_real_escape_string($db, $zone);
+
+	if (table_exists($db, 'quest_npc')) {
+		$q = "SELECT npc_id FROM quest_npc
+			WHERE LOWER(zone_short)=LOWER('$escZone')
+			AND (npc_name='$escName' OR npc_name='$escUnder')
+			LIMIT 1";
+		$r = mysqli_query($db, $q);
+		$row = $r ? mysqli_fetch_assoc($r) : null;
+		if ($r) {
+			mysqli_free_result($r);
+		}
+		if ($row && (int)$row['npc_id'] > 0) {
+			return (int)$row['npc_id'];
+		}
+	}
+
+	if (table_exists($db, 'npc_types') && table_exists($db, 'spawnentry') && table_exists($db, 'spawn2')) {
+		$q = "SELECT nt.id FROM npc_types nt
+			INNER JOIN spawnentry se ON se.npcID = nt.id
+			INNER JOIN spawn2 s2 ON s2.spawngroupID = se.spawngroupID AND LOWER(s2.zone)=LOWER('$escZone')
+			WHERE nt.name='$escName' OR nt.name='$escUnder'
+			LIMIT 1";
+		$r = mysqli_query($db, $q);
+		$row = $r ? mysqli_fetch_assoc($r) : null;
+		if ($r) {
+			mysqli_free_result($r);
+		}
+		if ($row && (int)$row['id'] > 0) {
+			return (int)$row['id'];
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Copy non-filtered quest_items into staging with an explicit column list.
+ * Legacy live rows are resolved to npc_id; unresolved names are omitted and counted.
+ */
+function seed_quest_items_stg_from_live($db, $notIn) {
+	$copied = 0;
+	$skipped = 0;
+	if (quest_items_is_legacy($db)) {
+		$r = mysqli_query($db, "SELECT item_id, npc, zone, rewarded, handed FROM quest_items WHERE LOWER(zone) NOT IN ($notIn)");
+		if (!$r) {
+			throw new RuntimeException('seed legacy quest_items select: ' . mysqli_error($db));
+		}
+		while ($row = mysqli_fetch_assoc($r)) {
+			$npcId = resolve_legacy_quest_item_npc_id($db, $row['npc'], $row['zone']);
+			if ($npcId <= 0) {
+				$skipped++;
+				continue;
+			}
+			$iid = (int)$row['item_id'];
+			$npc = sql_escape($db, substr((string)$row['npc'], 0, 64));
+			$zone = sql_escape($db, substr((string)$row['zone'], 0, 64));
+			$rw = (int)$row['rewarded'] ? 1 : 0;
+			$hd = (int)$row['handed'] ? 1 : 0;
+			sql_or_die($db, "INSERT INTO quest_items_stg (item_id,npc,zone,npc_id,rewarded,handed)
+				VALUES ($iid,'$npc','$zone',$npcId,$rw,$hd)
+				ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd)",
+				'seed legacy quest_items_stg');
+			$copied++;
+		}
+		mysqli_free_result($r);
+		fwrite(STDOUT, "Seeded quest_items from legacy schema: copied=$copied skipped_unresolved=$skipped\n");
+		if ($skipped > 0) {
+			fwrite(STDOUT, "  Note: unresolved legacy quest_items rows are omitted from staging and will not survive a successful swap.\n");
+		}
+		return;
+	}
+
+	sql_or_die($db, "INSERT INTO quest_items_stg (item_id,npc,zone,npc_id,rewarded,handed)
+		SELECT item_id,npc,zone,npc_id,rewarded,handed FROM quest_items WHERE LOWER(zone) NOT IN ($notIn)",
+		'seed quest_items_stg');
+}
+
 function ensure_live_schema($db) {
 	$schema = dirname(__DIR__) . '/includes/sql/quests.sql';
 	if (!is_file($schema)) {
@@ -252,11 +388,20 @@ function drop_staging_tables($db, $tables) {
 }
 
 function create_staging_tables($db, $tables) {
+	$legacyItems = quest_items_is_legacy($db);
+	if ($legacyItems) {
+		fwrite(STDOUT, "Detected legacy quest_items schema (no npc_id / old PK); staging will use the new schema without altering live tables until swap.\n");
+	}
 	foreach ($tables as $t) {
 		if (!table_exists($db, $t)) {
 			throw new RuntimeException("Live table missing after schema ensure: $t");
 		}
-		sql_or_die($db, "CREATE TABLE `{$t}_stg` LIKE `$t`", "create {$t}_stg");
+		if ($t === 'quest_items' && $legacyItems) {
+			// Do not CREATE LIKE the legacy live table — build new-schema staging instead.
+			sql_or_die($db, quest_items_stg_new_ddl(), "create quest_items_stg (new schema)");
+		} else {
+			sql_or_die($db, "CREATE TABLE `{$t}_stg` LIKE `$t`", "create {$t}_stg");
+		}
 	}
 }
 
@@ -289,7 +434,7 @@ function seed_staging_from_live_except_zones($db, $zoneFilter) {
 		JOIN quest_npc n ON n.id = s.quest_npc_id
 		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_say_branch_stg");
 	sql_or_die($db, "INSERT INTO quest_spawn_stg SELECT * FROM quest_spawn WHERE LOWER(zone_short) NOT IN ($notIn)", "seed quest_spawn_stg");
-	sql_or_die($db, "INSERT INTO quest_items_stg SELECT * FROM quest_items WHERE LOWER(zone) NOT IN ($notIn)", "seed quest_items_stg");
+	seed_quest_items_stg_from_live($db, $notIn);
 }
 
 function live_meta_counts($db) {
