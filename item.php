@@ -12,6 +12,7 @@ include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'quest_helpers.php');
+include($includes_dir . 'map_helpers.php');
 
 $id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
@@ -350,18 +351,39 @@ $result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $q
 if (mysqli_num_rows($result) > 0) {
 	echo "<b>This item spawns on the ground in : </b><br><br>\n";
 	$CurrentZone = "";
+	$map_by_zone = array();
 	while ($row = mysqli_fetch_array($result)) {
-		if ($CurrentZone != $row["short_name"]) {
+		$short = $row["short_name"];
+		if (!isset($map_by_zone[$short])) {
+			$map_by_zone[$short] = array(
+				'long_name' => $row["long_name"],
+				'points' => array(),
+			);
+		}
+		$map_by_zone[$short]['points'][] = array(
+			'x' => (float)$row["max_x"],
+			'y' => (float)$row["max_y"],
+			'z' => (float)$row["max_z"],
+		);
+		if ($CurrentZone != $short) {
 			if ($CurrentZone != "") {
 				echo "</ul>\n";
 			}
-			echo "<b><a href='zone.php?name=" . $row["short_name"] . "'>" . $row["long_name"] . "</a> at: </b>\n";
+			echo "<b><a href='zone.php?name=" . htmlspecialchars($short, ENT_QUOTES) . "'>" . htmlspecialchars($row["long_name"]) . "</a> at: </b>\n";
 			echo "<ul>\n";
-			$CurrentZone = $row["short_name"];
+			$CurrentZone = $short;
 		}
-		echo "<li>" . $row["max_y"] . " (Y), " . $row["max_x"] . " (X), " . $row["max_z"] . " (Z)</a></li>";
+		echo "<li>" . $row["max_y"] . " (Y), " . $row["max_x"] . " (X), " . $row["max_z"] . " (Z)</li>";
 	}
 	echo "</ul>\n";
+
+	foreach ($map_by_zone as $short => $info) {
+		if (!map_txt_available($short) || count($info['points']) === 0) {
+			continue;
+		}
+		echo "<h3>Ground spawn map — " . htmlspecialchars($info['long_name']) . "</h3>\n";
+		render_interactive_map($short, $info['points']);
+	}
 }
 
 echo "</div></div>";

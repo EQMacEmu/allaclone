@@ -93,6 +93,8 @@ if (!function_exists('render_interactive_map')) {
 	function render_interactive_map($short_name, $spawn_points = array(), $path_points = array(), $roam_boxes = array(), $fit = 'spawns')
 	{
 		global $map_txt_url, $root_url;
+		static $map_render_seq = 0;
+		static $map_scripts_emitted = false;
 
 		$short_name = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$short_name);
 		if (!map_txt_available($short_name)) {
@@ -123,9 +125,14 @@ if (!function_exists('render_interactive_map')) {
 		// Stepped Z fade: 0/5/10/15/20/50/off (index 6 = off). Start off.
 		$z_fade_step = 6;
 
+		$map_render_seq++;
+		$suffix = '-' . $map_render_seq;
+		$container_id = 'konva-container' . $suffix;
+		$controls_id = 'map-controls' . $suffix;
+
 		$config = array(
-			'containerId' => 'konva-container',
-			'controlsId' => 'map-controls',
+			'containerId' => $container_id,
+			'controlsId' => $controls_id,
 			'mapBaseUrl' => $map_txt_url,
 			'layerFiles' => $layers,
 			'spawnPoints' => $safe_points,
@@ -136,7 +143,7 @@ if (!function_exists('render_interactive_map')) {
 		);
 
 		echo "<div class='interactive-map-wrap'>\n";
-		echo "<div id='map-controls' class='map-controls'>\n";
+		echo "<div id='" . htmlspecialchars($controls_id, ENT_QUOTES) . "' class='map-controls'>\n";
 		echo "<label>Line weight <input type='range' min='1' max='6' value='2' data-map-control='line-weight'></label>\n";
 		if (count($safe_points) > 0) {
 			echo "<label><input type='checkbox' data-map-control='animate'> Animate spawns</label>\n";
@@ -167,7 +174,7 @@ if (!function_exists('render_interactive_map')) {
 		echo "<button type='button' data-map-control='reset'>Reset view</button>\n";
 
 		echo "</div>\n";
-		echo "<div id='konva-container' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
+		echo "<div id='" . htmlspecialchars($container_id, ENT_QUOTES) . "' class='konva-container' role='img' aria-label='Zone map' tabindex='0'></div>\n";
 		$hint = 'Drag to pan. Click the map, then scroll to zoom (or hold Ctrl and scroll). The readout shows /loc coordinates (Y, X).';
 		$hint .= ' Use Floor to step through Brewall map levels; click a spawn ring to focus that height.';
 		$hint .= ' Z fade steps off-level opacity: 0 / 5 / 10 / 15 / 20 / 50 / off.';
@@ -175,9 +182,14 @@ if (!function_exists('render_interactive_map')) {
 		echo "</div>\n";
 
 		$js_base = htmlspecialchars($root_url . 'js/', ENT_QUOTES);
-		echo "<script src='" . $js_base . "konva.min.js'></script>\n";
-		echo "<script>window.AllacloneMapConfig = " . json_encode($config) . ";</script>\n";
-		echo "<script src='" . $js_base . "map_viewer.js'></script>\n";
+		echo "<script>window.AllacloneMapConfigs = window.AllacloneMapConfigs || [];";
+		echo "window.AllacloneMapConfigs.push(" . json_encode($config) . ");";
+		echo "window.AllacloneMapConfig = window.AllacloneMapConfigs[window.AllacloneMapConfigs.length - 1];</script>\n";
+		if (!$map_scripts_emitted) {
+			echo "<script src='" . $js_base . "konva.min.js'></script>\n";
+			echo "<script src='" . $js_base . "map_viewer.js'></script>\n";
+			$map_scripts_emitted = true;
+		}
 	}
 }
 

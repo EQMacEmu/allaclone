@@ -1107,8 +1107,18 @@
   };
 
   function bootFromConfig() {
-    if (!global.AllacloneMapConfig) return;
-    global.AllacloneMapInstance = new AllacloneMap(global.AllacloneMapConfig);
+    var configs = [];
+    if (global.AllacloneMapConfigs && global.AllacloneMapConfigs.length) {
+      configs = global.AllacloneMapConfigs;
+    } else if (global.AllacloneMapConfig) {
+      configs = [global.AllacloneMapConfig];
+    }
+    if (!configs.length) return;
+    global.AllacloneMapInstances = [];
+    for (var i = 0; i < configs.length; i++) {
+      global.AllacloneMapInstances.push(new AllacloneMap(configs[i]));
+    }
+    global.AllacloneMapInstance = global.AllacloneMapInstances[0];
   }
 
   if (document.readyState === 'loading') {
