@@ -3,24 +3,28 @@
  * Offline Lua quest ingest for AllaClone.
  *
  * Scans EQEmu quest scripts (*.lua), extracts turn-ins, rewards, faction hits,
- * standing gates, and say branches, then loads tool tables in the peq DB.
- * Runtime site pages only query MySQL — they never call this script.
+ * standing gates, and say branches, then loads tool tables in the peq DB via
+ * staging tables + RENAME TABLE swap. Live quest_* data is never DROPped first.
+ * DDL auto-commits in MySQL — safety comes from leaving live tables untouched
+ * until a validated staging set is swapped in one RENAME batch.
  *
  * Usage:
  *   php import_lua_quests.php --quests /path/to/quests --host localhost --user root --pass root --db peq
  *   php import_lua_quests.php --quests /path/to/quests --zones qeynos,freporte
+ *   php import_lua_quests.php --quests /path/to/quests --dry-run
+ *   php import_lua_quests.php --quests /path/to/quests --force-incomplete
  *
- * Scripts bind to NPCs the way the server loads them: <npc_id>.lua, or <npc_name>.lua matched
- * against NPCs that belong to the script's zone, plus eq.register_npc_event ids.
- *
- * Heuristic limits: regex extraction; misses concatenated strings, variable item
- * ids, deep nesting, and non-literal npc id bindings.
+ * Runtime site pages only query MySQL — they never call this script.
  */
 
 if (PHP_SAPI !== 'cli') {
 	fwrite(STDERR, "Run from CLI only.\n");
 	exit(1);
 }
+
+require_once __DIR__ . '/lua_quest_extract.php';
+
+$IMPORT_VERSION = defined('ALLACLONE_LUA_QUEST_EXTRACT') ? ALLACLONE_LUA_QUEST_EXTRACT : '1.1.0';
 
 $opts = getopt('', array(
 	'quests:',
@@ -31,10 +35,13 @@ $opts = getopt('', array(
 	'zones:',
 	'help',
 	'dry-run',
+	'force-incomplete',
+	'fail-after:', // test hook: staging_ready | mid_insert | validate
 ));
 
 if (isset($opts['help']) || empty($opts['quests'])) {
-	fwrite(STDOUT, "Usage: php import_lua_quests.php --quests <quest_root> [--host H] [--user U] [--pass P] [--db D] [--zones z1,z2] [--dry-run]\n");
+	fwrite(STDOUT, "Usage: php import_lua_quests.php --quests <quest_root> [--host H] [--user U] [--pass P] [--db D] [--zones z1,z2] [--dry-run] [--force-incomplete]\n");
+	fwrite(STDOUT, "Loads into staging tables then RENAME-swaps. Live data is preserved on failure.\n");
 	fwrite(STDOUT, "DB settings fall back to ALLACLONE_DB_HOST / _USER / _PASS / _NAME, then localhost / root / root / peq.\n");
 	exit(isset($opts['help']) ? 0 : 1);
 }
@@ -45,7 +52,6 @@ if (!is_dir($questRoot)) {
 	exit(1);
 }
 
-// Command-line flags win, then ALLACLONE_DB_* environment variables (also how an empty password is passed).
 function cli_setting($opts, $flag, $envName, $default) {
 	if (isset($opts[$flag])) {
 		return $opts[$flag];
@@ -53,12 +59,14 @@ function cli_setting($opts, $flag, $envName, $default) {
 	$env = getenv($envName);
 	return ($env !== false) ? $env : $default;
 }
+
 $dbhost = cli_setting($opts, 'host', 'ALLACLONE_DB_HOST', 'localhost');
 $dbuser = cli_setting($opts, 'user', 'ALLACLONE_DB_USER', 'root');
-// getopt() drops "--pass=" (empty value), so treat it as an explicit empty password.
 $dbpasswd = in_array('--pass=', $argv, true) ? '' : cli_setting($opts, 'pass', 'ALLACLONE_DB_PASS', 'root');
 $dbname = cli_setting($opts, 'db', 'ALLACLONE_DB_NAME', 'peq');
 $dryRun = isset($opts['dry-run']);
+$forceIncomplete = isset($opts['force-incomplete']);
+$failAfter = isset($opts['fail-after']) ? $opts['fail-after'] : '';
 $zoneFilter = array();
 if (!empty($opts['zones'])) {
 	foreach (explode(',', $opts['zones']) as $z) {
@@ -69,9 +77,6 @@ if (!empty($opts['zones'])) {
 	}
 }
 
-// Do not include includes/config.php here — it opens a web DB handle and exits on failure.
-// Pass --host/--user/--pass/--db, or rely on defaults matching config.template.php.
-
 mysqli_report(MYSQLI_REPORT_OFF);
 $db = @mysqli_connect($dbhost, $dbuser, $dbpasswd, $dbname);
 if (!$db) {
@@ -80,33 +85,18 @@ if (!$db) {
 }
 mysqli_set_charset($db, 'latin1');
 
-function normalize_npc_key($name) {
-	$s = strtolower(str_replace('_', ' ', $name));
-	$s = preg_replace('/^[#~!]+/', '', $s);
-	$s = preg_replace('/\s+/', ' ', trim($s));
-	return $s;
-}
-
-function standing_label_for_raw($minRaw) {
-	// Approximate EQ faction bands (raw character_faction_values).
-	if ($minRaw >= 1100) return 'Ally+';
-	if ($minRaw >= 750) return 'Warmly+';
-	if ($minRaw >= 500) return 'Kindly+';
-	if ($minRaw >= 100) return 'Amiably+';
-	if ($minRaw >= 0) return 'Indifferent+';
-	if ($minRaw >= -100) return 'Apprehensive+';
-	if ($minRaw >= -500) return 'Dubious+';
-	if ($minRaw >= -750) return 'Threateningly+';
-	return 'Ready to attack+';
-}
-
 function sql_escape($db, $s) {
 	return mysqli_real_escape_string($db, $s);
 }
 
-/**
- * NPC lookup tables: 'by_id' => id => meta, 'exact' => name => [ids], 'norm' => normalized name => [ids].
- */
+function sql_or_die($db, $sql, $context) {
+	$ok = mysqli_query($db, $sql);
+	if (!$ok) {
+		throw new RuntimeException("$context: " . mysqli_error($db) . "\nSQL: $sql");
+	}
+	return $ok;
+}
+
 function load_npc_maps($db) {
 	$maps = array('by_id' => array(), 'exact' => array(), 'norm' => array());
 	$q = "SELECT n.id, n.name,
@@ -135,7 +125,6 @@ function load_npc_maps($db) {
 	return $maps;
 }
 
-/** zone short_name (lowercase) => zoneidnumber */
 function load_zone_ids($db) {
 	$zones = array();
 	$res = mysqli_query($db, "SELECT short_name, zoneidnumber FROM zone");
@@ -150,7 +139,6 @@ function load_zone_ids($db) {
 	return $zones;
 }
 
-/** npc id => [zone short_name (lowercase) => true] for every zone the NPC has a spawn point in. */
 function load_npc_spawn_zones($db) {
 	$spawnZones = array();
 	$res = mysqli_query($db, "SELECT DISTINCT se.npcID, s2.zone
@@ -165,56 +153,6 @@ function load_npc_spawn_zones($db) {
 	}
 	mysqli_free_result($res);
 	return $spawnZones;
-}
-
-/** NPC ids belong to a zone by id range (id DIV 1000 = zoneidnumber) or by having a spawn point there. */
-function npc_in_zone($npcId, $zoneShort, $zoneIds, $spawnZones) {
-	$zoneShort = strtolower($zoneShort);
-	if (isset($zoneIds[$zoneShort]) && intdiv($npcId, 1000) === $zoneIds[$zoneShort]) {
-		return true;
-	}
-	return isset($spawnZones[$npcId][$zoneShort]);
-}
-
-/**
- * Resolve which npc_types rows a script file belongs to, mirroring how the server picks scripts:
- * a numeric file name is an npc id, otherwise the file name is the NPC name. Exact names win over
- * normalized ones, so #Lanhern_Firepride.lua and Lanhern_Firepride.lua stay on separate NPCs.
- */
-function resolve_script_npcs($stem, $zoneShort, $registeredIds, $npcMaps, $zoneIds, $spawnZones) {
-	$ids = array();
-	if (ctype_digit($stem)) {
-		$ids[] = (int)$stem;
-	} else {
-		$candidates = isset($npcMaps['exact'][$stem]) ? $npcMaps['exact'][$stem] : array();
-		$inZone = array();
-		foreach ($candidates as $id) {
-			if (npc_in_zone($id, $zoneShort, $zoneIds, $spawnZones)) {
-				$inZone[] = $id;
-			}
-		}
-		if (count($inZone) === 0) {
-			$key = normalize_npc_key($stem);
-			$candidates = ($key !== '' && isset($npcMaps['norm'][$key])) ? $npcMaps['norm'][$key] : array();
-			foreach ($candidates as $id) {
-				if (npc_in_zone($id, $zoneShort, $zoneIds, $spawnZones)) {
-					$inZone[] = $id;
-				}
-			}
-		}
-		$ids = $inZone;
-	}
-	foreach ($registeredIds as $id) {
-		$ids[] = (int)$id;
-	}
-
-	$targets = array();
-	foreach ($ids as $id) {
-		if (isset($npcMaps['by_id'][$id])) {
-			$targets[$id] = $npcMaps['by_id'][$id];
-		}
-	}
-	return $targets;
 }
 
 function load_item_ids($db) {
@@ -245,462 +183,189 @@ function load_faction_ids($db) {
 	return $set;
 }
 
-/**
- * Build local NAME => digits map from a Lua script (first assignment wins).
- */
-function extract_lua_local_int_consts($text) {
-	$map = array();
-	if (preg_match_all('/\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d{3,})\b/', $text, $m, PREG_SET_ORDER)) {
-		foreach ($m as $hit) {
-			if (!isset($map[$hit[1]])) {
-				$map[$hit[1]] = (int)$hit[2];
-			}
-		}
+$QUEST_TABLES = array(
+	'quest_trade_item',
+	'quest_faction_hit',
+	'quest_faction_req',
+	'quest_say_branch',
+	'quest_trade',
+	'quest_spawn',
+	'quest_npc',
+	'quest_items',
+	'quest_import_meta',
+);
+
+function table_exists($db, $name) {
+	$res = mysqli_query($db, "SHOW TABLES LIKE '" . mysqli_real_escape_string($db, $name) . "'");
+	$ok = ($res && mysqli_num_rows($res) > 0);
+	if ($res) {
+		mysqli_free_result($res);
 	}
-	return $map;
+	return $ok;
 }
 
-/**
- * Literal eq.spawn2 / unique_spawn (and quest::) calls with numeric x,y,z.
- * First arg may be a digit id or a local const resolved in-file. Skips GetX()/variables.
- */
-function extract_literal_quest_spawns($text, $rel) {
-	$locals = extract_lua_local_int_consts($text);
-	$text = str_replace(array("\r\n", "\r"), "\n", $text);
-	$lines = explode("\n", $text);
+function ensure_live_schema($db) {
+	$schema = dirname(__DIR__) . '/includes/sql/quests.sql';
+	if (!is_file($schema)) {
+		throw new RuntimeException("Missing schema: $schema");
+	}
+	$sql = file_get_contents($schema);
+	if ($sql === false) {
+		throw new RuntimeException("Cannot read schema: $schema");
+	}
+	if (!mysqli_multi_query($db, $sql)) {
+		throw new RuntimeException("Schema apply failed: " . mysqli_error($db));
+	}
+	do {
+		if ($result = mysqli_store_result($db)) {
+			mysqli_free_result($result);
+		}
+		if (mysqli_errno($db)) {
+			throw new RuntimeException("Schema statement failed: " . mysqli_error($db));
+		}
+	} while (mysqli_more_results($db) && mysqli_next_result($db));
+	if (mysqli_errno($db)) {
+		throw new RuntimeException("Schema drain failed: " . mysqli_error($db));
+	}
+	// Upgrade older installs missing give_* columns.
+	$need = array('give_copper', 'give_silver', 'give_gold', 'give_platinum');
+	$res = mysqli_query($db, "SHOW COLUMNS FROM quest_trade");
+	$have = array();
+	if ($res) {
+		while ($row = mysqli_fetch_assoc($res)) {
+			$have[$row['Field']] = true;
+		}
+		mysqli_free_result($res);
+	}
+	foreach ($need as $col) {
+		if (!isset($have[$col])) {
+			sql_or_die($db, "ALTER TABLE quest_trade ADD COLUMN `$col` int(11) NOT NULL DEFAULT '0'", "alter quest_trade.$col");
+		}
+	}
+}
+
+function drop_staging_tables($db, $tables) {
+	foreach ($tables as $t) {
+		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_stg`", "drop {$t}_stg");
+		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_old`", "drop {$t}_old");
+	}
+}
+
+function create_staging_tables($db, $tables) {
+	foreach ($tables as $t) {
+		if (!table_exists($db, $t)) {
+			throw new RuntimeException("Live table missing after schema ensure: $t");
+		}
+		sql_or_die($db, "CREATE TABLE `{$t}_stg` LIKE `$t`", "create {$t}_stg");
+	}
+}
+
+function seed_staging_from_live_except_zones($db, $zoneFilter) {
+	if (!$zoneFilter) {
+		return;
+	}
+	$zoneList = array();
+	foreach (array_keys($zoneFilter) as $z) {
+		$zoneList[] = "'" . mysqli_real_escape_string($db, $z) . "'";
+	}
+	$notIn = implode(',', $zoneList);
+
+	// Copy NPCs (and dependents) for zones outside the filter.
+	sql_or_die($db, "INSERT INTO quest_npc_stg SELECT * FROM quest_npc WHERE LOWER(zone_short) NOT IN ($notIn)", "seed quest_npc_stg");
+	sql_or_die($db, "INSERT INTO quest_trade_stg SELECT t.* FROM quest_trade t
+		JOIN quest_npc n ON n.id = t.quest_npc_id
+		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_trade_stg");
+	sql_or_die($db, "INSERT INTO quest_trade_item_stg SELECT ti.* FROM quest_trade_item ti
+		JOIN quest_trade t ON t.id = ti.trade_id
+		JOIN quest_npc n ON n.id = t.quest_npc_id
+		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_trade_item_stg");
+	sql_or_die($db, "INSERT INTO quest_faction_hit_stg SELECT h.* FROM quest_faction_hit h
+		JOIN quest_npc n ON n.id = h.quest_npc_id
+		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_faction_hit_stg");
+	sql_or_die($db, "INSERT INTO quest_faction_req_stg SELECT r.* FROM quest_faction_req r
+		JOIN quest_npc n ON n.id = r.quest_npc_id
+		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_faction_req_stg");
+	sql_or_die($db, "INSERT INTO quest_say_branch_stg SELECT s.* FROM quest_say_branch s
+		JOIN quest_npc n ON n.id = s.quest_npc_id
+		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_say_branch_stg");
+	sql_or_die($db, "INSERT INTO quest_spawn_stg SELECT * FROM quest_spawn WHERE LOWER(zone_short) NOT IN ($notIn)", "seed quest_spawn_stg");
+	sql_or_die($db, "INSERT INTO quest_items_stg SELECT * FROM quest_items WHERE LOWER(zone) NOT IN ($notIn)", "seed quest_items_stg");
+}
+
+function live_meta_counts($db) {
+	$out = array('npc_count' => 0, 'trade_count' => 0, 'spawn_count' => 0);
+	if (!table_exists($db, 'quest_npc')) {
+		return $out;
+	}
+	$r = mysqli_query($db, "SELECT COUNT(*) AS c FROM quest_npc");
+	if ($r && ($row = mysqli_fetch_assoc($r))) {
+		$out['npc_count'] = (int)$row['c'];
+	}
+	if ($r) mysqli_free_result($r);
+	$r = mysqli_query($db, "SELECT COUNT(*) AS c FROM quest_trade");
+	if ($r && ($row = mysqli_fetch_assoc($r))) {
+		$out['trade_count'] = (int)$row['c'];
+	}
+	if ($r) mysqli_free_result($r);
+	$r = mysqli_query($db, "SELECT COUNT(*) AS c FROM quest_spawn");
+	if ($r && ($row = mysqli_fetch_assoc($r))) {
+		$out['spawn_count'] = (int)$row['c'];
+	}
+	if ($r) mysqli_free_result($r);
+	return $out;
+}
+
+function staging_counts($db) {
 	$out = array();
-	$seen = array();
-	// (eq|quest::).(spawn2|unique_spawn)( npcId|Const, grid, guild, x, y, z [, heading] )
-	$re = '/\b(?:eq\.|quest::)(spawn2|unique_spawn)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*[^,]+,\s*[^,]+,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)(?:\s*,\s*(-?\d+(?:\.\d+)?))?/i';
-	foreach ($lines as $i => $line) {
-		if (!preg_match_all($re, $line, $matches, PREG_SET_ORDER)) {
-			continue;
-		}
-		foreach ($matches as $m) {
-			$callKind = strtolower($m[1]);
-			$first = $m[2];
-			if (ctype_digit($first)) {
-				$npcId = (int)$first;
-			} elseif (isset($locals[$first])) {
-				$npcId = $locals[$first];
-			} else {
-				continue;
-			}
-			if ($npcId <= 0) {
-				continue;
-			}
-			$x = (float)$m[3];
-			$y = (float)$m[4];
-			$z = (float)$m[5];
-			$heading = isset($m[6]) && $m[6] !== '' ? (float)$m[6] : 0.0;
-			$key = $npcId . '|' . $x . '|' . $y . '|' . $z;
-			if (isset($seen[$key])) {
-				continue;
-			}
-			$seen[$key] = true;
-			$out[] = array(
-				'npc_id' => $npcId,
-				'x' => $x,
-				'y' => $y,
-				'z' => $z,
-				'heading' => $heading,
-				'script_file' => $rel,
-				'line_no' => $i + 1,
-				'call_kind' => $callKind,
-			);
-		}
+	foreach (array('quest_npc', 'quest_trade', 'quest_say_branch', 'quest_spawn', 'quest_items') as $t) {
+		$r = mysqli_query($db, "SELECT COUNT(*) AS c FROM `{$t}_stg`");
+		$out[$t] = ($r && ($row = mysqli_fetch_assoc($r))) ? (int)$row['c'] : 0;
+		if ($r) mysqli_free_result($r);
 	}
 	return $out;
 }
 
-/**
- * NPC ids whose events this script handles via eq.register_npc_event (encounter scripts).
- * Ids that a script only spawns, signals or depops are not bound: those NPCs have their own scripts.
- */
-function extract_registered_npc_ids($text) {
-	$ids = array();
-	if (preg_match_all('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*(\d+)/i', $text, $m)) {
-		foreach ($m[1] as $id) {
-			$ids[(int)$id] = true;
+function validate_staging($db, $zoneFilter, $forceIncomplete, $prior) {
+	$counts = staging_counts($db);
+	if ($counts['quest_npc'] === 0 && !$forceIncomplete) {
+		throw new RuntimeException("Staging has 0 quest NPCs; refusing to replace live data (use --force-incomplete to override).");
+	}
+	// Full import completeness vs prior live.
+	if (!$zoneFilter && $prior['npc_count'] > 0 && !$forceIncomplete) {
+		$minNpcs = (int)max(1, floor($prior['npc_count'] * 0.5));
+		if ($counts['quest_npc'] < $minNpcs) {
+			throw new RuntimeException("Staging NPC count {$counts['quest_npc']} < 50% of prior {$prior['npc_count']} (use --force-incomplete).");
+		}
+		if ($prior['trade_count'] > 10 && $counts['quest_trade'] === 0) {
+			throw new RuntimeException("Staging has 0 trades but prior had {$prior['trade_count']} (use --force-incomplete).");
 		}
 	}
-	// local NAME = 1234 then passed to register_npc_event
-	$locals = extract_lua_local_int_consts($text);
-	foreach ($locals as $name => $id) {
-		if (preg_match('/\beq\.register_npc_event\s*\([^,]+,\s*[^,]+,\s*' . preg_quote($name, '/') . '\b/', $text)) {
-			$ids[$id] = true;
-		}
-	}
-	return array_keys($ids);
+	return $counts;
 }
 
-function parse_quest_reward($line) {
-	$out = array(
-		'reward_item_ids' => array(),
-		'reward_exp' => 0,
-		'reward_faction_flag' => 0,
-		'copper' => 0,
-		'silver' => 0,
-		'gold' => 0,
-		'platinum' => 0,
-		'faction_hits' => array(), // explicit table form
-	);
-	if (!preg_match('/e\.other:QuestReward/i', $line)) {
-		return null;
+function swap_staging_to_live($db, $tables) {
+	$parts = array();
+	foreach ($tables as $t) {
+		$parts[] = "`$t` TO `{$t}_old`";
+		$parts[] = "`{$t}_stg` TO `$t`";
 	}
-	// Table form: items={...}, exp=, copper=, factionid=
-	if (preg_match('/items\s*=\s*\{\s*([\d,\s]+)\}/i', $line, $im)) {
-		if (preg_match_all('/\d+/', $im[1], $nums)) {
-			foreach ($nums[0] as $n) {
-				$out['reward_item_ids'][] = (int)$n;
-			}
-		}
-		if (preg_match('/\bexp\s*=\s*(\d+)/i', $line, $em)) {
-			$out['reward_exp'] = (int)$em[1];
-		}
-		foreach (array('copper', 'silver', 'gold', 'platinum') as $coin) {
-			if (preg_match('/\b' . $coin . '\s*=\s*(\d+)/i', $line, $cm)) {
-				$out[$coin] = (int)$cm[1];
-			}
-		}
-		if (preg_match('/\bfactionid\s*=\s*(\d+)/i', $line, $fm) && preg_match('/\bfactionmod\s*=\s*(-?\d+)/i', $line, $dm)) {
-			$out['faction_hits'][] = array('faction_id' => (int)$fm[1], 'delta' => (int)$dm[1]);
-		}
-		if (preg_match('/\bfaction\s*=\s*true\b/i', $line)) {
-			$out['reward_faction_flag'] = 1;
-		}
-		return $out;
+	sql_or_die($db, "RENAME TABLE " . implode(', ', $parts), "RENAME swap");
+	foreach ($tables as $t) {
+		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_old`", "drop {$t}_old");
 	}
-	// Positional: QuestReward(e.self, copper, silver, gold, platinum, itemid [, exp [, faction]])
-	if (preg_match('/e\.other:QuestReward\s*\(\s*e\.self\s*,\s*([\d,\s]+)\)/i', $line, $m)) {
-		$parts = preg_split('/\s*,\s*/', trim($m[1]));
-		$nums = array();
-		foreach ($parts as $p) {
-			if ($p === '' || !ctype_digit($p)) {
-				continue;
-			}
-			$nums[] = (int)$p;
-		}
-		if (count($nums) < 5) {
-			return null;
-		}
-		$out['copper'] = $nums[0];
-		$out['silver'] = $nums[1];
-		$out['gold'] = $nums[2];
-		$out['platinum'] = $nums[3];
-		if ($nums[4] > 0) {
-			$out['reward_item_ids'][] = $nums[4];
-		}
-		if (isset($nums[5])) {
-			$out['reward_exp'] = $nums[5];
-		}
-		if (isset($nums[6]) && $nums[6]) {
-			$out['reward_faction_flag'] = 1;
-		}
-		return $out;
-	}
-	return null;
 }
 
-/**
- * Last line index still belonging to this turn-in's if/elseif branch.
- * Stops before the next check_turn_in, or a sibling elseif/else/end at the same indent.
- */
-function turn_in_branch_end($lines, $start) {
-	$n = count($lines);
-	$indent = strlen($lines[$start]) - strlen(ltrim($lines[$start]));
-	$end = $n - 1;
-	for ($j = $start + 1; $j < $n; $j++) {
-		$line = $lines[$j];
-		if (preg_match('/item_lib\.check_turn_in\s*\(/i', $line)) {
-			$end = $j - 1;
-			break;
-		}
-		$trimmed = ltrim($line);
-		if ($trimmed === '') {
-			continue;
-		}
-		$jIndent = strlen($line) - strlen($trimmed);
-		if ($jIndent > $indent) {
-			continue;
-		}
-		if (preg_match('/^(elseif|else|end)\b/i', $trimmed)) {
-			$end = $j - 1;
-			break;
-		}
+function content_signature($npcRows, $spawnRows) {
+	$bits = array();
+	$keys = array_keys($npcRows);
+	sort($keys);
+	foreach ($keys as $k) {
+		$bits[] = $k . ':' . count($npcRows[$k]['trades']) . ':' . count($npcRows[$k]['say_branches']);
 	}
-	return $end;
-}
-
-function parse_lua_file($path, $rel) {
-	$raw = @file_get_contents($path);
-	if ($raw === false) {
-		return null;
-	}
-	// Normalize newlines
-	$raw = str_replace(array("\r\n", "\r"), "\n", $raw);
-	$lines = explode("\n", $raw);
-
-	$result = array(
-		'trades' => array(),
-		'faction_hits' => array(),
-		'faction_reqs' => array(),
-		'say_branches' => array(),
-		'registered_npc_ids' => extract_registered_npc_ids($raw),
-	);
-
-	// Trade turn-ins
-	$n = count($lines);
-	for ($i = 0; $i < $n; $i++) {
-		$line = $lines[$i];
-		if (!preg_match('/item_lib\.check_turn_in\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{([^}]+)\}/i', $line, $m)) {
-			continue;
-		}
-		$giveIds = array();
-		if (preg_match_all('/item\s*\d+\s*=\s*(\d+)/i', $m[1], $im)) {
-			foreach ($im[1] as $id) {
-				$giveIds[] = (int)$id;
-			}
-		}
-		if (count($giveIds) === 0) {
-			continue;
-		}
-		$reward = array(
-			'reward_item_ids' => array(),
-			'reward_exp' => 0,
-			'reward_faction_flag' => 0,
-			'copper' => 0,
-			'silver' => 0,
-			'gold' => 0,
-			'platinum' => 0,
-			'faction_hits' => array(),
-		);
-		$lim = turn_in_branch_end($lines, $i);
-		for ($j = $i; $j <= $lim; $j++) {
-			$qr = parse_quest_reward($lines[$j]);
-			if ($qr !== null) {
-				$reward = $qr;
-				break;
-			}
-		}
-		// Faction hits belonging to this turn-in branch only
-		$localHits = array();
-		for ($j = $i; $j <= $lim; $j++) {
-			if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$j], $fm, PREG_SET_ORDER)) {
-				foreach ($fm as $hit) {
-					$localHits[] = array(
-						'faction_id' => (int)$hit[1],
-						'delta' => (int)$hit[2],
-						'line_no' => $j + 1,
-						'script_file' => $rel,
-					);
-				}
-			}
-		}
-		foreach ($reward['faction_hits'] as $fh) {
-			$localHits[] = array(
-				'faction_id' => $fh['faction_id'],
-				'delta' => $fh['delta'],
-				'line_no' => $i + 1,
-				'script_file' => $rel,
-			);
-		}
-		$result['trades'][] = array(
-			'line_no' => $i + 1,
-			'script_file' => $rel,
-			'give_ids' => $giveIds,
-			'reward' => $reward,
-			'faction_hits' => $localHits,
-		);
-	}
-
-	// Global Faction() calls not already captured (still useful for NPC summary)
-	for ($i = 0; $i < $n; $i++) {
-		if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$i], $fm, PREG_SET_ORDER)) {
-			foreach ($fm as $hit) {
-				$result['faction_hits'][] = array(
-					'faction_id' => (int)$hit[1],
-					'delta' => (int)$hit[2],
-					'line_no' => $i + 1,
-					'script_file' => $rel,
-				);
-			}
-		}
-	}
-
-	// Standing gates: GetFactionValue(e.self) >= N  (primary faction of NPC)
-	$seenReq = array();
-	for ($i = 0; $i < $n; $i++) {
-		if (preg_match_all('/GetFactionValue\s*\(\s*e\.self\s*\)\s*(>=|>)\s*(-?\d+)/i', $lines[$i], $m, PREG_SET_ORDER)) {
-			foreach ($m as $hit) {
-				$min = (int)$hit[2];
-				if ($hit[1] === '>') {
-					$min = $min + 1;
-				}
-				$key = 'v:' . $min;
-				if (isset($seenReq[$key])) {
-					continue;
-				}
-				$seenReq[$key] = true;
-				$result['faction_reqs'][] = array(
-					'faction_id' => 0, // resolved to primary at insert
-					'min_raw' => $min,
-					'standing_label' => standing_label_for_raw($min),
-					'line_no' => $i + 1,
-					'script_file' => $rel,
-				);
-			}
-		}
-	}
-
-	// Say branches inside event_say
-	$inSay = false;
-	$sayIndent = -1;
-	$sayLocals = extract_lua_local_int_consts($raw);
-	for ($i = 0; $i < $n; $i++) {
-		$line = $lines[$i];
-		if (preg_match('/^\s*function\s+event_say\b/i', $line)) {
-			$inSay = true;
-			$sayIndent = strlen($line) - strlen(ltrim($line));
-			continue;
-		}
-		if ($inSay && preg_match('/^\s*function\s+/i', $line)) {
-			$inSay = false;
-		}
-		if (!$inSay) {
-			continue;
-		}
-		if (!preg_match('/^(\s*)(?:if|elseif)\b.*?:findi\s*\(\s*"([^"]{1,64})"\s*\)/i', $line, $bm)) {
-			continue;
-		}
-		$branchLen = strlen($bm[1]);
-		$keyword = $bm[2];
-		$respKind = '';
-		$respText = '';
-		$respLine = 0;
-		$lim = min($i + 60, $n - 1);
-		for ($j = $i + 1; $j <= $lim; $j++) {
-			$jl = $lines[$j];
-			if (trim($jl) === '') {
-				continue;
-			}
-			$lj = strlen($jl) - strlen(ltrim($jl));
-			$trim = ltrim($jl);
-			if ($lj <= $branchLen && preg_match('/^(elseif|else)\b/i', $trim)) {
-				break;
-			}
-			if ($respText === '') {
-				if (preg_match('/e\.self:Say\s*\(\s*"([^"]{1,400})"/i', $jl, $sm)) {
-					$respKind = 'say';
-					$respText = $sm[1];
-					$respLine = $j + 1;
-				} elseif (preg_match('/e\.self:Emote\s*\(\s*"([^"]{1,400})"/i', $jl, $em)) {
-					$respKind = 'emote';
-					$respText = $em[1];
-					$respLine = $j + 1;
-				} elseif (preg_match('/e\.self:Say\s*\(\s*string\.format\s*\(\s*"([^"]{1,400})"/i', $jl, $sm)) {
-					$respKind = 'say_fmt';
-					$respText = $sm[1];
-					$respLine = $j + 1;
-				}
-			}
-			// Branches that only spawn / depop (no Say/Emote), e.g. "challenge eejag"
-			if (preg_match('/\b(?:eq\.|quest::)(unique_spawn|spawn2)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*[^,]+,\s*[^,]+,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i', $jl, $spm)) {
-				$spawnId = ctype_digit($spm[2]) ? (int)$spm[2] : 0;
-				if ($spawnId <= 0 && isset($sayLocals[$spm[2]])) {
-					$spawnId = $sayLocals[$spm[2]];
-				}
-				if ($spawnId > 0) {
-					$sx = (float)$spm[3];
-					$sy = (float)$spm[4];
-					$sz = (float)$spm[5];
-					// Store /loc order (Y, X, Z) to match map readout and epic guides
-					$spawnBit = "spawns NPC $spawnId at (" . round($sy) . ', ' . round($sx) . ', ' . round($sz) . ')';
-					if ($respText === '') {
-						$respKind = strtolower($spm[1]);
-						$respText = $spawnBit;
-						$respLine = $j + 1;
-					} elseif (strpos($respText, "spawns NPC $spawnId") === false) {
-						$respText .= '; ' . $spawnBit;
-					}
-				}
-			} elseif (preg_match('/\b(?:eq\.|quest::)(unique_spawn|spawn2)\s*\(\s*(\d+)/i', $jl, $spm)) {
-				$spawnId = (int)$spm[2];
-				$spawnBit = "spawns NPC $spawnId";
-				if ($respText === '') {
-					$respKind = strtolower($spm[1]);
-					$respText = $spawnBit;
-					$respLine = $j + 1;
-				} elseif (strpos($respText, $spawnBit) === false) {
-					$respText .= '; ' . $spawnBit;
-				}
-			}
-			if (preg_match('/\b(?:eq\.|quest::)depop(?:_with_timer)?\s*\(/i', $jl)) {
-				if ($respText === '') {
-					$respKind = 'depop';
-					$respText = 'despawns';
-					$respLine = $j + 1;
-				} elseif (stripos($respText, 'despawn') === false) {
-					$respText .= '; despawns';
-				}
-			}
-		}
-		if ($respText !== '') {
-			$result['say_branches'][] = array(
-				'keyword' => $keyword,
-				'response_kind' => $respKind,
-				'response_text' => $respText,
-				'line_no' => $respLine ? $respLine : ($i + 1),
-				'script_file' => $rel,
-			);
-		}
-	}
-
-	return $result;
-}
-
-function list_zone_dirs($questRoot, $zoneFilter) {
-	$exclude = array('global' => true, 'templates' => true, 'lua_modules' => true, 'plugins' => true, '.' => true, '..' => true);
-	$dirs = array();
-	$dh = opendir($questRoot);
-	if (!$dh) {
-		return $dirs;
-	}
-	while (($entry = readdir($dh)) !== false) {
-		if (isset($exclude[$entry])) {
-			continue;
-		}
-		$path = $questRoot . '/' . $entry;
-		if (!is_dir($path)) {
-			continue;
-		}
-		if ($zoneFilter && !isset($zoneFilter[strtolower($entry)])) {
-			continue;
-		}
-		$dirs[] = array('name' => $entry, 'path' => $path);
-	}
-	closedir($dh);
-	usort($dirs, function ($a, $b) {
-		return strcasecmp($a['name'], $b['name']);
-	});
-	return $dirs;
-}
-
-function collect_lua_files($zonePath) {
-	$files = array();
-	$it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($zonePath, FilesystemIterator::SKIP_DOTS));
-	foreach ($it as $f) {
-		if (!$f->isFile()) {
-			continue;
-		}
-		if (strtolower($f->getExtension()) !== 'lua') {
-			continue;
-		}
-		$full = str_replace('\\', '/', $f->getPathname());
-		$rel = substr($full, strlen(rtrim(str_replace('\\', '/', $zonePath), '/')) + 1);
-		$files[] = array('full' => $full, 'rel' => $rel, 'stem' => pathinfo($f->getFilename(), PATHINFO_FILENAME));
-	}
-	return $files;
+	$sk = array_keys($spawnRows);
+	sort($sk);
+	$bits[] = 'spawns:' . implode(',', $sk);
+	return substr(sha1(implode(';', $bits)), 0, 16);
 }
 
 fwrite(STDOUT, "Loading npc_types / zones / spawns / items / faction_list...\n");
@@ -711,30 +376,22 @@ $itemIds = load_item_ids($db);
 $factionIds = load_faction_ids($db);
 fwrite(STDOUT, "  npcs=" . count($npcMaps['by_id']) . " zones=" . count($zoneIds) . " items=" . count($itemIds) . " factions=" . count($factionIds) . "\n");
 
-if (!$dryRun) {
-	$schema = dirname(__DIR__) . '/includes/sql/quests.sql';
-	if (!is_file($schema)) {
-		fwrite(STDERR, "Missing schema: $schema\n");
-		exit(1);
-	}
-	$sql = file_get_contents($schema);
-	if (!mysqli_multi_query($db, $sql)) {
-		fwrite(STDERR, "Schema apply failed: " . mysqli_error($db) . "\n");
-		exit(1);
-	}
-	while (mysqli_more_results($db)) {
-		mysqli_next_result($db);
-	}
-	fwrite(STDOUT, "Applied includes/sql/quests.sql\n");
-}
+$prior = live_meta_counts($db);
 
 $zones = list_zone_dirs($questRoot, $zoneFilter);
-$stats = array('zones' => 0, 'npcs' => 0, 'trades' => 0, 'says' => 0, 'hits' => 0, 'reqs' => 0, 'skipped_items' => 0, 'spawns' => 0);
+if ($zoneFilter && count($zones) === 0) {
+	fwrite(STDERR, "No matching zone directories for --zones filter.\n");
+	mysqli_close($db);
+	exit(1);
+}
 
-// Aggregate per zone+npc_id
-$npcRows = array(); // key zone|npcid => data
-// Literal quest-popped spawn points (independent of script→NPC binding)
-$spawnRows = array(); // key zone|npcid|x|y|z => row
+$stats = array(
+	'zones' => 0, 'npcs' => 0, 'trades' => 0, 'says' => 0, 'hits' => 0, 'reqs' => 0,
+	'skipped_items' => 0, 'spawns' => 0, 'skipped_bindings' => 0,
+);
+
+$npcRows = array();
+$spawnRows = array();
 
 foreach ($zones as $zone) {
 	$zn = $zone['name'];
@@ -760,6 +417,9 @@ foreach ($zones as $zone) {
 		}
 		$targets = resolve_script_npcs($file['stem'], $zn, $parsed['registered_npc_ids'], $npcMaps, $zoneIds, $spawnZones);
 		if (count($targets) === 0) {
+			if (ctype_digit($file['stem']) || count($parsed['registered_npc_ids']) > 0) {
+				$stats['skipped_bindings']++;
+			}
 			continue;
 		}
 		foreach ($targets as $npcId => $meta) {
@@ -772,6 +432,7 @@ foreach ($zones as $zone) {
 					'primary_faction_id' => $meta['primary_faction_id'],
 					'script_paths' => array(),
 					'trades' => array(),
+					'trade_fps' => array(),
 					'faction_hits' => array(),
 					'faction_reqs' => array(),
 					'say_branches' => array(),
@@ -779,6 +440,14 @@ foreach ($zones as $zone) {
 			}
 			$npcRows[$key]['script_paths'][$file['rel']] = true;
 			foreach ($parsed['trades'] as $t) {
+				if (!isset($t['give_currency'])) {
+					$t['give_currency'] = array('copper' => 0, 'silver' => 0, 'gold' => 0, 'platinum' => 0);
+				}
+				$fp = trade_fingerprint($t);
+				if (isset($npcRows[$key]['trade_fps'][$fp])) {
+					continue;
+				}
+				$npcRows[$key]['trade_fps'][$fp] = true;
 				$npcRows[$key]['trades'][] = $t;
 			}
 			foreach ($parsed['faction_hits'] as $h) {
@@ -796,197 +465,260 @@ foreach ($zones as $zone) {
 	fwrite(STDOUT, "  scanned $zn (" . count($files) . " lua)\n");
 }
 
+$sig = content_signature($npcRows, $spawnRows);
+$zoneLabel = $zoneFilter ? implode(',', array_keys($zoneFilter)) : '*';
+
 if ($dryRun) {
-	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " quest NPCs, " . count($spawnRows) . " quest spawn points\n");
+	$tradeN = 0;
+	$sayN = 0;
+	foreach ($npcRows as $row) {
+		$tradeN += count($row['trades']);
+		$sayN += count($row['say_branches']);
+	}
+	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " scanned quest NPCs, $tradeN trades, $sayN says, " . count($spawnRows) . " quest spawn points");
+	if ($zoneFilter) {
+		fwrite(STDOUT, " (subset merge preserves other live zones)");
+	}
+	fwrite(STDOUT, "\n");
+	fwrite(STDOUT, "Dry run: no DDL and no writes performed. signature=$sig\n");
+	mysqli_close($db);
 	exit(0);
 }
 
-fwrite(STDOUT, "Writing " . count($npcRows) . " quest NPCs and " . count($spawnRows) . " quest spawn points...\n");
-
-$itemIndex = array(); // item_id|npc|zone => [rewarded, handed, npc_id, npc]
-
-foreach ($npcRows as $row) {
-	$paths = implode(',', array_keys($row['script_paths']));
-	if (strlen($paths) > 500) {
-		$paths = substr($paths, 0, 497) . '...';
+try {
+	ensure_live_schema($db);
+	drop_staging_tables($db, $QUEST_TABLES);
+	create_staging_tables($db, $QUEST_TABLES);
+	if ($zoneFilter && table_exists($db, 'quest_npc') && $prior['npc_count'] > 0) {
+		fwrite(STDOUT, "Seeding staging from live zones outside filter...\n");
+		seed_staging_from_live_except_zones($db, $zoneFilter);
 	}
-	$zn = sql_escape($db, $row['zone_short']);
-	$nn = sql_escape($db, $row['npc_name']);
-	$sp = sql_escape($db, $paths);
-	$npcId = (int)$row['npc_id'];
-	$pf = (int)$row['primary_faction_id'];
-	$ok = mysqli_query($db, "INSERT INTO quest_npc (zone_short,npc_id,npc_name,primary_faction_id,script_paths)
-		VALUES ('$zn',$npcId,'$nn',$pf,'$sp')");
-	if (!$ok) {
-		fwrite(STDERR, "quest_npc insert failed: " . mysqli_error($db) . "\n");
-		continue;
-	}
-	$questNpcId = (int)mysqli_insert_id($db);
-	$stats['npcs']++;
 
-	// Deduplicate say branches by keyword+text
-	$seenSay = array();
-	foreach ($row['say_branches'] as $b) {
-		$sk = strtolower($b['keyword'] . '|' . $b['response_text']);
-		if (isset($seenSay[$sk])) {
-			continue;
+	if ($failAfter === 'staging_ready') {
+		throw new RuntimeException("Injected failure after staging_ready");
+	}
+
+	fwrite(STDOUT, "Writing " . count($npcRows) . " scanned quest NPCs and " . count($spawnRows) . " quest spawn points into staging...\n");
+
+	$itemIndex = array();
+	$insertCount = 0;
+
+	foreach ($npcRows as $row) {
+		$paths = implode(',', array_keys($row['script_paths']));
+		if (strlen($paths) > 500) {
+			$paths = substr($paths, 0, 497) . '...';
 		}
-		$seenSay[$sk] = true;
-		$kw = sql_escape($db, substr($b['keyword'], 0, 64));
-		$rk = sql_escape($db, substr($b['response_kind'], 0, 32));
-		$rt = sql_escape($db, substr($b['response_text'], 0, 512));
-		$sf = sql_escape($db, substr($b['script_file'], 0, 255));
-		$ln = (int)$b['line_no'];
-		mysqli_query($db, "INSERT INTO quest_say_branch (quest_npc_id,zone_short,npc_id,keyword,response_kind,response_text,script_file,line_no)
-			VALUES ($questNpcId,'$zn',$npcId,'$kw','$rk','$rt','$sf',$ln)");
-		$stats['says']++;
-	}
+		$zn = sql_escape($db, $row['zone_short']);
+		$nn = sql_escape($db, $row['npc_name']);
+		$sp = sql_escape($db, $paths);
+		$npcId = (int)$row['npc_id'];
+		$pf = (int)$row['primary_faction_id'];
+		sql_or_die($db, "INSERT INTO quest_npc_stg (zone_short,npc_id,npc_name,primary_faction_id,script_paths)
+			VALUES ('$zn',$npcId,'$nn',$pf,'$sp')", "quest_npc_stg insert");
+		$questNpcId = (int)mysqli_insert_id($db);
+		$stats['npcs']++;
+		$insertCount++;
 
-	// Faction requirements (dedupe by min_raw+faction)
-	$seenReq = array();
-	foreach ($row['faction_reqs'] as $r) {
-		$fid = (int)$r['faction_id'];
-		if ($fid > 0 && !isset($factionIds[$fid])) {
-			continue;
-		}
-		$rk = $fid . ':' . (int)$r['min_raw'];
-		if (isset($seenReq[$rk])) {
-			continue;
-		}
-		$seenReq[$rk] = true;
-		$lab = sql_escape($db, substr($r['standing_label'], 0, 64));
-		$sf = sql_escape($db, substr($r['script_file'], 0, 255));
-		$ln = (int)$r['line_no'];
-		$min = (int)$r['min_raw'];
-		mysqli_query($db, "INSERT INTO quest_faction_req (quest_npc_id,zone_short,npc_id,faction_id,min_raw,standing_label,script_file,line_no)
-			VALUES ($questNpcId,'$zn',$npcId,$fid,$min,'$lab','$sf',$ln)");
-		$stats['reqs']++;
-	}
-
-	foreach ($row['trades'] as $t) {
-		$sf = sql_escape($db, substr($t['script_file'], 0, 255));
-		$ln = (int)$t['line_no'];
-		$re = (int)$t['reward']['reward_exp'];
-		$cu = (int)$t['reward']['copper'];
-		$si = (int)$t['reward']['silver'];
-		$go = (int)$t['reward']['gold'];
-		$pl = (int)$t['reward']['platinum'];
-		$rf = (int)$t['reward']['reward_faction_flag'];
-		mysqli_query($db, "INSERT INTO quest_trade (quest_npc_id,zone_short,npc_id,script_file,line_no,reward_exp,copper,silver,gold,platinum,reward_faction_flag)
-			VALUES ($questNpcId,'$zn',$npcId,'$sf',$ln,$re,$cu,$si,$go,$pl,$rf)");
-		$tradeId = (int)mysqli_insert_id($db);
-		$stats['trades']++;
-		$ord = 0;
-		foreach ($t['give_ids'] as $iid) {
-			$iid = (int)$iid;
-			if (!isset($itemIds[$iid])) {
-				$stats['skipped_items']++;
+		$seenSay = array();
+		foreach ($row['say_branches'] as $b) {
+			$sk = strtolower($b['keyword'] . '|' . $b['response_text']);
+			if (isset($seenSay[$sk])) {
 				continue;
 			}
-			mysqli_query($db, "INSERT INTO quest_trade_item (trade_id,role,item_id,ord) VALUES ($tradeId,'give',$iid,$ord)");
-			$ord++;
-			$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
-			if (!isset($itemIndex[$ik])) {
-				$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
-			}
-			$itemIndex[$ik]['handed'] = 1;
+			$seenSay[$sk] = true;
+			$kw = sql_escape($db, substr($b['keyword'], 0, 64));
+			$rk = sql_escape($db, substr($b['response_kind'], 0, 32));
+			$rt = sql_escape($db, substr($b['response_text'], 0, 512));
+			$sf = sql_escape($db, substr($b['script_file'], 0, 255));
+			$ln = (int)$b['line_no'];
+			sql_or_die($db, "INSERT INTO quest_say_branch_stg (quest_npc_id,zone_short,npc_id,keyword,response_kind,response_text,script_file,line_no)
+				VALUES ($questNpcId,'$zn',$npcId,'$kw','$rk','$rt','$sf',$ln)", "say_branch insert");
+			$stats['says']++;
 		}
-		$ord = 0;
-		foreach ($t['reward']['reward_item_ids'] as $iid) {
-			$iid = (int)$iid;
-			if ($iid <= 0) {
+
+		$seenReq = array();
+		foreach ($row['faction_reqs'] as $r) {
+			$fid = (int)$r['faction_id'];
+			if ($fid > 0 && !isset($factionIds[$fid])) {
 				continue;
 			}
-			if (!isset($itemIds[$iid])) {
-				$stats['skipped_items']++;
+			$rk = $fid . ':' . (int)$r['min_raw'];
+			if (isset($seenReq[$rk])) {
 				continue;
 			}
-			mysqli_query($db, "INSERT INTO quest_trade_item (trade_id,role,item_id,ord) VALUES ($tradeId,'reward',$iid,$ord)");
-			$ord++;
-			$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
-			if (!isset($itemIndex[$ik])) {
-				$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
-			}
-			$itemIndex[$ik]['rewarded'] = 1;
+			$seenReq[$rk] = true;
+			$lab = sql_escape($db, substr($r['standing_label'], 0, 64));
+			$sf = sql_escape($db, substr($r['script_file'], 0, 255));
+			$ln = (int)$r['line_no'];
+			$min = (int)$r['min_raw'];
+			sql_or_die($db, "INSERT INTO quest_faction_req_stg (quest_npc_id,zone_short,npc_id,faction_id,min_raw,standing_label,script_file,line_no)
+				VALUES ($questNpcId,'$zn',$npcId,$fid,$min,'$lab','$sf',$ln)", "faction_req insert");
+			$stats['reqs']++;
 		}
-		// Trade-local faction hits
+
+		foreach ($row['trades'] as $t) {
+			$sf = sql_escape($db, substr($t['script_file'], 0, 255));
+			$ln = (int)$t['line_no'];
+			$re = (int)$t['reward']['reward_exp'];
+			$cu = (int)$t['reward']['copper'];
+			$si = (int)$t['reward']['silver'];
+			$go = (int)$t['reward']['gold'];
+			$pl = (int)$t['reward']['platinum'];
+			$gcu = isset($t['give_currency']) ? (int)$t['give_currency']['copper'] : 0;
+			$gsi = isset($t['give_currency']) ? (int)$t['give_currency']['silver'] : 0;
+			$ggo = isset($t['give_currency']) ? (int)$t['give_currency']['gold'] : 0;
+			$gpl = isset($t['give_currency']) ? (int)$t['give_currency']['platinum'] : 0;
+			$rf = (int)$t['reward']['reward_faction_flag'];
+			sql_or_die($db, "INSERT INTO quest_trade_stg (quest_npc_id,zone_short,npc_id,script_file,line_no,reward_exp,copper,silver,gold,platinum,give_copper,give_silver,give_gold,give_platinum,reward_faction_flag)
+				VALUES ($questNpcId,'$zn',$npcId,'$sf',$ln,$re,$cu,$si,$go,$pl,$gcu,$gsi,$ggo,$gpl,$rf)", "quest_trade_stg insert");
+			$tradeId = (int)mysqli_insert_id($db);
+			if ($tradeId <= 0) {
+				throw new RuntimeException("quest_trade_stg insert produced no insert id");
+			}
+			$stats['trades']++;
+			if ($failAfter === 'mid_insert' && $stats['trades'] >= 1) {
+				throw new RuntimeException("Injected failure mid_insert");
+			}
+			$ord = 0;
+			foreach ($t['give_ids'] as $iid) {
+				$iid = (int)$iid;
+				if (!isset($itemIds[$iid])) {
+					$stats['skipped_items']++;
+					continue;
+				}
+				sql_or_die($db, "INSERT INTO quest_trade_item_stg (trade_id,role,item_id,ord) VALUES ($tradeId,'give',$iid,$ord)", "trade_item give");
+				$ord++;
+				$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
+				if (!isset($itemIndex[$ik])) {
+					$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
+				}
+				$itemIndex[$ik]['handed'] = 1;
+			}
+			$ord = 0;
+			foreach ($t['reward']['reward_item_ids'] as $iid) {
+				$iid = (int)$iid;
+				if ($iid <= 0) {
+					continue;
+				}
+				if (!isset($itemIds[$iid])) {
+					$stats['skipped_items']++;
+					continue;
+				}
+				sql_or_die($db, "INSERT INTO quest_trade_item_stg (trade_id,role,item_id,ord) VALUES ($tradeId,'reward',$iid,$ord)", "trade_item reward");
+				$ord++;
+				$ik = $iid . '|' . $npcId . '|' . $row['zone_short'];
+				if (!isset($itemIndex[$ik])) {
+					$itemIndex[$ik] = array('item_id' => $iid, 'npc' => $row['npc_name'], 'zone' => $row['zone_short'], 'npc_id' => $npcId, 'rewarded' => 0, 'handed' => 0);
+				}
+				$itemIndex[$ik]['rewarded'] = 1;
+			}
+			$seenHit = array();
+			foreach ($t['faction_hits'] as $h) {
+				$fid = (int)$h['faction_id'];
+				if (!isset($factionIds[$fid])) {
+					continue;
+				}
+				$hk = $fid . ':' . (int)$h['delta'] . ':' . (int)$h['line_no'];
+				if (isset($seenHit[$hk])) {
+					continue;
+				}
+				$seenHit[$hk] = true;
+				$hsf = sql_escape($db, substr($h['script_file'], 0, 255));
+				$hln = (int)$h['line_no'];
+				$delta = (int)$h['delta'];
+				sql_or_die($db, "INSERT INTO quest_faction_hit_stg (quest_npc_id,trade_id,zone_short,npc_id,faction_id,delta,script_file,line_no)
+					VALUES ($questNpcId,$tradeId,'$zn',$npcId,$fid,$delta,'$hsf',$hln)", "faction_hit trade");
+				$stats['hits']++;
+			}
+		}
+
 		$seenHit = array();
-		foreach ($t['faction_hits'] as $h) {
+		foreach ($row['faction_hits'] as $h) {
 			$fid = (int)$h['faction_id'];
 			if (!isset($factionIds[$fid])) {
 				continue;
 			}
-			$hk = $fid . ':' . (int)$h['delta'] . ':' . (int)$h['line_no'];
+			$hk = $fid . ':' . (int)$h['delta'];
 			if (isset($seenHit[$hk])) {
 				continue;
 			}
 			$seenHit[$hk] = true;
+			$chk = mysqli_query($db, "SELECT id FROM quest_faction_hit_stg WHERE quest_npc_id=$questNpcId AND faction_id=$fid AND delta=" . (int)$h['delta'] . " LIMIT 1");
+			if ($chk && mysqli_num_rows($chk) > 0) {
+				mysqli_free_result($chk);
+				continue;
+			}
+			if ($chk) {
+				mysqli_free_result($chk);
+			}
 			$hsf = sql_escape($db, substr($h['script_file'], 0, 255));
 			$hln = (int)$h['line_no'];
 			$delta = (int)$h['delta'];
-			mysqli_query($db, "INSERT INTO quest_faction_hit (quest_npc_id,trade_id,zone_short,npc_id,faction_id,delta,script_file,line_no)
-				VALUES ($questNpcId,$tradeId,'$zn',$npcId,$fid,$delta,'$hsf',$hln)");
+			sql_or_die($db, "INSERT INTO quest_faction_hit_stg (quest_npc_id,trade_id,zone_short,npc_id,faction_id,delta,script_file,line_no)
+				VALUES ($questNpcId,0,'$zn',$npcId,$fid,$delta,'$hsf',$hln)", "faction_hit npc");
 			$stats['hits']++;
 		}
 	}
 
-	// NPC-level faction hits not tied to a trade (dedupe)
-	$seenHit = array();
-	foreach ($row['faction_hits'] as $h) {
-		$fid = (int)$h['faction_id'];
-		if (!isset($factionIds[$fid])) {
-			continue;
-		}
-		$hk = $fid . ':' . (int)$h['delta'];
-		if (isset($seenHit[$hk])) {
-			continue;
-		}
-		$seenHit[$hk] = true;
-		// Skip if already inserted via a trade with same faction+delta for this npc
-		$chk = mysqli_query($db, "SELECT id FROM quest_faction_hit WHERE quest_npc_id=$questNpcId AND faction_id=$fid AND delta=" . (int)$h['delta'] . " LIMIT 1");
-		if ($chk && mysqli_num_rows($chk) > 0) {
-			mysqli_free_result($chk);
-			continue;
-		}
-		if ($chk) {
-			mysqli_free_result($chk);
-		}
-		$hsf = sql_escape($db, substr($h['script_file'], 0, 255));
-		$hln = (int)$h['line_no'];
-		$delta = (int)$h['delta'];
-		mysqli_query($db, "INSERT INTO quest_faction_hit (quest_npc_id,trade_id,zone_short,npc_id,faction_id,delta,script_file,line_no)
-			VALUES ($questNpcId,0,'$zn',$npcId,$fid,$delta,'$hsf',$hln)");
-		$stats['hits']++;
+	foreach ($itemIndex as $ix) {
+		$iid = (int)$ix['item_id'];
+		$npc = sql_escape($db, substr($ix['npc'], 0, 64));
+		$zone = sql_escape($db, substr($ix['zone'], 0, 64));
+		$nid = (int)$ix['npc_id'];
+		$rw = (int)$ix['rewarded'];
+		$hd = (int)$ix['handed'];
+		sql_or_die($db, "INSERT INTO quest_items_stg (item_id,npc,zone,npc_id,rewarded,handed)
+			VALUES ($iid,'$npc','$zone',$nid,$rw,$hd)
+			ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd)", "quest_items_stg");
 	}
+
+	foreach ($spawnRows as $sp) {
+		$zn = sql_escape($db, $sp['zone_short']);
+		$npcId = (int)$sp['npc_id'];
+		$x = (float)$sp['x'];
+		$y = (float)$sp['y'];
+		$z = (float)$sp['z'];
+		$h = (float)$sp['heading'];
+		$sf = sql_escape($db, substr($sp['script_file'], 0, 255));
+		$ln = (int)$sp['line_no'];
+		$ck = sql_escape($db, substr($sp['call_kind'], 0, 32));
+		sql_or_die($db, "INSERT INTO quest_spawn_stg (zone_short,npc_id,x,y,z,heading,script_file,line_no,call_kind)
+			VALUES ('$zn',$npcId,$x,$y,$z,$h,'$sf',$ln,'$ck')", "quest_spawn_stg");
+		$stats['spawns']++;
+	}
+
+	// Rebuild item index rows for seeded (non-filtered) zones already in staging.
+	// Meta row for this import.
+	$rootEsc = sql_escape($db, substr($questRoot, 0, 512));
+	$zonesEsc = sql_escape($db, substr($zoneLabel, 0, 512));
+	$sigEsc = sql_escape($db, $sig);
+	$npcC = (int)staging_counts($db)['quest_npc'];
+	$tradeC = (int)staging_counts($db)['quest_trade'];
+	$sayC = (int)staging_counts($db)['quest_say_branch'];
+	$spawnC = (int)staging_counts($db)['quest_spawn'];
+	sql_or_die($db, "INSERT INTO quest_import_meta_stg (id,imported_at,importer_version,quest_root,zones,npc_count,trade_count,say_count,spawn_count,content_signature)
+		VALUES (1,NOW(),'" . sql_escape($db, $IMPORT_VERSION) . "','$rootEsc','$zonesEsc',$npcC,$tradeC,$sayC,$spawnC,'$sigEsc')", "meta_stg");
+
+	if ($failAfter === 'validate') {
+		throw new RuntimeException("Injected failure at validate");
+	}
+
+	$finalCounts = validate_staging($db, $zoneFilter, $forceIncomplete, $prior);
+	fwrite(STDOUT, "Validation OK: staging npcs={$finalCounts['quest_npc']} trades={$finalCounts['quest_trade']} spawns={$finalCounts['quest_spawn']}\n");
+	fwrite(STDOUT, "Swapping staging -> live via RENAME TABLE...\n");
+	swap_staging_to_live($db, $QUEST_TABLES);
+} catch (Exception $e) {
+	fwrite(STDERR, "Import aborted: " . $e->getMessage() . "\n");
+	fwrite(STDERR, "Live quest_* tables were not replaced.\n");
+	try {
+		drop_staging_tables($db, $QUEST_TABLES);
+	} catch (Exception $e2) {
+		fwrite(STDERR, "Staging cleanup warning: " . $e2->getMessage() . "\n");
+	}
+	mysqli_close($db);
+	exit(1);
 }
 
-foreach ($itemIndex as $ix) {
-	$iid = (int)$ix['item_id'];
-	$npc = sql_escape($db, substr($ix['npc'], 0, 64));
-	$zone = sql_escape($db, substr($ix['zone'], 0, 64));
-	$nid = (int)$ix['npc_id'];
-	$rw = (int)$ix['rewarded'];
-	$hd = (int)$ix['handed'];
-	mysqli_query($db, "INSERT INTO quest_items (item_id,npc,zone,npc_id,rewarded,handed)
-		VALUES ($iid,'$npc','$zone',$nid,$rw,$hd)
-		ON DUPLICATE KEY UPDATE rewarded=GREATEST(rewarded,$rw), handed=GREATEST(handed,$hd)");
-}
-
-foreach ($spawnRows as $sp) {
-	$zn = sql_escape($db, $sp['zone_short']);
-	$npcId = (int)$sp['npc_id'];
-	$x = (float)$sp['x'];
-	$y = (float)$sp['y'];
-	$z = (float)$sp['z'];
-	$h = (float)$sp['heading'];
-	$sf = sql_escape($db, substr($sp['script_file'], 0, 255));
-	$ln = (int)$sp['line_no'];
-	$ck = sql_escape($db, substr($sp['call_kind'], 0, 32));
-	mysqli_query($db, "INSERT INTO quest_spawn (zone_short,npc_id,x,y,z,heading,script_file,line_no,call_kind)
-		VALUES ('$zn',$npcId,$x,$y,$z,$h,'$sf',$ln,'$ck')");
-	$stats['spawns']++;
-}
-
-fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} skipped_unknown_items={$stats['skipped_items']}\n");
+fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} skipped_unknown_items={$stats['skipped_items']} skipped_bindings={$stats['skipped_bindings']} signature=$sig\n");
 mysqli_close($db);
 exit(0);

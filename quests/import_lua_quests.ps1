@@ -1,5 +1,5 @@
 # Windows wrapper for import_lua_quests.php (the only importer implementation).
-# Applies includes/sql/quests.sql and fills quest_* tables from EQEmu *.lua scripts.
+# Ensures quest schema, loads staging tables, validates, RENAME-swaps into live.
 #
 # Uses a local php.exe when one is on PATH. Otherwise pass -Container to run the importer
 # inside a running PHP container that mounts this allaclone checkout at /var/www/html.
@@ -17,7 +17,8 @@ param(
     [string]$DbName = "peq",
     [string[]]$Zones = @(),
     [string]$Container = "",
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$ForceIncomplete
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,6 +30,7 @@ if (-not (Test-Path -LiteralPath $QuestRoot)) {
 $extra = @()
 if ($Zones.Count -gt 0) { $extra += "--zones=" + ($Zones -join ',') }
 if ($DryRun) { $extra += "--dry-run" }
+if ($ForceIncomplete) { $extra += "--force-incomplete" }
 # Always "--name=value": PowerShell drops empty standalone arguments such as -DbPass ''.
 $dbArgs = @("--host=$DbHost", "--user=$DbUser", "--pass=$DbPass", "--db=$DbName")
 
