@@ -1,7 +1,13 @@
 <?php
 /**
  * Import safety tests against a disposable database.
- * Creates/uses DB allaclone_quest_test (never peq production content mutation beyond CREATE DATABASE).
+ *
+ * WARNING: This suite DESTROYS tables (DROP TABLE) inside the selected test
+ * database — reference tables (npc_types, zone, …) and all quest_* / *_stg /
+ * *_old tables. Only pass ALLACLONE_QUEST_TEST_DB when that database is
+ * explicitly disposable. Production-like names are refused.
+ *
+ * Default DB: allaclone_test_quest (must keep the allaclone_test_ prefix).
  *
  * Usage (from repo root inside PHP container):
  *   php quests/tests/run_import_safety_tests.php
@@ -11,27 +17,142 @@ if (PHP_SAPI !== 'cli') {
 	exit(1);
 }
 
+/**
+ * Fail-closed guard for disposable test DB names.
+ * Returns null on success, or an error string on rejection.
+ * Does not touch MySQL.
+ *
+ * @param string $testDb
+ * @param string $peqDb   Configured production DB (ALLACLONE_PEQ_DB)
+ * @param string|false $appDb ALLACLONE_DB_NAME or false if unset
+ */
+function validate_disposable_quest_test_db($testDb, $peqDb, $appDb = false) {
+	$testDb = (string)$testDb;
+	if ($testDb === '' || trim($testDb) !== $testDb || preg_match('/\s/', $testDb)) {
+		return 'test database name is empty or has surrounding/internal whitespace';
+	}
+	if (!preg_match('/^[A-Za-z0-9_]+$/', $testDb)) {
+		return 'test database name must be a plain identifier ([A-Za-z0-9_]+)';
+	}
+	if (stripos($testDb, 'allaclone_test_') !== 0) {
+		return 'test database name must start with allaclone_test_';
+	}
+	$blocked = array('peq', 'allaclone', 'information_schema', 'mysql', 'performance_schema', 'sys');
+	$lower = strtolower($testDb);
+	foreach ($blocked as $b) {
+		if ($lower === strtolower($b)) {
+			return "refusing production-like database name '$testDb'";
+		}
+	}
+	$peqDb = (string)$peqDb;
+	if ($peqDb !== '' && strcasecmp($testDb, $peqDb) === 0) {
+		return "refusing test database that matches ALLACLONE_PEQ_DB ('$peqDb')";
+	}
+	if ($appDb !== false && $appDb !== '' && strcasecmp($testDb, (string)$appDb) === 0) {
+		return "refusing test database that matches ALLACLONE_DB_NAME ('$appDb')";
+	}
+	return null;
+}
+
+/**
+ * @throws RuntimeException
+ */
+function assert_disposable_quest_test_db($testDb, $peqDb, $appDb = false) {
+	$err = validate_disposable_quest_test_db($testDb, $peqDb, $appDb);
+	if ($err !== null) {
+		throw new RuntimeException($err);
+	}
+}
+
 $host = getenv('ALLACLONE_DB_HOST') ?: 'host.docker.internal';
 $user = getenv('ALLACLONE_DB_USER') ?: 'root';
 $passEnv = getenv('ALLACLONE_DB_PASS');
 $pass = ($passEnv === false) ? '' : $passEnv;
-$testDb = getenv('ALLACLONE_QUEST_TEST_DB') ?: 'allaclone_quest_test';
+$testDb = getenv('ALLACLONE_QUEST_TEST_DB') ?: 'allaclone_test_quest';
 $peqDb = getenv('ALLACLONE_PEQ_DB') ?: 'peq';
+$appDbEnv = getenv('ALLACLONE_DB_NAME');
 
 $fail = 0;
 $passN = 0;
 function tpass($msg) { global $passN; fwrite(STDOUT, "PASS: $msg\n"); $passN++; }
 function tfail($msg) { global $fail; fwrite(STDERR, "FAIL: $msg\n"); $fail++; }
 
+// --- Rejection tests (no MySQL DDL) ---
+$rejectCases = array(
+	array('peq', $peqDb, false, 'peq'),
+	array('allaclone', $peqDb, false, 'allaclone'),
+	array('information_schema', $peqDb, false, 'information_schema'),
+	array('mysql', $peqDb, false, 'mysql'),
+	array('performance_schema', $peqDb, false, 'performance_schema'),
+	array('sys', $peqDb, false, 'sys'),
+	array('allaclone_quest_test', $peqDb, false, 'missing allaclone_test_ prefix'),
+	array('PEQ', $peqDb, false, 'PEQ case'),
+	array($peqDb, $peqDb, false, 'matches ALLACLONE_PEQ_DB'),
+	array('allaclone_test_evil;DROP', $peqDb, false, 'illegal identifier chars'),
+	array('allaclone_test_x.y', $peqDb, false, 'dot in name'),
+	array('allaclone_test_x`y', $peqDb, false, 'backtick in name'),
+	array('', $peqDb, false, 'empty name'),
+);
+if ($appDbEnv !== false && $appDbEnv !== '' && stripos((string)$appDbEnv, 'allaclone_test_') === 0) {
+	// Only add when app DB itself would look disposable-shaped but must still be refused.
+	$rejectCases[] = array($appDbEnv, $peqDb, $appDbEnv, 'matches ALLACLONE_DB_NAME');
+} elseif ($appDbEnv !== false && $appDbEnv !== '') {
+	$rejectCases[] = array($appDbEnv, $peqDb, $appDbEnv, 'matches ALLACLONE_DB_NAME');
+}
+
+foreach ($rejectCases as $case) {
+	list($name, $peq, $app, $label) = $case;
+	$err = validate_disposable_quest_test_db($name, $peq, $app);
+	if ($err === null) {
+		tfail("should reject $label ($name)");
+	} else {
+		tpass("rejects $label");
+	}
+}
+$okName = validate_disposable_quest_test_db('allaclone_test_quest', $peqDb, $appDbEnv);
+if ($okName !== null) {
+	tfail('should accept allaclone_test_quest: ' . $okName);
+} else {
+	tpass('accepts allaclone_test_quest');
+}
+
+// Guard the configured test DB before any connection DDL.
+try {
+	assert_disposable_quest_test_db($testDb, $peqDb, $appDbEnv);
+	tpass('configured ALLACLONE_QUEST_TEST_DB accepted ($testDb=' . $testDb . ')');
+} catch (Exception $e) {
+	fwrite(STDERR, "REFUSING to run destructive tests: " . $e->getMessage() . "\n");
+	fwrite(STDOUT, "\n$passN passed, " . ($fail + 1) . " failed (no destructive SQL run)\n");
+	exit(1);
+}
+
 mysqli_report(MYSQLI_REPORT_OFF);
 $admin = @mysqli_connect($host, $user, $pass);
 if (!$admin) {
 	fwrite(STDERR, "Connect failed: " . mysqli_connect_error() . "\n");
-	exit(1);
+	fwrite(STDERR, "Name-rejection tests already ran; DB-backed import-safety tests skipped.\n");
+	fwrite(STDOUT, "\n$passN passed, $fail failed (db connection unavailable)\n");
+	exit($fail > 0 ? 1 : 0);
 }
 
 mysqli_query($admin, "CREATE DATABASE IF NOT EXISTS `$testDb` CHARACTER SET latin1");
-mysqli_select_db($admin, $testDb);
+if (!mysqli_select_db($admin, $testDb)) {
+	fwrite(STDERR, "select_db failed: " . mysqli_error($admin) . "\n");
+	mysqli_close($admin);
+	exit(1);
+}
+$activeRes = mysqli_query($admin, 'SELECT DATABASE() AS d');
+$activeRow = $activeRes ? mysqli_fetch_assoc($activeRes) : null;
+if ($activeRes) {
+	mysqli_free_result($activeRes);
+}
+$activeDb = $activeRow ? (string)$activeRow['d'] : '';
+if ($activeDb === '' || strcasecmp($activeDb, $testDb) !== 0) {
+	fwrite(STDERR, "Active database '$activeDb' does not match approved test DB '$testDb'; aborting before DROP.\n");
+	mysqli_close($admin);
+	exit(1);
+}
+tpass('active DATABASE() matches approved test DB');
 
 function q($db, $sql) {
 	$ok = mysqli_query($db, $sql);
@@ -47,6 +168,45 @@ function count_table($db, $table) {
 	if ($r) mysqli_free_result($r);
 	return $row ? (int)$row['c'] : -1;
 }
+
+function quest_items_has_npc_id($db) {
+	$r = mysqli_query($db, "SHOW COLUMNS FROM quest_items LIKE 'npc_id'");
+	$ok = ($r && mysqli_num_rows($r) > 0);
+	if ($r) {
+		mysqli_free_result($r);
+	}
+	return $ok;
+}
+
+function quest_items_pk_columns($db) {
+	$r = mysqli_query($db, "SHOW KEYS FROM quest_items WHERE Key_name='PRIMARY'");
+	$cols = array();
+	while ($r && ($row = mysqli_fetch_assoc($r))) {
+		$cols[(int)$row['Seq_in_index']] = $row['Column_name'];
+	}
+	if ($r) {
+		mysqli_free_result($r);
+	}
+	ksort($cols);
+	return array_values($cols);
+}
+
+function install_legacy_quest_items($db) {
+	mysqli_query($db, 'DROP TABLE IF EXISTS quest_items');
+	mysqli_query($db, 'DROP TABLE IF EXISTS quest_items_stg');
+	mysqli_query($db, 'DROP TABLE IF EXISTS quest_items_old');
+	q($db, "CREATE TABLE quest_items (
+		item_id INT NOT NULL,
+		npc VARCHAR(64) NOT NULL,
+		zone VARCHAR(64) NOT NULL,
+		rewarded TINYINT NOT NULL,
+		handed TINYINT NOT NULL,
+		PRIMARY KEY (item_id, npc, zone),
+		KEY item_id (item_id)
+	) ENGINE=MyISAM DEFAULT CHARSET=latin1");
+}
+
+$fixtureRoot = null;
 
 try {
 	// Minimal reference tables for importer resolution.
@@ -96,6 +256,10 @@ try {
 	$keepOk = ($keepItem && mysqli_num_rows($keepItem) === 1);
 	if ($keepItem) mysqli_free_result($keepItem);
 	if (!$keepOk) throw new RuntimeException('seed quest_items failed');
+	if (!quest_items_has_npc_id($admin)) {
+		throw new RuntimeException('fresh schema missing npc_id');
+	}
+	tpass('fresh schema quest_items has npc_id');
 
 	$fixtureRoot = sys_get_temp_dir() . '/allaclone_quest_fixt_' . getmypid();
 	@mkdir($fixtureRoot . '/testzone', 0777, true);
@@ -225,6 +389,113 @@ LUA
 		tfail('unknown --zones should fail');
 	}
 
+	// --- Legacy quest_items schema migration ---
+	// Preserve otherzone quest_npc/trade; rebuild quest_items as original main schema.
+	install_legacy_quest_items($admin);
+	q($admin, "INSERT INTO quest_items (item_id,npc,zone,rewarded,handed) VALUES
+		(9999,'Foreign_Npc','otherzone',1,0),
+		(8888,'Ghost_Npc','otherzone',1,0)");
+	if (quest_items_has_npc_id($admin)) {
+		tfail('legacy install unexpectedly has npc_id');
+	} else {
+		tpass('legacy quest_items installed without npc_id');
+	}
+	$pkLegacy = quest_items_pk_columns($admin);
+	if ($pkLegacy === array('item_id', 'npc', 'zone')) {
+		tpass('legacy quest_items PK is (item_id,npc,zone)');
+	} else {
+		tfail('legacy PK unexpected: ' . implode(',', $pkLegacy));
+	}
+
+	// Failure injection must leave legacy live schema + rows intact.
+	$cmd = $baseCmd;
+	$cmd[] = '--zones=testzone';
+	$cmd[] = '--fail-after=staging_ready';
+	$out = array();
+	exec(implode(' ', array_map('escapeshellarg', $cmd)) . ' 2>&1', $out, $rc);
+	if ($rc === 0) {
+		tfail('legacy fail-after=staging_ready should non-zero');
+	} else {
+		tpass('legacy fail-after=staging_ready aborts');
+	}
+	if (quest_items_has_npc_id($admin)) {
+		tfail('legacy schema mutated after failed import');
+	} else {
+		tpass('legacy schema preserved after failed import');
+	}
+	$ghost = mysqli_query($admin, "SELECT 1 FROM quest_items WHERE item_id=8888 AND npc='Ghost_Npc'");
+	$keepL = mysqli_query($admin, "SELECT 1 FROM quest_items WHERE item_id=9999 AND npc='Foreign_Npc'");
+	if ($ghost && mysqli_num_rows($ghost) === 1 && $keepL && mysqli_num_rows($keepL) === 1) {
+		tpass('legacy rows preserved after failed import');
+	} else {
+		tfail('legacy rows lost after failed import');
+	}
+	if ($ghost) mysqli_free_result($ghost);
+	if ($keepL) mysqli_free_result($keepL);
+
+	// Successful subset import upgrades schema via staging swap.
+	$cmd = $baseCmd;
+	$cmd[] = '--zones=testzone';
+	$out = array();
+	exec(implode(' ', array_map('escapeshellarg', $cmd)) . ' 2>&1', $out, $rc);
+	fwrite(STDOUT, implode("\n", $out) . "\n");
+	$joinedOut = implode("\n", $out);
+	if ($rc !== 0) {
+		tfail('legacy subset import failed: ' . $joinedOut);
+	} else {
+		tpass('legacy subset import succeeded');
+	}
+	if (strpos($joinedOut, 'skipped_unresolved=') !== false || strpos($joinedOut, 'skipped_unresolved=1') !== false) {
+		// Prefer exact count when present.
+		if (preg_match('/skipped_unresolved=(\d+)/', $joinedOut, $m) && (int)$m[1] >= 1) {
+			tpass('legacy seed reported unresolved NPC skip');
+		} else {
+			tpass('legacy seed logged unresolved skip');
+		}
+	} else {
+		tfail('legacy seed did not report skipped_unresolved');
+	}
+	if (!quest_items_has_npc_id($admin)) {
+		tfail('post-migration quest_items missing npc_id');
+	} else {
+		tpass('post-migration quest_items has npc_id');
+	}
+	$pkNew = quest_items_pk_columns($admin);
+	if ($pkNew === array('item_id', 'npc_id', 'zone')) {
+		tpass('post-migration PK is (item_id,npc_id,zone)');
+	} else {
+		tfail('post-migration PK unexpected: ' . implode(',', $pkNew));
+	}
+	$resolved = mysqli_query($admin, "SELECT npc_id FROM quest_items WHERE item_id=9999 AND zone='otherzone'");
+	$rowR = $resolved ? mysqli_fetch_assoc($resolved) : null;
+	if ($resolved) mysqli_free_result($resolved);
+	if ($rowR && (int)$rowR['npc_id'] === 2001) {
+		tpass('resolvable legacy item carried with npc_id=2001');
+	} else {
+		tfail('resolvable legacy item missing or wrong npc_id');
+	}
+	$ghost2 = mysqli_query($admin, "SELECT 1 FROM quest_items WHERE item_id=8888");
+	if ($ghost2 && mysqli_num_rows($ghost2) === 0) {
+		tpass('unresolvable legacy item omitted (not npc_id=0)');
+	} else {
+		tfail('unresolvable legacy item should not remain after migration');
+	}
+	if ($ghost2) mysqli_free_result($ghost2);
+	$zero = mysqli_query($admin, "SELECT 1 FROM quest_items WHERE npc_id=0");
+	if ($zero && mysqli_num_rows($zero) === 0) {
+		tpass('no quest_items rows with npc_id=0');
+	} else {
+		tfail('found quest_items with npc_id=0');
+	}
+	if ($zero) mysqli_free_result($zero);
+	$otherNpc = mysqli_query($admin, "SELECT 1 FROM quest_npc WHERE zone_short='otherzone' AND npc_id=2001");
+	if ($otherNpc && mysqli_num_rows($otherNpc) === 1) {
+		tpass('legacy migration subset preserved otherzone NPC');
+	} else {
+		tfail('legacy migration wiped otherzone NPC');
+	}
+	if ($otherNpc) mysqli_free_result($otherNpc);
+
 } catch (Exception $e) {
 	tfail($e->getMessage());
 }
@@ -239,5 +510,7 @@ if (!empty($fixtureRoot) && is_dir($fixtureRoot)) {
 }
 
 fwrite(STDOUT, "\n$passN passed, $fail failed (db=$testDb)\n");
-mysqli_close($admin);
+if (isset($admin) && $admin) {
+	mysqli_close($admin);
+}
 exit($fail > 0 ? 1 : 0);
