@@ -10,6 +10,7 @@
 <?php if (!empty($AllowQuestsNPC)) : ?>
 		<li><a href="<?php echo $root_url; ?>quests/zones.php">Quests</a></li>
 <?php endif; ?>
+		<li><a href="<?php echo $root_url; ?>guides/epics/">Epics</a></li>
 		<li><a href="https://wiki.takp.info">Wiki</a></li>
 	</ul>
 </div>
