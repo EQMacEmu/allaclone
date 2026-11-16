@@ -208,8 +208,19 @@ $sayRes = mysqli_query($db, "SELECT * FROM $tbquestsaybranch WHERE quest_npc_id=
 if ($sayRes && mysqli_num_rows($sayRes) > 0) {
 	print "<h3>Dialogue keywords</h3><ul>";
 	while ($s = mysqli_fetch_assoc($sayRes)) {
-		print "<li><strong>" . htmlspecialchars($s['keyword']) . "</strong>: " .
-			htmlspecialchars($s['response_text']) . "</li>";
+		$text = htmlspecialchars($s['response_text']);
+		// Link "spawns NPC 12345" phrases from spawn/depop-only branches
+		$text = preg_replace_callback(
+			'/\bspawns NPC (\d+)\b/',
+			function ($m) use ($root_url) {
+				$id = (int)$m[1];
+				$name = GetFieldByQuery('name', "SELECT name FROM npc_types WHERE id=$id");
+				$label = $name ? ReadableNpcName($name) : ("NPC $id");
+				return 'spawns <a href="' . $root_url . 'npc.php?id=' . $id . '">' . htmlspecialchars($label) . '</a>';
+			},
+			$text
+		);
+		print "<li><strong>" . htmlspecialchars($s['keyword']) . "</strong>: " . $text . "</li>";
 	}
 	print "</ul>";
 	mysqli_free_result($sayRes);

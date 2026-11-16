@@ -556,6 +556,7 @@ function parse_lua_file($path, $rel) {
 	// Say branches inside event_say
 	$inSay = false;
 	$sayIndent = -1;
+	$sayLocals = extract_lua_local_int_consts($raw);
 	for ($i = 0; $i < $n; $i++) {
 		$line = $lines[$i];
 		if (preg_match('/^\s*function\s+event_say\b/i', $line)) {
@@ -601,6 +602,46 @@ function parse_lua_file($path, $rel) {
 					$respKind = 'say_fmt';
 					$respText = $sm[1];
 					$respLine = $j + 1;
+				}
+			}
+			// Branches that only spawn / depop (no Say/Emote), e.g. "challenge eejag"
+			if (preg_match('/\b(?:eq\.|quest::)(unique_spawn|spawn2)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*[^,]+,\s*[^,]+,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i', $jl, $spm)) {
+				$spawnId = ctype_digit($spm[2]) ? (int)$spm[2] : 0;
+				if ($spawnId <= 0 && isset($sayLocals[$spm[2]])) {
+					$spawnId = $sayLocals[$spm[2]];
+				}
+				if ($spawnId > 0) {
+					$sx = (float)$spm[3];
+					$sy = (float)$spm[4];
+					$sz = (float)$spm[5];
+					// Store /loc order (Y, X, Z) to match map readout and epic guides
+					$spawnBit = "spawns NPC $spawnId at (" . round($sy) . ', ' . round($sx) . ', ' . round($sz) . ')';
+					if ($respText === '') {
+						$respKind = strtolower($spm[1]);
+						$respText = $spawnBit;
+						$respLine = $j + 1;
+					} elseif (strpos($respText, "spawns NPC $spawnId") === false) {
+						$respText .= '; ' . $spawnBit;
+					}
+				}
+			} elseif (preg_match('/\b(?:eq\.|quest::)(unique_spawn|spawn2)\s*\(\s*(\d+)/i', $jl, $spm)) {
+				$spawnId = (int)$spm[2];
+				$spawnBit = "spawns NPC $spawnId";
+				if ($respText === '') {
+					$respKind = strtolower($spm[1]);
+					$respText = $spawnBit;
+					$respLine = $j + 1;
+				} elseif (strpos($respText, $spawnBit) === false) {
+					$respText .= '; ' . $spawnBit;
+				}
+			}
+			if (preg_match('/\b(?:eq\.|quest::)depop(?:_with_timer)?\s*\(/i', $jl)) {
+				if ($respText === '') {
+					$respKind = 'depop';
+					$respText = 'despawns';
+					$respLine = $j + 1;
+				} elseif (stripos($respText, 'despawn') === false) {
+					$respText .= '; despawns';
 				}
 			}
 		}

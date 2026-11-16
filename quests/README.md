@@ -32,7 +32,7 @@ From each zone’s `*.lua` scripts:
 - `item_lib.check_turn_in` give-items and nearby `QuestReward` (items, exp, money, faction flag)
 - `e.other:Faction(e.self, id, delta)` hits
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction)
-- `event_say` / `:findi("keyword")` dialogue branches
+- `event_say` / `:findi("keyword")` dialogue branches (including spawn/depop-only branches with no Say/Emote, e.g. `"challenge eejag"`)
 - Literal `eq.spawn2` / `eq.unique_spawn` (and `quest::` equivalents) with numeric x/y/z into `quest_spawn` (used when an NPC has no static `spawn2` geometry)
 
 Scripts are bound to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched exactly (then case/prefix-insensitively) against NPCs belonging to that zone (id range or a spawn point there), plus ids passed to `eq.register_npc_event`. NPCs a script only spawns or signals are not bound to it as quest NPCs, but their literal spawn coordinates are still stored in `quest_spawn` for map display.

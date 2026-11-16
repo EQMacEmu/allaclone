@@ -362,29 +362,18 @@ foreach ($IgnoreZones as $zid) {
 $result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 print "<div class='spawn-wrapper list-wrapper'>";
+$npc_map_short_name = '';
 if (mysqli_num_rows($result) > 0) {
 	$spawnentryfilter = gatefilter(array($tbspawnentry, $tbspawn2));
 	$spawn2filter = gatefilter(array($tbspawn2));
 	$row = mysqli_fetch_array($result);
 	$short_name = $row["short_name"];
 	$long_name = $row["long_name"];
+	$npc_map_short_name = $short_name;
 	print "<p><strong>This NPC spawns in:</strong></p>";
 	print "<ul>";
 	print "<li class='spawn-zone'><a href='zone.php?name=$short_name'><u>$long_name</u></a></li>";
 	print "</ul>";
-
-	if (map_txt_available($short_name)) {
-		$mapInfo = fetch_npc_display_map_spawns($id, $short_name);
-		if (count($mapInfo['points']) > 0) {
-			if ($mapInfo['source'] === 'quest') {
-				print "<h3>Quest spawn location</h3>";
-				print "<p class='quest-note'>No static spawn point in this zone; location taken from quest script spawn calls.</p>";
-			} else {
-				print "<h3>Spawn Map</h3>";
-			}
-			render_interactive_map($short_name, $mapInfo['points']);
-		}
-	}
 
 	if ($DisplaySpawnGroupInfo == TRUE) {
 		// Some spawngroups have multiple spawntimes in spawn2. List each set separately
@@ -599,6 +588,20 @@ if (mysqli_num_rows($result) > 0) {
 	print "</ul>";
 	print "</div>"; // list-wrapper
 }
+
+if ($npc_map_short_name !== '' && map_txt_available($npc_map_short_name)) {
+	$mapInfo = fetch_npc_display_map_spawns($id, $npc_map_short_name);
+	if (count($mapInfo['points']) > 0) {
+		if ($mapInfo['source'] === 'quest') {
+			print "<h3>Quest spawn location</h3>";
+			print "<p class='quest-note'>No static spawn point in this zone; location taken from quest script spawn calls.</p>";
+		} else {
+			print "<h3>Spawn Map</h3>";
+		}
+		render_interactive_map($npc_map_short_name, $mapInfo['points']);
+	}
+}
+
 print "</div>"; // site-wrapper
 print "</div>"; // main
 print "</div>"; // npc-info
