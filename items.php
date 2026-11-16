@@ -194,8 +194,8 @@ $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
 echo "<div class='container items'>";
-echo "<form class='item-refine' method='GET' action='" . $PHP_SELF . "'>";
-echo "<input type='text' value=\"$iname\" name='iname' placeholder='Item Name' />";
+echo "<form class='item-refine' method='GET' action='" . html_attr($PHP_SELF) . "'>";
+echo "<input type='text' value=\"" . html_attr($iname) . "\" name='iname' placeholder='Item Name' />";
 echo "<div class='select-wrapper onethird'>";
 echo SelectIClass("iclass", $iclass);
 echo "</div>";
@@ -218,7 +218,7 @@ echo "      <option value='='" . ($istat1comp == '='  ? " selected='1'" : "") . 
 echo "      <option value='&lt'" . ($istat1comp == '<' ? " selected='1'" : "") . ">&lt</option>";
 echo "    </select>";
 echo "</div>";
-echo "    <input type='text' size='4' name='istat1value' value='" . $istat1value . "' placeholder='0' />";
+echo "    <input type='text' size='4' name='istat1value' value='" . html_attr($istat1value) . "' placeholder='0' />";
 echo "</div>";
 
 
@@ -234,7 +234,7 @@ echo "      <option value='='" . ($istat2comp == '='  ? " selected='1'" : "") . 
 echo "      <option value='&lt'" . ($istat2comp == '<' ? " selected='1'" : "") . ">&lt</option>";
 echo "    </select>";
 echo "</div>";
-echo "    <input type='text' size='4' name='istat2value' value='" . $istat2value . "' placeholder='0' />";
+echo "    <input type='text' size='4' name='istat2value' value='" . html_attr($istat2value) . "' placeholder='0' />";
 echo "</div>";
 
 
@@ -250,7 +250,7 @@ echo "      <option value='='" . ($iresistscomp == '='  ? " selected='1'" : "") 
 echo "      <option value='&lt'" . ($iresistscomp == '<' ? " selected='1'" : "") . ">&lt</option>";
 echo "    </select>";
 echo "</div>";
-echo "    <input type='text' size='4' name='iresistsvalue' value='" . $iresistsvalue . "' placeholder='0' />";
+echo "    <input type='text' size='4' name='iresistsvalue' value='" . html_attr($iresistsvalue) . "' placeholder='0' />";
 echo "</div>";
 
 
@@ -267,10 +267,10 @@ echo "      <option value='='" . ($imodcomp == '='  ? " selected='1'" : "") . ">
 echo "      <option value='&lt'" . ($imodcomp == '<' ? " selected='1'" : "") . ">&lt</option>";
 echo "    </select>";
 echo "</div>";
-echo "    <input type='text' size='4' name='imodvalue' value='" . $imodvalue . "' placeholder='0' />";
+echo "    <input type='text' size='4' name='imodvalue' value='" . html_attr($imodvalue) . "' placeholder='0' />";
 echo "</div>";
 
-echo "<input type='text' value='" . $ieffect . "' size='30' name='ieffect' placeholder='Effect' />";
+echo "<input type='text' value='" . html_attr($ieffect) . "' size='30' name='ieffect' placeholder='Effect' />";
 echo "<div class='select-wrapper half'>";
 echo SelectLevel("iminlevel", $ServerMaxLevel, $iminlevel);
 echo "</div>";

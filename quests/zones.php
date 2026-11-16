@@ -12,7 +12,7 @@ if ($aZone !== '' && !preg_match('/^[A-Za-z0-9_]+$/', $aZone)) {
 }
 
 print "<center><table border=0 width=0%>";
-print "<form method=POST action=$PHP_SELF>";
+print "<form method='POST' action='" . html_attr($PHP_SELF) . "'>";
 print "<tr><td nowrap><b>Zone : </b></td><td>";
 print "<select name=aZone>";
 $query="SELECT short_name,long_name 

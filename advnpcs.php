@@ -20,9 +20,9 @@ if ($irace == 0) {
 
 
 print "<div class='container advnpc'>";
-print "<form method=GET action=$PHP_SELF>";
+print "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
 print "<div class='form-control'>";
-print "<strong>Name: </strong><input type=text value=\"$iname\" size=30 name=iname >";
+print "<strong>Name: </strong><input type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname'>";
 print "</div>";
 print "<div class='form-control'>";
 print "<strong>Level Range: </strong>";

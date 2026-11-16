@@ -14,6 +14,34 @@ function message_die($t1, $t2, $t3, $t4) {
 }
 
 /**
+ * Escape a value for use inside an HTML attribute (double- or single-quoted).
+ */
+function html_attr($value) {
+	return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
+/**
+ * Derive a safe relative script path for form actions / self-links.
+ * Prefers SCRIPT_NAME; rejects path traversal and attribute-breaking characters.
+ * Falls back to basename so nested installs still self-post.
+ */
+function safe_script_path($scriptName = null) {
+	if ($scriptName === null) {
+		$scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+	}
+	$script = (string)$scriptName;
+	if ($script !== '' && $script[0] === '/' && strpos($script, '..') === false
+		&& preg_match('#^/[A-Za-z0-9._/-]+$#', $script)) {
+		return $script;
+	}
+	$base = basename($script);
+	if ($base !== '' && preg_match('#^[A-Za-z0-9._-]+$#', $base)) {
+		return $base;
+	}
+	return 'index.php';
+}
+
+/**
  * Coerce a request value to an integer. Non-integer strings return $default
  * (blocks values like "5 OR 1=1").
  */

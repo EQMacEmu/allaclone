@@ -14,7 +14,7 @@ $imdam = isset($_POST['imdam']) ? $_POST['imdam'] : 140;
 $icalculate = isset($_POST['icalculate']);
 
 print "<p><center><table border=0 width=0%>";
-print "<form method=POST action=$PHP_SELF>";
+print "<form method='POST' action='" . html_attr($PHP_SELF) . "'>";
 print "<tr><td nowrap><b>Combat stability : </b></td><td>";
 print SelectLevel("ics",3,$ics);
 print "<td></tr>";

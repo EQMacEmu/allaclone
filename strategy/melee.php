@@ -51,7 +51,7 @@ print "<p><center><b>Results given by the calculator are based on EQEmu's source
 print "<br><center>Proc damages are applied to the formula with full damages (ie, no resists from the mob). If you want to add resists, decrease the amount of damage made by the proc.</center>";
 
 print "<p><center><table border=0 width=0%>";
-print "<form method=GET action=$PHP_SELF>";
+print "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
 print "<tr><td nowrap><b>Class : </b></td><td>";
 print SelectIClass("iclass",$iclass);
 print " <b>Level : </b>";

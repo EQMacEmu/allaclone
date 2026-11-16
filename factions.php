@@ -41,8 +41,8 @@ $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
 print "<div class='container factions'>";
-print "<form method='GET' action='" . $PHP_SELF . "' class='faction-search'>";
-print "<input class='full' type='text' value=\"$iname\" size='30' name='iname' placeholder='Search' />";
+print "<form method='GET' action='" . html_attr($PHP_SELF) . "' class='faction-search'>";
+print "<input class='full' type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname' placeholder='Search' />";
 print "</form>";
 
 if (isset($QueryResult)) {

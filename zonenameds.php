@@ -3,7 +3,10 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir.'mysql.php');
 
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
+$name_raw = isset($_GET['name']) ? (string)$_GET['name'] : '';
+$name = addslashes($name_raw);
+$name_q = rawurlencode($name_raw);
+$name_h = html_attr($name_raw);
 $order_raw = (isset($_GET['order']) ? $_GET['order'] : 'name');
 $mode= (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
 $named_order_allow = array('name' => 'name', 'id' => 'id', 'loottable_id' => 'loottable_id', 'class' => 'class', 'race' => 'race', 'level' => 'level');
@@ -15,9 +18,11 @@ if ($DisplayNamedNPCsInfo==FALSE)
 	exit();
 }
 
-$Title=GetFieldByQuery("long_name","SELECT long_name FROM $tbzones WHERE short_name='$name'")." ($name)";
+$zone_long = GetFieldByQuery("long_name","SELECT long_name FROM $tbzones WHERE short_name='$name'");
+$Title = html_attr($zone_long) . " (" . $name_h . ")";
 include($includes_dir.'headers.php');
 include($includes_dir.'functions.php');
+$self = html_attr($PHP_SELF);
 
 if (!isset($name)) { print "<script>document.location=\"zones.php\";</script>"; }
 
@@ -194,18 +199,18 @@ if ($mode=="npcs") {
   $query.=" ORDER BY $order";
   $result=mysqli_query($db, $query) or message_die('zone.php','MYSQL_QUERY',$query,mysqli_error($db));
   print "<p><b>Bestiary</b><p><table border=1><tr>";
-  print "<form method=POST action=$PHP_SELF>";
+  print "<form method='POST' action='" . $self . "'>";
   print "<input type=submit name=submitDetail value=\"Detailled List\" class=form>";
   print "&nbsp;<input type=submit name=submitDetailCSV value=\"Detailled List CSV\" class=form>";
   print "&nbsp;<input type=submit name=submitDetailMaps value=\"Export map entries\" class=form>";
-  print "<input type=hidden name=name value=$name>";
-  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href=$PHP_SELF?name=$name&order=id>Id</a></td>"; }
-  print "<td class=tab_title>List</a></td><td class=tab_title><a href=$PHP_SELF?name=$name&order=name>Name</a></td>";
-  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href=$PHP_SELF?name=$name&order=loottable_id>Loottable</a></td>"; }
+  print "<input type='hidden' name='name' value=\"" . $name_h . "\">";
+  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=id'>Id</a></td>"; }
+  print "<td class=tab_title>List</a></td><td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=name'>Name</a></td>";
+  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=loottable_id'>Loottable</a></td>"; }
   print "
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=class>Class</a></td>
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=race>Race</a></td>
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=level>Level</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=class'>Class</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=race'>Race</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=level'>Level</a></td>
          ";
   while ($row=mysqli_fetch_array($result)) {
     print "<tr>";

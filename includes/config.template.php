@@ -18,7 +18,18 @@ $dbpasswd="root";
 $root_url='//local.sandbox.com/takp/allaclone/';
 $includes_url=$root_url.'includes/';
 $includes_dir=__DIR__.DIRECTORY_SEPARATOR;
-$PHP_SELF = isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '';
+// Prefer SCRIPT_NAME (no PATH_INFO). Nested paths like /allaclone/items.php are kept when valid.
+// Merge this into local config.php (gitignored) on upgrade. Logic mirrors safe_script_path() in mysql.php
+// (config loads before mysql.php, so the helper is not available here yet).
+$__script = isset($_SERVER['SCRIPT_NAME']) ? (string)$_SERVER['SCRIPT_NAME'] : '';
+if ($__script !== '' && isset($__script[0]) && $__script[0] === '/' && strpos($__script, '..') === false
+	&& preg_match('#^/[A-Za-z0-9._/-]+$#', $__script)) {
+	$PHP_SELF = $__script;
+} else {
+	$__base = basename($__script);
+	$PHP_SELF = ($__base !== '' && preg_match('#^[A-Za-z0-9._-]+$#', $__base)) ? $__base : 'index.php';
+}
+unset($__script, $__base);
 $eqemu_dir="/home/eqemu/server/";
 $quests_dir=$eqemu_dir."quests/";
 $quests_datas="/home/eqemu/server/quests/";

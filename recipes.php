@@ -22,14 +22,14 @@ if ($minskill > $maxskill) {
 }
 
 echo "<div class='container recipes'>";
-echo "<form method='GET' action=$PHP_SELF>";
+echo "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
 echo "<div class='recipe-container'>";
-echo "<div class='recipe-search'><b>Name : </b><input type=text value=\"$iname\" size=30 name=iname></div>";
+echo "<div class='recipe-search'><b>Name : </b><input type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname'></div>";
 echo "<div class='recipe-search'><b>Tradeskill : </b>";
 echo SelectTradeSkills("iskill", $iskill);
 echo "</div>";
-echo "<div class='recipe-search'><b>Min trivial skill : </b><input type=text value=\"$minskill\" size=30 name=minskill></div>";
-echo "<div class='recipe-search'><b>Max trivial skill : </b><input type=text value=\"$maxskill\" size=30 name=maxskill></div></div>";
+echo "<div class='recipe-search'><b>Min trivial skill : </b><input type='text' value=\"" . html_attr($minskill) . "\" size='30' name='minskill'></div>";
+echo "<div class='recipe-search'><b>Max trivial skill : </b><input type='text' value=\"" . html_attr($maxskill) . "\" size='30' name='maxskill'></div></div>";
 echo "<input type='submit' value='Search' name='isearch' class='form'/> <input type='reset' value='Reset' class='form'/>";
 echo "</form>";
 echo "<div class='recipe-results'>";

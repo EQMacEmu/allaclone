@@ -50,8 +50,8 @@ $Title = "NPCs search";
 $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
-echo "<form method='GET' action='" . $PHP_SELF . "'>";
-echo "<input type='text' value=\"$iname\" size='30' name='iname' placeholder='NPC Name' />";
+echo "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
+echo "<input type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname' placeholder='NPC Name' />";
 echo "<input type='submit' value='Search' name='isearch' />";
 echo "</form>";
 

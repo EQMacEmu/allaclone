@@ -21,15 +21,16 @@ print "<table border=0 width=100%><tr valign=top><td nowrap>";
 
 print "<table border=0 width=0%><tr valign=top><td nowrap>";
 print "<b>Choose a class:</b><ul>";
-print "<li><a href=$PHP_SELF?class=15 id='class15'>Beastlord</a>";
-print "<li><a href=$PHP_SELF?class=2  id='class2'>Cleric</a>";
-print "<li><a href=$PHP_SELF?class=6  id='class6'>Druid</a>";
-print "<li><a href=$PHP_SELF?class=14  id='class14'>Enchanter</a>";
-print "<li><a href=$PHP_SELF?class=13  id='class13'>Magician</a>";
-print "<li><a href=$PHP_SELF?class=11  id='class11'>Necromancer</a>";
-print "<li><a href=$PHP_SELF?class=5  id='class5'>Shadow knight</a>";
-print "<li><a href=$PHP_SELF?class=10  id='class10'>Shaman</a>";
-print "<li><a href=$PHP_SELF?class=12  id='class12'>Wizard</a>";
+$self = html_attr($PHP_SELF);
+print "<li><a href='" . $self . "?class=15' id='class15'>Beastlord</a>";
+print "<li><a href='" . $self . "?class=2'  id='class2'>Cleric</a>";
+print "<li><a href='" . $self . "?class=6'  id='class6'>Druid</a>";
+print "<li><a href='" . $self . "?class=14' id='class14'>Enchanter</a>";
+print "<li><a href='" . $self . "?class=13' id='class13'>Magician</a>";
+print "<li><a href='" . $self . "?class=11' id='class11'>Necromancer</a>";
+print "<li><a href='" . $self . "?class=5'  id='class5'>Shadow knight</a>";
+print "<li><a href='" . $self . "?class=10' id='class10'>Shaman</a>";
+print "<li><a href='" . $self . "?class=12' id='class12'>Wizard</a>";
 print "</ul>";
 print "</td></tr></table></td><td nowrap>";
 

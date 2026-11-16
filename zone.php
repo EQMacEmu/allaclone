@@ -4,7 +4,10 @@ include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 
 
-$name  = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
+$name_raw = isset($_GET['name']) ? (string)$_GET['name'] : '';
+$name  = addslashes($name_raw);
+$name_q = rawurlencode($name_raw);
+$name_h = html_attr($name_raw);
 $order_raw = (isset($_GET['order']) ? $_GET['order'] : 'name');
 $mode  = (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
 
@@ -25,9 +28,11 @@ if ($UseCustomZoneList == TRUE && $name != '') {
 	}
 }
 
-$Title = GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='$name'") . " ($name)";
+$zone_long = GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='$name'");
+$Title = html_attr($zone_long) . " (" . $name_h . ")";
 include($includes_dir . 'headers.php');
 include($includes_dir . 'functions.php');
+$self = html_attr($PHP_SELF);
 
 if (!isset($name)) {
 	print "<script>document.location=\"zones.php\";</script>";
@@ -63,9 +68,9 @@ if ($mode == "npcs") {
 	if (mysqli_num_rows($result) > 0) {
 		print "<h2>Bestiary</h2>(***no spawn table)";
 		print "<div class='zone-information'><table class='bestiary' border=0 width='100%' cellpadding='5' cellspacing='0'><tr>";
-		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=name>Name</a></b></td>";
-		print "<td align='left'  class='menuh'><b><a href=$PHP_SELF?name=$name&order=level>Level Range</a></b></td>";
-		print "<td align='left' class='menuh'><b><a href=$PHP_SELF?name=$name&order=race>Race</a></b></td>";
+		print "<td align='left'  class='menuh'><b><a href='" . $self . "?name=" . $name_q . "&order=name'>Name</a></b></td>";
+		print "<td align='left'  class='menuh'><b><a href='" . $self . "?name=" . $name_q . "&order=level'>Level Range</a></b></td>";
+		print "<td align='left' class='menuh'><b><a href='" . $self . "?name=" . $name_q . "&order=race'>Race</a></b></td>";
 		print "<td align='left' class='menuh'><b>Type</b></td>";
 
 		$RowClass = "lr";
@@ -106,8 +111,8 @@ if ($mode == "items") {
 
 	$EquiptmentTable = "<h3>Equipment List</h3><div class='zone-information'><table border=0><tr>
 		<th class='menuh' width='100' align='left'>Icon</a></th>
-		<th class='menuh' align='left'><a href=$PHP_SELF?name=$name&mode=items&order=Name>Name</a></th>
-		<th class='menuh' align='left' width='400'><a href=$PHP_SELF?name=$name&mode=items&order=itemtype>Item type</a></th>
+		<th class='menuh' align='left'><a href='" . $self . "?name=" . $name_q . "&mode=items&order=Name'>Name</a></th>
+		<th class='menuh' align='left' width='400'><a href='" . $self . "?name=" . $name_q . "&mode=items&order=itemtype'>Item type</a></th>
 		</tr>";
 
 	$query = "SELECT $tbnpctypes.id
@@ -301,23 +306,24 @@ print "<p><strong>Succor point : X (</strong>" . floor($zone["safe_x"]) . ")  Y 
 if ($zone["minium_level"] > 0) {
 	print "<strong>Minimum level : </strong>" . floor($zone["minium_level"]);
 }
-print "<ul><li><a href=$PHP_SELF?name=$name&mode=npcs>" . $zone["long_name"] . " Bestiary</a>";
+$zone_label = html_attr($zone["long_name"]);
+print "<ul><li><a href='" . $self . "?name=" . $name_q . "&mode=npcs'>" . $zone_label . " Bestiary</a>";
 if ($DisplayNamedNPCsInfo == TRUE) {
-	print "<li><a href=zonenameds.php?name=$name&mode=npcs>" . $zone["long_name"] . " Named Mobs List</a>";
+	print "<li><a href='zonenameds.php?name=" . $name_q . "&mode=npcs'>" . $zone_label . " Named Mobs List</a>";
 }
-print "<li><a href=$PHP_SELF?name=$name&mode=items>" . $zone["long_name"] . " Equipment</a>";
-if (file_exists($maps_dir . $name . ".jpg")) {
-	print "<li><a href=" . $maps_url . $name . ".jpg>" . $zone["long_name"] . " Map</a>";
+print "<li><a href='" . $self . "?name=" . $name_q . "&mode=items'>" . $zone_label . " Equipment</a>";
+if (file_exists($maps_dir . $name_raw . ".jpg")) {
+	print "<li><a href='" . html_attr($maps_url . $name_raw . ".jpg") . "'>" . $zone_label . " Map</a>";
 }
 if ($DisplaySpawnGroupInfo == TRUE) {
-	print "<li><a href=$PHP_SELF?name=$name&mode=spawngroups>" . $zone["long_name"] . " Spawn Groups</a>";
+	print "<li><a href='" . $self . "?name=" . $name_q . "&mode=spawngroups'>" . $zone_label . " Spawn Groups</a>";
 }
-print "<li><a href=$PHP_SELF?name=$name&mode=forage>" . $zone["long_name"] . " Forageable Items</a>";
+print "<li><a href='" . $self . "?name=" . $name_q . "&mode=forage'>" . $zone_label . " Forageable Items</a>";
 if ($DisplayTaskInfo == TRUE) {
-	print "<li><a href=$PHP_SELF?name=$name&mode=tasks>" . $zone["long_name"] . " Tasks</a>";
+	print "<li><a href='" . $self . "?name=" . $name_q . "&mode=tasks'>" . $zone_label . " Tasks</a>";
 }
 if ($AllowQuestsNPC == TRUE) {
-	print "<li><a href=$root_url" . "quests/zones.php?aZone=$name>" . $zone["long_name"] . " Quest NPCs</a>";
+	print "<li><a href='" . html_attr($root_url . "quests/zones.php?aZone=" . $name_q) . "'>" . $zone_label . " Quest NPCs</a>";
 }
 print "</ul></div>";
 print "</div>"; // end left-col

@@ -45,7 +45,7 @@ if ($opt == 1) {
 /* Display Spell Form */
 echo '<div class="container spell-search">
 			<form name="f" action="">
-            <input type="text" name="name" size="40" value="' . htmlspecialchars($namestring, ENT_QUOTES, 'UTF-8') . '" /></td></tr>
+            <input type="text" name="name" size="40" value="' . htmlspecialchars($namestring, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" /></td></tr>
             <select name="type">
             <optgroup label="Class">
                 <option value="0"' . ($type == 0 ? ' selected="1"' : '') . '>All Classes</option>
