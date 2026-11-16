@@ -1,4 +1,6 @@
 <?php
+// Production: keep errors private. For local PHP 8.3 debugging, temporarily use:
+// error_reporting(E_ALL); ini_set('display_errors', '1');
 error_reporting(0);
 $PageTitle='<img class="logo" height="150" src="//www.takproject.net/forums/styles/logo.png" />';
 $SiteTitle='TAKP AllaClone';
