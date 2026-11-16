@@ -8,9 +8,9 @@ $catalog = epic_catalog();
 ?>
 <div class="container epics epic-hub">
 	<p class="epic-intro">
-		Class Epic 1.0 guides for TAKP, with items, NPCs, zones, and factions linked into AllaClone.
+		Class Epic 1.0 guides for TAKP (classic 14 + Beastlord), with items, NPCs, zones, and factions linked into AllaClone.
 		Steps are checked against the local quest scripts under <code>quests/</code>.
-		Monk is complete; other classes are stubbed with reward links until their full guides ship.
+		All listed class guides are complete.
 	</p>
 
 	<table class="epic-table">
