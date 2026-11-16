@@ -48,7 +48,8 @@ if (!$qn) {
 	$qn = GetRowByQuery($questNpcQuery . " ORDER BY $tbquestnpc.id LIMIT 1");
 }
 if (!$qn) {
-	header('Location: zones.php');
+	// Valid NPC id but no imported quest script — fall through to the NPC page.
+	header('Location: ' . $root_url . 'npc.php?id=' . $npc_id);
 	exit;
 }
 $zone = $qn['zone_short'];

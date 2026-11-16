@@ -108,6 +108,33 @@ function epic_format_loc($loc) {
 }
 
 /**
+ * True when quest_npc has a row for this NPC (optionally scoped to a zone).
+ */
+function epic_npc_has_quest($db, $npcId, $zoneShort = '') {
+	static $cache = array();
+	$npcId = (int)$npcId;
+	$zoneShort = (string)$zoneShort;
+	$key = $npcId . '|' . $zoneShort;
+	if (array_key_exists($key, $cache)) {
+		return $cache[$key];
+	}
+	if ($npcId <= 0 || !function_exists('quest_tables_ready') || !quest_tables_ready($db)) {
+		$cache[$key] = false;
+		return false;
+	}
+	global $tbquestnpc;
+	$qsTable = !empty($tbquestnpc) ? $tbquestnpc : 'quest_npc';
+	$zoneSql = $zoneShort !== '' ? (" AND zone_short='" . addslashes($zoneShort) . "'") : '';
+	$res = @mysqli_query($db, "SELECT id FROM $qsTable WHERE npc_id=$npcId $zoneSql LIMIT 1");
+	$has = ($res && mysqli_num_rows($res) > 0);
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	$cache[$key] = $has;
+	return $has;
+}
+
+/**
  * NPC link with optional quest page, spawn loc, and zone.
  * $opts: label, with_loc (default true), with_zone (default true)
  */
@@ -119,13 +146,16 @@ function epic_npc_link($db, $npcId, $zoneShort = '', $label = null, $opts = arra
 	if ($label === null) {
 		$label = epic_npc_name($db, $npcId);
 	}
-	if (!empty($AllowQuestsNPC) && $zoneShort !== '') {
+	$hasQuest = !empty($AllowQuestsNPC) && $zoneShort !== '' && epic_npc_has_quest($db, $npcId, $zoneShort);
+	if ($hasQuest) {
 		$url = $root_url . 'quests/index.php?npc_id=' . $npcId . '&zone=' . urlencode($zoneShort);
 	} else {
 		$url = $root_url . 'npc.php?id=' . $npcId;
 	}
 	$html = "<a href=\"$url\">" . htmlspecialchars($label) . "</a>";
-	$html .= " (<a href=\"{$root_url}npc.php?id=$npcId\">NPC</a>)";
+	if ($hasQuest) {
+		$html .= " (<a href=\"{$root_url}npc.php?id=$npcId\">NPC</a>)";
+	}
 
 	$loc = null;
 	if ($withLoc || ($withZone && $zoneShort === '')) {
