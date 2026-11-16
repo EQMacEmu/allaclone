@@ -5,8 +5,8 @@ include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'spell.inc.php');
 
-$id = $_GET["id"];
-$spell = getspell($id);
+$id = isset($_GET['id']) ? sql_int($_GET['id'], 0) : 0;
+$spell = ($id > 0) ? getspell($id) : false;
 $minlvl = 70;
 
 if (!$spell || in_array($id, $hide_spell_id)) {

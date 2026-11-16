@@ -260,6 +260,10 @@ function getsize($val) {
 }
 function getspell($id) {
 	global $tbspells, $tbspellglobals, $UseSpellGlobals, $db;
+	$id = sql_int($id, 0);
+	if ($id <= 0) {
+		return false;
+	}
 	if ($UseSpellGlobals == true) {
 		$query = "SELECT " . $tbspells . ".* FROM " . $tbspells . " WHERE " . $tbspells . ".id=" . $id . "
 			AND ISNULL((SELECT " . $tbspellglobals . ".spellid FROM " . $tbspellglobals . "
@@ -807,8 +811,7 @@ function AutoDataTable($Query) {
   global $db;
 	$result = mysqli_query($db, $Query);
 	if (!$result) {
-		echo 'Could not run query: ' . mysqli_error($db);
-		exit;
+		message_die('functions.php', 'AutoDataTable', $Query, mysqli_error($db));
 	}
 	$columns = mysqli_num_fields($result);
 	echo "<table border=0 width=100%><thead>";

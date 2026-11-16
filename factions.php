@@ -14,11 +14,7 @@ include($includes_dir . 'functions.php');
 $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname   = (isset($_GET['iname']) ? $_GET['iname'] : '');
 
-if ($iname == "") {
-	$name = "";
-} else {
-	$name = str_replace('_', '%', addslashes($iname));
-}
+$name = ($iname == "") ? "" : sql_like($db, $iname);
 
 $Query = "SELECT $tbfactionlist.id,$tbfactionlist.name
 				FROM $tbfactionlist

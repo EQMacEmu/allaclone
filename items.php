@@ -14,36 +14,42 @@ include($includes_dir . 'functions.php');
 
 $isearch       = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname         = (isset($_GET['iname']) ? $_GET['iname'] : '');
-$iclass        = (isset($_GET['iclass']) ? addslashes($_GET['iclass']) : -1);
-$irace         = (isset($_GET['irace']) ? addslashes($_GET['irace']) : -1);
-$islot         = (isset($_GET['islot']) ? addslashes($_GET['islot']) : '');
 $item_stat_cols = array('hp','mana','ac','attack','aagi','acha','adex','aint','asta','astr','awis','damage','delay','ratio','haste','regen','manaregen','enduranceregen');
 $item_mod_cols = array('avoidance','accuracy','backstabdmg','clairvoyance','combateffects','damageshield','dsmitigation','dotshielding','extradmgamt','healamt','purity','shielding','spelldmg','spellshield','strikethrough','stunresist');
 $item_comps = array('>=','<=','=','<','>');
-$istat1        = (isset($_GET['istat1']) && in_array($_GET['istat1'], $item_stat_cols, true) ? $_GET['istat1'] : '');
-$istat1comp    = (isset($_GET['istat1comp']) && in_array($_GET['istat1comp'], $item_comps, true) ? $_GET['istat1comp'] : '');
+$iclass        = isset($_GET['iclass']) ? sql_int($_GET['iclass'], -1) : -1;
+$irace         = isset($_GET['irace']) ? sql_int($_GET['irace'], -1) : -1;
+$islot         = isset($_GET['islot']) ? sql_int($_GET['islot'], 0) : 0;
+$istat1        = isset($_GET['istat1']) ? sql_ident($_GET['istat1'], $item_stat_cols) : '';
+$istat1comp    = isset($_GET['istat1comp']) ? sql_op($_GET['istat1comp'], $item_comps) : '';
 $istat1value   = (isset($_GET['istat1value']) && is_numeric($_GET['istat1value']) ? $_GET['istat1value'] + 0 : '');
-$istat2        = (isset($_GET['istat2']) && in_array($_GET['istat2'], $item_stat_cols, true) ? $_GET['istat2'] : '');
-$istat2comp    = (isset($_GET['istat2comp']) && in_array($_GET['istat2comp'], $item_comps, true) ? $_GET['istat2comp'] : '');
+$istat2        = isset($_GET['istat2']) ? sql_ident($_GET['istat2'], $item_stat_cols) : '';
+$istat2comp    = isset($_GET['istat2comp']) ? sql_op($_GET['istat2comp'], $item_comps) : '';
 $istat2value   = (isset($_GET['istat2value']) && is_numeric($_GET['istat2value']) ? $_GET['istat2value'] + 0 : '');
-$iresists      = (isset($_GET['iresists']) ? addslashes($_GET['iresists']) : '');
-$iresistscomp  = (isset($_GET['iresistscomp']) ? addslashes($_GET['iresistscomp']) : '');
-$iresistsvalue = (isset($_GET['iresistsvalue']) ? addslashes($_GET['iresistsvalue']) : '');
-$iheroics      = (isset($_GET['iheroics']) ? addslashes($_GET['iheroics']) : '');
-$iheroicscomp  = (isset($_GET['iheroicscomp']) ? addslashes($_GET['iheroicscomp']) : '');
-$iheroicsvalue = (isset($_GET['iheroicsvalue']) ? addslashes($_GET['iheroicsvalue']) : '');
-$imod          = (isset($_GET['imod']) && in_array($_GET['imod'], $item_mod_cols, true) ? $_GET['imod'] : '');
-$imodcomp      = (isset($_GET['imodcomp']) && in_array($_GET['imodcomp'], $item_comps, true) ? $_GET['imodcomp'] : '');
+// Form-only; not interpolated into SQL on this page.
+$iresists      = (isset($_GET['iresists']) ? $_GET['iresists'] : '');
+$iresistscomp  = (isset($_GET['iresistscomp']) ? $_GET['iresistscomp'] : '');
+$iresistsvalue = (isset($_GET['iresistsvalue']) ? $_GET['iresistsvalue'] : '');
+$iheroics      = (isset($_GET['iheroics']) ? $_GET['iheroics'] : '');
+$iheroicscomp  = (isset($_GET['iheroicscomp']) ? $_GET['iheroicscomp'] : '');
+$iheroicsvalue = (isset($_GET['iheroicsvalue']) ? $_GET['iheroicsvalue'] : '');
+$imod          = isset($_GET['imod']) ? sql_ident($_GET['imod'], $item_mod_cols) : '';
+$imodcomp      = isset($_GET['imodcomp']) ? sql_op($_GET['imodcomp'], $item_comps) : '';
 $imodvalue     = (isset($_GET['imodvalue']) && is_numeric($_GET['imodvalue']) ? $_GET['imodvalue'] + 0 : '');
-$itype         = (isset($_GET['itype']) ? addslashes($_GET['itype']) : -1);
-$iaugslot      = (isset($_GET['iaugslot']) ? addslashes($_GET['iaugslot']) : '');
-$ieffect       = (isset($_GET['ieffect']) ? addslashes($_GET['ieffect']) : '');
-$ireqlevel     = (isset($_GET['ireqlevel']) ? addslashes($_GET['ireqlevel']) : '');
-$iminlevel     = (isset($_GET['iminlevel']) ? addslashes($_GET['iminlevel']) : '');
-$inodrop       = (isset($_GET['inodrop']) ? addslashes($_GET['inodrop']) : '');
-$iavailability = (isset($_GET['iavailability']) ? addslashes($_GET['iavailability']) : '');
-$iavailevel    = (isset($_GET['iavailevel']) ? addslashes($_GET['iavailevel']) : '');
-$ideity        = (isset($_GET['ideity']) ? addslashes($_GET['ideity']) : '');
+$itype         = isset($_GET['itype']) ? sql_int($_GET['itype'], -1) : -1;
+$iaugslot      = isset($_GET['iaugslot']) ? sql_int($_GET['iaugslot'], 0) : 0;
+$ieffect       = (isset($_GET['ieffect']) ? $_GET['ieffect'] : '');
+$ireqlevel     = isset($_GET['ireqlevel']) ? sql_int($_GET['ireqlevel'], 0) : 0;
+$iminlevel     = isset($_GET['iminlevel']) ? sql_int($_GET['iminlevel'], 0) : 0;
+$inodrop       = isset($_GET['inodrop']);
+$iavailability = isset($_GET['iavailability']) ? sql_int($_GET['iavailability'], 0) : 0;
+if (!in_array($iavailability, array(0, 1, 2), true)) {
+	$iavailability = 0;
+}
+// Form field is iavaillevel; accept legacy misspelling iavailevel for bookmarks.
+$iavaillevel_raw = isset($_GET['iavaillevel']) ? $_GET['iavaillevel'] : (isset($_GET['iavailevel']) ? $_GET['iavailevel'] : 0);
+$iavaillevel   = sql_int($iavaillevel_raw, 0);
+$ideity        = isset($_GET['ideity']) ? sql_int($_GET['ideity'], 0) : 0;
 
 if ($isearch != "") {
 	$Query  = "SELECT $tbitems.* FROM ($tbitems";
@@ -59,7 +65,7 @@ if ($isearch != "") {
 	$Query  .= ")";
 	$s = " WHERE";
 	if ($ieffect != "") {
-		$effect = "%" . str_replace(',', '%', str_replace(' ', '%', addslashes($ieffect))) . "%";
+		$effect = "%" . sql_like($db, $ieffect, array(' ' => '%', ',' => '%')) . "%";
 		$Query .= " LEFT JOIN $tbspells AS proc_s ON proceffect=proc_s.id";
 		$Query .= " LEFT JOIN $tbspells AS worn_s ON worneffect=worn_s.id";
 		$Query .= " LEFT JOIN $tbspells AS focus_s ON focuseffect=focus_s.id";
@@ -112,7 +118,7 @@ if ($isearch != "") {
 		$s = "AND";
 	}
 	if ($iname != "") {
-		$name = addslashes(str_replace("_", "%", str_replace(" ", "%", $iname)));
+		$name = sql_like($db, $iname);
 		$Query .= " $s ($tbitems.Name like '%" . $name . "%')";
 		$s = "AND";
 	}
@@ -164,6 +170,9 @@ if ($isearch != "") {
 
 	$Query .= " GROUP BY $tbitems.id ORDER BY $tbitems.Name LIMIT " . (LimitToUse($MaxItemsReturned) + 1);
 	$QueryResult = mysqli_query($db, $Query);
+	if ($QueryResult === false) {
+		message_die('items.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
+	}
 	//print $Query;
 	if (mysqli_num_rows($QueryResult) == 1) {
 		$row = mysqli_fetch_array($QueryResult);

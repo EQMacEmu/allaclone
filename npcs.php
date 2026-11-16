@@ -15,16 +15,11 @@ $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname   = (isset($_GET['iname']) ? $_GET['iname'] : '');
 
 if ($isearch != "") {
-	if ($iname == "") {
-		$name = "";
-	} else {
-		$name = addslashes($iname);
-	}
 	$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name
 		FROM $tbnpctypes
 		WHERE 1=1";
-	if ($name != "") {
-		$name = str_replace('`', '-', str_replace('_', '%', str_replace(' ', '%', $name)));
+	if ($iname != "") {
+		$name = sql_like($db, $iname, array(' ' => '%', '_' => '%', '`' => '-'));
 		$Query .= " AND $tbnpctypes.Name like '%$name%'";
 	}
 	if ($HideInvisibleMen) {

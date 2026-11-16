@@ -105,7 +105,7 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 		$sv = ' WHERE';
 	}
 
-	$sql .= " $sv $tbspells.name LIKE '%" . addslashes($namestring) . "%'";
+	$sql .= " $sv $tbspells.name LIKE '%" . sql_like($db, $namestring, array()) . "%'";
 
 	if ($UseSpellGlobals == TRUE) {
 		$sql .= " AND ISNULL((SELECT $tbspellglobals.spellid FROM $tbspellglobals 

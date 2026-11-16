@@ -4,7 +4,10 @@
 	include($includes_dir.'mysql.php');
 	
 	// Pagination //
-	$page = (isset($_GET['page']) ? addslashes($_GET['page']) : 0);
+	$page = isset($_GET['page']) ? sql_int($_GET['page'], 0) : 0;
+	if ($page < 0) {
+		$page = 0;
+	}
 	$targetpage = "npcfactions.php"; 				// File name  (the name of this file)
 	$tbl_name=$tbfactionlist;						// Table name
 	if($page)
@@ -15,6 +18,7 @@
 	{
 		$start = 0;									//if no page var is given, set start to 0
 	}
+	$start = (int)$start;
 	$total_pages = GetFieldByQuery("num", "SELECT COUNT(*) as num FROM $tbl_name");
 	// Pagination //
 	

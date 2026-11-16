@@ -25,6 +25,9 @@ $ih2proc = (isset($_GET['ih2proc']) ? $_GET['ih2proc'] : 0);
 $i2hproc = (isset($_GET['i2hproc']) ? $_GET['i2hproc'] : 0);
 $icalculate = (isset($_GET['icalculate']) ? $_GET['icalculate'] : 0);
 $iclass = (isset($_GET['iclass']) ? $_GET['iclass'] : 0);
+$iwa = (isset($_GET['iwa']) ? $_GET['iwa'] : 0);
+$icf = (isset($_GET['icf']) ? $_GET['icf'] : 0);
+$iad = (isset($_GET['iad']) ? $_GET['iad'] : 0);
 
 if (!isset($istr)) { $istr=75; }
 if (!isset($idex)) { $idex=75; }

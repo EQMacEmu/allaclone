@@ -6,9 +6,9 @@ include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'blobs.inc.php');
 
-$class   = (isset($_GET['class']) ? $_GET['class'] : 0);
-
-if (!is_numeric($class)) {
+$class = isset($_GET['class']) ? sql_int($_GET['class'], 0) : 0;
+$allowed_pet_classes = array(2, 5, 6, 10, 11, 12, 13, 14, 15);
+if ($class !== 0 && !in_array($class, $allowed_pet_classes, true)) {
 	header("Location: pets.php");
 	exit();
 }
@@ -61,8 +61,7 @@ if (isset($class) && $class != 0) {
 	$Query .= " GROUP BY $tbspells.`teleport_zone` ORDER BY $tbspells.classes" . $class;
 	$result = mysqli_query($db, $Query);
 	if (!$result) {
-		print 'Could not run query: ' . mysqli_error($db);
-		exit;
+		message_die('pets.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
 	}
 	$columns = mysqli_num_fields($result);
 	print "<center><table border=0 width=100%><thead>";

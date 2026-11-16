@@ -7,13 +7,13 @@ include($includes_dir . 'headers.php');
 include($includes_dir . 'functions.php');
 
 $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
-$id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
+$id   = isset($_GET['id']) ? sql_int($_GET['id'], 0) : 0;
 $iname = (isset($_GET['iname']) ? $_GET['iname'] : '');
-$iminlevel = (isset($_GET['iminlevel']) ? $_GET['iminlevel'] : '');
-$imaxlevel = (isset($_GET['imaxlevel']) ? $_GET['imaxlevel'] : '');
+$iminlevel = isset($_GET['iminlevel']) ? sql_int($_GET['iminlevel'], 0) : 0;
+$imaxlevel = isset($_GET['imaxlevel']) ? sql_int($_GET['imaxlevel'], 0) : 0;
 $inamed = (isset($_GET['inamed']) ? $_GET['inamed'] : '');
 $ishowlevel = (isset($_GET['ishowlevel']) ? $_GET['ishowlevel'] : '');
-$irace = (isset($_GET['irace']) ? $_GET['irace'] : '');
+$irace = isset($_GET['irace']) ? sql_int($_GET['irace'], 0) : 0;
 if ($irace == 0) {
 	$irace = '';
 }
@@ -50,21 +50,21 @@ if (isset($isearch) && $isearch != '') {
 		$iminlevel = $imaxlevel;
 		$imaxlevel = $c;
 	}
-	if ($iminlevel > 0 && is_numeric($iminlevel)) {
+	if ($iminlevel > 0) {
 		$query .= " AND $tbnpctypes.level>=$iminlevel";
 	}
-	if ($imaxlevel > 0 && is_numeric($imaxlevel)) {
+	if ($imaxlevel > 0) {
 		$query .= " AND $tbnpctypes.level<=$imaxlevel";
 	}
 	if ($inamed) {
 		$query .= " AND substring($tbnpctypes.name,1,1)='#'";
 	}
-	if ($irace > 0 && is_numeric($irace)) {
+	if ($irace > 0) {
 		$query .= " AND $tbnpctypes.race=$irace";
 	}
 	if ($iname != "") {
-		$iname = str_replace('`', '%', str_replace(' ', '%', addslashes($iname)));
-		$query .= " AND $tbnpctypes.name LIKE '%$iname%'";
+		$search_name = sql_like($db, $iname, array(' ' => '%', '`' => '%'));
+		$query .= " AND $tbnpctypes.name LIKE '%$search_name%'";
 	}
 	if ($HideInvisibleMen) {
 		$query .= " AND $tbnpctypes.race!=127";
