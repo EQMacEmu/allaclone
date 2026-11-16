@@ -606,6 +606,7 @@ if ($npc_map_short_name !== '' && map_txt_available($npc_map_short_name)) {
 print "</div>"; // right-col
 print "</div>"; // npc-info
 print "</div>"; // npc-wrapper
-// #main and #site-wrapper are closed in footers.php
+print "</div>"; // #main — must close before footer so footer stays a #site-wrapper grid child
+// #site-wrapper is closed in footers.php
 
 include($includes_dir . "footers.php");
