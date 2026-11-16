@@ -13,8 +13,12 @@ include($includes_dir . 'spell.inc.php');
 
 $opt = (isset($_GET['opt']) ? $_GET['opt'] : '');
 $namestring = (isset($_GET['name']) ? $_GET['name'] : '');
-$level = (isset($_GET['level']) ? $_GET['level'] : 0);
-$type = (isset($_GET['type']) ? $_GET['type'] : 0);
+$level = (isset($_GET['level']) ? (int)$_GET['level'] : 0);
+$type = (isset($_GET['type']) ? (int)$_GET['type'] : 0);
+$allowed_spell_classes = array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+if (!in_array($type, $allowed_spell_classes, true)) {
+	$type = 0;
+}
 
 $check1 = "";
 $check2 = "";
@@ -41,7 +45,7 @@ if ($opt == 1) {
 /* Display Spell Form */
 echo '<div class="container spell-search">
 			<form name="f" action="">
-            <input type="text" name="name" size="40" value="' . $namestring . '" /></td></tr>
+            <input type="text" name="name" size="40" value="' . htmlspecialchars($namestring, ENT_QUOTES, 'UTF-8') . '" /></td></tr>
             <select name="type">
             <optgroup label="Class">
                 <option value="0"' . ($type == 0 ? ' selected="1"' : '') . '>All Classes</option>
@@ -116,7 +120,7 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 
 	$result = mysqli_query($db, $sql);
 	if (!$result) {
-		die('Invalid query: ' . mysqli_error($db));
+		message_die('spells.php', 'MYSQL_QUERY', $sql, mysqli_error($db));
 	}
 
 	echo ' <table border="0" cellpadding="5" cellspacing="15">';

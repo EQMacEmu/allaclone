@@ -3,11 +3,11 @@
 /** Outputs an error message if a database error occurs
  */
 function message_die($t1, $t2, $t3, $t4) {
+	// Log details server-side; do not expose SQL or DB errors to clients.
+	error_log('Allaclone DB error: ' . $t1 . ' | ' . $t2 . ' | ' . $t3 . ' | ' . $t4);
 	print "<p><table width='100%' border=0>\n";
-	print "<tr><td align=left><b>$t1</b></td></tr>\n";
-	print "<tr><td align=left>$t2</td></tr>\n";
-	print "<tr><td align=left>$t3</td></tr>\n";
-	print "<tr><td align=left>$t4</td></tr>\n";
+	print "<tr><td align=left><b>Database error</b></td></tr>\n";
+	print "<tr><td align=left>A database error occurred. Please try again later.</td></tr>\n";
 	print "<tr><td align=center><font color=red><b>Have you sourced the eqbrowser tables in your database ?</b></font></td></tr>\n";
 	print "</table></p>\n";
 	exit;
