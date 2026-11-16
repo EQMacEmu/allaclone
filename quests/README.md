@@ -1,10 +1,17 @@
 # Quest data (Lua → MySQL)
 
-AllaClone serves quests from **MySQL tool tables**, like items and factions. Page loads never parse Lua and never execute Perl. If imported DB rows are missing, quest pages may fall back to a pre-generated static `.inc` under `quests/datas/` (include-only; never regenerated at request time).
+AllaClone serves quests from **MySQL tool tables**, like items and factions. Page loads never parse Lua and never execute Perl.
+
+### Feature flag
+
+- `$AllowQuestsNPC = FALSE` — **all** quest browsing is disabled (`quests/index.php` redirects). No DB pages and no archived `.inc` fallback.
+- `$AllowQuestsNPC = TRUE` — serve Lua-derived `quest_*` DB pages. Name bookmarks (`?npc=…&zone=…`) resolve via imported rows first; if missing, may include a pre-generated static `.inc` from `$quests_datas` (repo default: `quests/datas/`, include-only; never regenerated at request time; never HTTP Perl). Otherwise redirect to the zones list or NPC page.
+
+`$quests_datas` must point at the archived `.inc` tree, not the live Lua `$quests_dir`.
 
 ## Refresh
 
-1. Ensure the schema exists (`includes/sql/quests.sql` is idempotent `CREATE TABLE IF NOT EXISTS`). The importer also applies it safely before loading.
+1. Ensure the schema exists (`includes/sql/quests.sql` is idempotent `CREATE TABLE IF NOT EXISTS`). The importer also applies it safely before loading. Legacy live `quest_items` tables that lack `npc_id` (old `PRIMARY KEY (item_id, npc, zone)`) are **not** altered in place: staging is created with the new schema, resolvable rows are copied with an explicit column list, and cutover uses `RENAME TABLE`. Rows whose NPC name cannot be resolved to an `npc_id` are omitted from staging and are discarded only after a successful swap.
 
 2. Import from the EQEmu quest tree with the PHP CLI (needs the `mysqli` extension):
 
@@ -28,6 +35,13 @@ DB settings can also come from `ALLACLONE_DB_HOST`, `ALLACLONE_DB_USER`, `ALLACL
 - MySQL DDL auto-commits; safety is “leave live untouched until swap,” not a multi-statement transaction.
 - SQL errors abort the run and drop staging only.
 - A `quest_import_meta` row records source path, zone scope, counts, and a content signature.
+
+### Import safety tests
+
+`php quests/tests/run_import_safety_tests.php` **destroys tables** inside a disposable database (DROPs reference + `quest_*` / staging / old tables).
+
+- Set `ALLACLONE_QUEST_TEST_DB` only to an explicitly disposable name that starts with `allaclone_test_` (default: `allaclone_test_quest`).
+- Names equal to `ALLACLONE_PEQ_DB` / `ALLACLONE_DB_NAME`, or production-like names (`peq`, `allaclone`, `information_schema`, …), are refused **before** any destructive SQL.
 
 On Windows, `quests/import_lua_quests.ps1` wraps the same importer:
 

@@ -17,8 +17,10 @@ $root_url='//local.sandbox.com/takp/allaclone/';
 $includes_url=$root_url.'includes/';
 $includes_dir=getcwd()."/includes/";
 $eqemu_dir="/home/eqemu/server/";
-$quests_dir=$eqemu_dir."quests/";
-$quests_datas="/home/eqemu/server/quests/";
+$quests_dir=$eqemu_dir."quests/"; // live EQEmu Lua/Perl quest scripts (importer --quests source)
+// Archived static .inc tree for missing-row fallback when $AllowQuestsNPC is TRUE.
+// Prefer the repo copy (quests/datas/) or an absolute path to that same tree — not $quests_dir.
+$quests_datas=__DIR__."/../quests/datas/";
 $maps_dir=getcwd()."/maps/";
 $maps_url=$root_url."/maps/";
 $map_txt_dir=__DIR__."/../map_txt/";
@@ -55,7 +57,10 @@ $ShowNpcDropChances=FALSE; // if TRUE, chances of droping of each item will be s
 $MerchantsDontDropStuff=TRUE; // if TRUE, you won't see merchants drops, damned PEQ word builders ! :)
 $ShowNPCNumberInZoneLevelList=TRUE; // choose between number and x for npcs in zone levels list
 $SortZoneLevelList=TRUE; // sort or not the zones in zone levels list
-$AllowQuestsNPC=FALSE; // DB-backed quest pages; requires the quest_* tables from quests/import_lua_quests.php
+// FALSE = all quest browsing disabled (quests/index.php redirects; no DB pages, no .inc fallback).
+// TRUE  = Lua-derived quest_* DB pages; if an imported row is missing, may include a static .inc
+//         from $quests_datas (include-only; never HTTP Perl). Requires quest_* tables from import.
+$AllowQuestsNPC=FALSE;
 $ItemQuestSource=FALSE; // quest reward / hand-in details on item.php; requires the same tables
 $AlwaysBuildQuest=FALSE; // legacy Perl live-parse (unused for Lua DB quests; leave FALSE)
 $GroupNpcsByName=TRUE; // groups the NPCs by their name in zone npcs lists
