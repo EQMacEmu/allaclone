@@ -18,7 +18,7 @@ include($includes_dir . 'map_helpers.php');
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
 
-$Title="";
+$Title = "";
 if ($id != "" && !in_array($id, $hide_npc_id) && is_numeric($id)) {
 	$Query = "SELECT * FROM $tbnpctypes WHERE id='" . $id . "'";
 	foreach ($hide_npc_id as $hideme) {
@@ -602,9 +602,9 @@ if ($npc_map_short_name !== '' && map_txt_available($npc_map_short_name)) {
 	}
 }
 
-print "</div>"; // site-wrapper
-print "</div>"; // main
+print "</div>"; // right-col
 print "</div>"; // npc-info
 print "</div>"; // npc-wrapper
+// #main and #site-wrapper are closed in footers.php
 
 include($includes_dir . "footers.php");
