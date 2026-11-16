@@ -20,6 +20,9 @@ function message_die($t1, $t2, $t3, $t4) {
 function GetFieldByQuery($field, $query) {
 	global $db;
 	$QueryResult = mysqli_query($db, $query);
+	if ($QueryResult === false) {
+		return "";
+	}
 	if (mysqli_num_rows($QueryResult) > 0) {
 		$rows = mysqli_fetch_array($QueryResult);
 		$Result = $rows[$field];
@@ -35,6 +38,9 @@ function GetFieldByQuery($field, $query) {
 function GetRowByQuery($query) {
 	global $db;
 	$QueryResult = mysqli_query($db, $query);
+	if ($QueryResult === false) {
+		return null;
+	}
 	$Result = mysqli_fetch_array($QueryResult);
 
 	return $Result;

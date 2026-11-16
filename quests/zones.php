@@ -6,6 +6,11 @@ include('../includes/mysql.php');
 $Title="Quests by zones";
 include('../includes/headers.php');
 
+$aZone = isset($_REQUEST['aZone']) ? $_REQUEST['aZone'] : '';
+if ($aZone !== '' && !preg_match('/^[A-Za-z0-9_]+$/', $aZone)) {
+	$aZone = '';
+}
+
 print "<center><table border=0 width=0%>";
 print "<form method=POST action=$PHP_SELF>";
 print "<tr><td nowrap><b>Zone : </b></td><td>";
@@ -29,11 +34,11 @@ print "</select></td></tr>";
 print "<tr align=center><td nowrap colspan=2><input type=submit value=Search name=isearch class=form></td></tr>";
 print "</form></table></center>";
 
-print "<br><b>$aZone</b><br>";
+print "<br><b>".htmlspecialchars($aZone)."</b><br>";
 if ($aZone!="") {
   print "<hr><table border=0 width=100%>";
   if (file_exists($quests_datas.$aZone)) {
-    print "<br><b>$aZone</b><br>";
+    print "<br><b>".htmlspecialchars($aZone)."</b><br>";
     $cpt=0;
     $handle=opendir($quests_datas.$aZone);
     while ($file=readdir($handle)) {

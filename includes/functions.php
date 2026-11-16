@@ -1146,7 +1146,7 @@ function BuildItemStats($item, $show_name_icon) {
 			$skill = 0;
 			$query = "SELECT mana, skill FROM $tbspells WHERE id=" . $item["scrolleffect"];
 			$QueryResult = mysqli_query($db, $query);
-			if (mysqli_num_rows($QueryResult) > 0) {
+			if ($QueryResult !== false && mysqli_num_rows($QueryResult) > 0) {
 				$rows = mysqli_fetch_array($QueryResult);
 				$manacost = $rows["mana"];
 				$skill = $rows["skill"];

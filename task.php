@@ -79,7 +79,7 @@ $MultiStep = substr_count($TaskDesc, "[");
 if ($MultiStep)
 {
 	$MultiStepDesc .=  "<tr><td nowrap='1'><b>Task Description : </b></td><td width='50%'><table>";
-	$StepDescArray = split("]", $TaskDesc);
+	$StepDescArray = explode("]", $TaskDesc);
 	foreach ($StepDescArray as $value)
 	{
 		if ($value)

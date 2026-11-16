@@ -6,6 +6,13 @@ include('../includes/mysql.php');
 $Title="Defensive AA";
 include('../includes/headers.php');
 
+$ics = isset($_POST['ics']) ? $_POST['ics'] : (isset($ics) ? $ics : 0);
+$ica = isset($_POST['ica']) ? $_POST['ica'] : (isset($ica) ? $ica : 0);
+$iid = isset($_POST['iid']) ? $_POST['iid'] : (isset($iid) ? $iid : 0);
+$imhits = isset($_POST['imhits']) ? $_POST['imhits'] : 25;
+$imdam = isset($_POST['imdam']) ? $_POST['imdam'] : 140;
+$icalculate = isset($_POST['icalculate']);
+
 print "<p><center><table border=0 width=0%>";
 print "<form method=POST action=$PHP_SELF>";
 print "<tr><td nowrap><b>Combat stability : </b></td><td>";
@@ -20,8 +27,6 @@ print "<td></tr>";
 #print "<tr><td nowrap><b>Lightning reflex : </b></td><td>";
 #print SelectLevel("ilr",5,$ilr);
 #print "<td></tr>";
-if (!isset($imhits)) { $imhits=25; }
-if (!isset($imdam)) { $imdam=140; }
 
 print "<tr><td nowrap><b>Number of hits from the mob : </b></td><td><input type=text value=\"$imhits\" size=4 name=imhits class=form></td></tr>";
 print "<tr><td nowrap><b>Average per hit from the mob : </b></td><td><input type=text value=\"$imdam\" size=4 name=imdam class=form></td></tr>";

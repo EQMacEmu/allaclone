@@ -47,7 +47,7 @@ function OutputItems($type, $id) {
 	global $db, $tbitems;
 	$itemQuery = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems
-		WHERE $tbitems.${type}effect=$id
+		WHERE $tbitems.{$type}effect=$id
 		ORDER BY $tbitems.name ASC";
 	$result = mysqli_query($db, $itemQuery) or message_die('item.php', 'MYSQL_QUERY', $itemQuery, mysqli_error($db));
 

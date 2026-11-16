@@ -15,16 +15,17 @@ $dbpasswd="root";
 
 $root_url='//local.sandbox.com/takp/allaclone/';
 $includes_url=$root_url.'includes/';
-$includes_dir=getcwd()."/includes/";
+$includes_dir=__DIR__.DIRECTORY_SEPARATOR;
+$PHP_SELF = isset($_SERVER['PHP_SELF']) ? $_SERVER['PHP_SELF'] : '';
 $eqemu_dir="/home/eqemu/server/";
 $quests_dir=$eqemu_dir."quests/";
 $quests_datas="/home/eqemu/server/quests/";
-$maps_dir=getcwd()."/maps/";
-$maps_url=$root_url."/maps/";
-$npcs_dir=getcwd()."/npcs/";
-$npcs_url=$root_url."/npcs/";
-$icons_dir=getcwd()."/icons/";
-$icons_url=$root_url."/icons/";
+$maps_dir=__DIR__."/../maps/";
+$maps_url=$root_url."maps/";
+$npcs_dir=__DIR__."/../npcs/";
+$npcs_url=$root_url."npcs/";
+$icons_dir=__DIR__."/../icons/";
+$icons_url=$root_url."icons/";
 $images_url=$root_url."/images/";
 $charbrowser_url=""; // Set to "" to disable CharBrowser links for character names
 
@@ -85,5 +86,9 @@ $IgnoreZones=array("load","loading","load2","nektropos","arttest","apprentice","
 $ShowAccount=FALSE; // (not in use yet)
 $ShowCharacters=FALSE; // (not in use yet)
 
-$db=mysql_connect($dbhost,$dbuser,$dbpasswd) or die("Impossible to connect to $dbhost : ".mysqli_error($db));
-mysql_select_db($dbname,$db) or die("Impossible to select $dbname : ".mysqli_error($db));
+mysqli_report(MYSQLI_REPORT_OFF);
+$db = @mysqli_connect($dbhost, $dbuser, $dbpasswd, $dbname);
+if (!$db) {
+	die('Impossible to connect to ' . htmlspecialchars($dbhost) . ' : database unavailable');
+}
+mysqli_set_charset($db, 'latin1');

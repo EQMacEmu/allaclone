@@ -5,12 +5,17 @@ include($includes_dir . 'mysql.php');
 
 
 $name  = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
+$order_raw = (isset($_GET['order']) ? $_GET['order'] : 'name');
 $mode  = (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
 
-if ($order == "level"){
-	$order = "level desc";
-}
+$zone_order_allow = array(
+	'name' => 'name',
+	'level' => 'level desc',
+	'race' => 'race',
+	'Name' => 'Name',
+	'itemtype' => 'itemtype',
+);
+$order = isset($zone_order_allow[$order_raw]) ? $zone_order_allow[$order_raw] : 'name';
 
 if ($UseCustomZoneList == TRUE && $name != '') {
 	$ZoneNote = GetFieldByQuery("note", "SELECT note FROM $tbzones WHERE short_name='$name'");
@@ -34,6 +39,11 @@ $ZoneDebug = FALSE; // this is new in 0.5.3 but undocumented, it is for world bu
 $query = "SELECT $tbzones.* FROM $tbzones WHERE $tbzones.short_name='$name'";
 $result = mysqli_query($db, $query) or message_die('zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 $zone = mysqli_fetch_array($result);
+if (!$zone) {
+	print "<p>Unknown zone.</p>";
+	include($includes_dir . "footers.php");
+	exit;
+}
 
 print "<div class='container zone'>";
 

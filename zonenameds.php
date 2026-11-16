@@ -4,8 +4,10 @@ include('./includes/config.php');
 include($includes_dir.'mysql.php');
 
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
+$order_raw = (isset($_GET['order']) ? $_GET['order'] : 'name');
 $mode= (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
+$named_order_allow = array('name' => 'name', 'id' => 'id', 'loottable_id' => 'loottable_id', 'class' => 'class', 'race' => 'race', 'level' => 'level');
+$order = isset($named_order_allow[$order_raw]) ? $named_order_allow[$order_raw] : 'name';
 
 if ($DisplayNamedNPCsInfo==FALSE)
 {
@@ -30,6 +32,11 @@ $query="SELECT $tbzones.*
         WHERE $tbzones.short_name='$name'";
 $result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
 $zone=mysqli_fetch_array($result);
+if (!$zone) {
+  print "<p>Unknown zone.</p>";
+  include($includes_dir.'footers.php');
+  exit;
+}
 print "<center><table border=0 width=0%><tr valign=top><td>";
 print "<p><b>Succor point : </b>".floor($zone["safe_x"])." / ".floor($zone["safe_y"])." / ".floor($zone["safe_z"]);
 if ($zone["minium_level"]>0) { print "<br><b>Minimum level : </b>".floor($zone["minium_level"]); }
@@ -43,14 +50,23 @@ if (file_exists($maps_dir.$name.".jpg")) {
 print "</tr></table>";
 
 function isChecked($id) {
+  if (!isset($_POST["npc"]) || !is_array($_POST["npc"])) {
+    return false;
+  }
   for ($i=0; $i<count($_POST["npc"]); $i++) {
     if($id==$_POST["npc"][$i]) return true;  
   }
+  return false;
 }
 
-if (isset($submitDetailCSV)) {
+$submitDetailCSV = isset($_POST['submitDetailCSV']);
+$submitDetail = isset($_POST['submitDetail']);
+if ($submitDetailCSV) {
   $submitDetail=true;
   $liste=""; $sep="";
+  if (!isset($_POST["npc"]) || !is_array($_POST["npc"])) {
+    $_POST["npc"] = array();
+  }
   foreach ($_POST["npc"] as $id) {
     $liste=$liste.$sep.$id; $sep=":";
   }

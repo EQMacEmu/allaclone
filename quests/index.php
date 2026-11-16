@@ -4,45 +4,37 @@ include('../includes/config.php');
 include('../includes/functions.php');
 include('../includes/mysql.php');
 
-if (!isset($npc)) { print "<script>document.location=\"../index.php\";</script>"; }
-if (!isset($zone)) { print "<script>document.location=\"../index.php\";</script>"; }
-if (!isset($npcid)) { $npcid=0; }
-if (!isset($iclass)) { $iclass="c"; }
-if (!isset($ilevel)) { $ilevel="l"; }
-if (!isset($ifaction)) { $ifaction="5"; }
-if (!isset($irace)) { $irace='\&lt\;your\&nbsp\;race\&gt\;'; }
+$npc = isset($_REQUEST['npc']) ? $_REQUEST['npc'] : null;
+$zone = isset($_REQUEST['zone']) ? $_REQUEST['zone'] : null;
+$npcid = isset($_REQUEST['npcid']) ? $_REQUEST['npcid'] : 0;
+$iclass = isset($_REQUEST['iclass']) ? $_REQUEST['iclass'] : 'c';
+$ilevel = isset($_REQUEST['ilevel']) ? $_REQUEST['ilevel'] : 'l';
+$ifaction = isset($_REQUEST['ifaction']) ? $_REQUEST['ifaction'] : '5';
+$irace = isset($_REQUEST['irace']) ? $_REQUEST['irace'] : '\&lt\;your\&nbsp\;race\&gt\;';
+
+if ($npc === null || $npc === '' || $zone === null || $zone === '') {
+	print "<script>document.location=\"../index.php\";</script>";
+	exit;
+}
+
+// Restrict path components used for generated .inc lookup.
+if (!preg_match('/^[A-Za-z0-9_#.-]+$/', $zone) || !preg_match('/^[A-Za-z0-9_#.-]+$/', $npc)) {
+	print "<script>document.location=\"../index.php\";</script>";
+	exit;
+}
 
 $Title="Quest(s) for :: ".str_replace('_',' ',$npc);
 if ($zone!="") { $myzone=GetFieldByQuery("long_name","SELECT long_name FROM zone WHERE short_name like '".addslashes($zone)."'"); }
-$Title.="<br><a href=zones.php?aZone=$zone>$myzone</a>";
+$Title.="<br><a href=zones.php?aZone=".rawurlencode($zone).">$myzone</a>";
 include('../includes/headers.php');
 
-if ($AlwaysBuildQuest==TRUE) {
-  print "<center><table border=0 width=0%>";
-  print "<form method=POST action=$PHP_SELF>";
-  print "<input type=hidden value=\"$zone\" name=zone>";
-  print "<input type=hidden value=\"$npc\" name=npc>";
-  print "<tr><td nowrap><b>Run the quest as a </b></td>";
-  print "<td><select name=iclass class=form>";
-  print "<option value=\"c\"".($c==""?" selected":"").">-</option>\n";
-  foreach ($dbclasses_names AS $c) {
-    print "<option value=$c".($c==$iclass?" selected":"").">$c</option>\n";
-  }
-  print "</select></td><td>";
-  print SelectLevel("ilevel",70,$ilevel);
-  print "</td><td><select name=ifaction class=form>";
-  foreach ($dbfactions AS $k=>$c) {
-    print "<option value=$k ".($k==$ifaction?" selected":"").">$c</option>";
-  }
-  print "</select></td><td>";
-  print "</td><td nowrap colspan=2><input type=submit value=\"Run again\" class=form></td></tr>";
-  print "</form></table></center>";
-}
+$file=$quests_datas.urlencode($zone)."/".urlencode($npc).".inc";
 
-$file="$quests_datas".urlencode($zone)."/".urlencode($npc).".inc";
-
-if (($AlwaysBuildQuest==TRUE) or (!file_exists($file))) {
-  system("/usr/bin/perl parse_quest.pl '$zone' '$npc.pl' '$npcid' '$iclass' '$irace' '$ilevel' '$ifaction'");
+// Legacy live Perl parse is disabled on HTTP (command-injection risk). Serve prebuilt .inc only.
+if (!file_exists($file)) {
+	print "<p>Quest data not found for this NPC. Pre-generate quest .inc files offline, or use the Lua DB importer when available.</p>";
+	include("../includes/footers.php");
+	exit;
 }
 
 require($file);
