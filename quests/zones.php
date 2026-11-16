@@ -72,17 +72,17 @@ if ($searchName != "") {
 	$where .= " AND qn.npc_name LIKE '%" . addslashes(str_replace(' ', '_', $searchName)) . "%'";
 }
 if ($searchItemId > 0) {
-	$where .= " AND qn.npc_id IN (
-		SELECT DISTINCT t.npc_id FROM $tbquesttrade t
+	$where .= " AND EXISTS (
+		SELECT 1 FROM $tbquesttrade t
 		JOIN $tbquesttradeitem ti ON ti.trade_id=t.id
-		WHERE ti.item_id=$searchItemId)";
+		WHERE ti.item_id=$searchItemId AND t.npc_id=qn.npc_id AND t.zone_short=qn.zone_short)";
 } elseif ($searchItemName !== '') {
 	$itemLike = addslashes(str_replace('_', '%', str_replace(' ', '%', $searchItemName)));
-	$where .= " AND qn.npc_id IN (
-		SELECT DISTINCT t.npc_id FROM $tbquesttrade t
+	$where .= " AND EXISTS (
+		SELECT 1 FROM $tbquesttrade t
 		JOIN $tbquesttradeitem ti ON ti.trade_id=t.id
 		JOIN $tbitems it ON it.id=ti.item_id
-		WHERE it.Name LIKE '%$itemLike%')";
+		WHERE it.Name LIKE '%$itemLike%' AND t.npc_id=qn.npc_id AND t.zone_short=qn.zone_short)";
 }
 
 $maxRows = 500;

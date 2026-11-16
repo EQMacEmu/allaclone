@@ -4,17 +4,62 @@
  */
 
 function quest_tables_ready($db) {
-	global $tbquestnpc;
+	global $tbquestnpc, $tbquesttrade, $tbquesttradeitem;
 	static $ready = null;
 	if ($ready !== null) {
 		return $ready;
 	}
-	$res = @mysqli_query($db, "SHOW TABLES LIKE '" . addslashes($tbquestnpc) . "'");
-	$ready = ($res && mysqli_num_rows($res) > 0);
-	if ($res) {
-		mysqli_free_result($res);
+	$needed = array($tbquestnpc, $tbquesttrade, $tbquesttradeitem);
+	$ready = true;
+	foreach ($needed as $table) {
+		if (empty($table)) {
+			$ready = false;
+			break;
+		}
+		$res = @mysqli_query($db, "SHOW TABLES LIKE '" . addslashes($table) . "'");
+		$ok = ($res && mysqli_num_rows($res) > 0);
+		if ($res) {
+			mysqli_free_result($res);
+		}
+		if (!$ok) {
+			$ready = false;
+			break;
+		}
 	}
 	return $ready;
+}
+
+/**
+ * Resolve a pre-generated quest .inc path under $quests_datas.
+ * Returns absolute path or null. Never executes Perl; include-only fallback.
+ */
+function quest_safe_inc_path($zoneShort, $npcName) {
+	global $quests_datas;
+	$zoneShort = preg_replace('/[^a-zA-Z0-9_]/', '', (string)$zoneShort);
+	$npcName = preg_replace('/[^a-zA-Z0-9_#~!-]/', '', (string)$npcName);
+	if ($zoneShort === '' || $npcName === '' || empty($quests_datas)) {
+		return null;
+	}
+	$root = realpath($quests_datas);
+	if ($root === false || !is_dir($root)) {
+		return null;
+	}
+	$candidate = $root . DIRECTORY_SEPARATOR . $zoneShort . DIRECTORY_SEPARATOR . $npcName . '.inc';
+	$real = realpath($candidate);
+	if ($real === false || !is_file($real)) {
+		// Try urlencoded legacy names without resolving traversal.
+		$candidate2 = $root . DIRECTORY_SEPARATOR . $zoneShort . DIRECTORY_SEPARATOR . str_replace(' ', '_', $npcName) . '.inc';
+		$real = realpath($candidate2);
+	}
+	if ($real === false || !is_file($real)) {
+		return null;
+	}
+	$rootNorm = strtolower(str_replace('\\', '/', $root));
+	$realNorm = strtolower(str_replace('\\', '/', $real));
+	if (strpos($realNorm, $rootNorm . '/') !== 0 && $realNorm !== $rootNorm) {
+		return null;
+	}
+	return $real;
 }
 
 /**
@@ -98,6 +143,21 @@ function quest_trade_item_links($db, $tradeId, $role, $highlightItemId = 0) {
 	return $parts;
 }
 
+/** Give-side currency from a quest_trade row (if columns exist). */
+function quest_trade_give_currency_parts($tradeRow) {
+	$parts = array();
+	$money = quest_format_money(
+		isset($tradeRow['give_copper']) ? (int)$tradeRow['give_copper'] : 0,
+		isset($tradeRow['give_silver']) ? (int)$tradeRow['give_silver'] : 0,
+		isset($tradeRow['give_gold']) ? (int)$tradeRow['give_gold'] : 0,
+		isset($tradeRow['give_platinum']) ? (int)$tradeRow['give_platinum'] : 0
+	);
+	if ($money) {
+		$parts[] = $money;
+	}
+	return $parts;
+}
+
 /** Money / exp / faction extras from a quest_trade row. */
 function quest_trade_reward_extras($tradeRow) {
 	$parts = array();
@@ -148,10 +208,11 @@ function quest_print_item_trades($db, $itemId, $role) {
 		}
 		echo " — <a href='{$root_url}zone.php?name=" . urlencode($row['zone']) . "'>" . htmlspecialchars($zoneLabel) . "</a>";
 
+		$zoneEsc = addslashes($row['zone']);
 		$tq = "SELECT t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag
 			FROM $tbquesttrade t
 			JOIN $tbquesttradeitem ti ON ti.trade_id = t.id AND ti.role='$role' AND ti.item_id=$itemId
-			WHERE t.npc_id=$npcId
+			WHERE t.npc_id=$npcId AND t.zone_short='$zoneEsc'
 			GROUP BY t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag, t.line_no
 			ORDER BY t.line_no, t.id";
 		$tr = mysqli_query($db, $tq);

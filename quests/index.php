@@ -12,15 +12,33 @@ if (empty($AllowQuestsNPC)) {
 }
 
 $npc_id = isset($_REQUEST['npc_id']) ? (int)$_REQUEST['npc_id'] : 0;
-$zone = isset($_REQUEST['zone']) ? $_REQUEST['zone'] : '';
+$zone = isset($_REQUEST['zone']) ? preg_replace('/[^a-zA-Z0-9_]/', '', (string)$_REQUEST['zone']) : '';
 // Legacy name-based links: ?npc=Behroe_Dlexon&zone=qeynos
-$npcName = isset($_REQUEST['npc']) ? $_REQUEST['npc'] : '';
+$npcName = isset($_REQUEST['npc']) ? (string)$_REQUEST['npc'] : '';
+$npcNameSafe = preg_replace('/[^a-zA-Z0-9_#~!\- ]/', '', $npcName);
 
-if ($npc_id <= 0 && $npcName != '' && $zone != '') {
-	$q = "SELECT npc_id FROM $tbquestnpc WHERE zone_short='" . addslashes($zone) . "'
-		AND (npc_name='" . addslashes($npcName) . "' OR npc_name='" . addslashes(str_replace(' ', '_', $npcName)) . "')
-		LIMIT 1";
-	$npc_id = (int)GetFieldByQuery('npc_id', $q);
+if ($npc_id <= 0 && $npcNameSafe != '' && $zone != '') {
+	if (quest_tables_ready($db)) {
+		$q = "SELECT npc_id FROM $tbquestnpc WHERE zone_short='" . addslashes($zone) . "'
+			AND (npc_name='" . addslashes($npcNameSafe) . "' OR npc_name='" . addslashes(str_replace(' ', '_', $npcNameSafe)) . "')
+			LIMIT 1";
+		$npc_id = (int)GetFieldByQuery('npc_id', $q);
+	}
+}
+
+if ($npc_id <= 0 && $npcNameSafe != '' && $zone != '') {
+	// Name bookmark with no imported row: try static .inc fallback (no Perl).
+	$inc = quest_safe_inc_path($zone, str_replace(' ', '_', $npcNameSafe));
+	if ($inc) {
+		$Title = "Quest(s) for :: " . htmlspecialchars(str_replace('_', ' ', $npcNameSafe));
+		include('../includes/headers.php');
+		print "<div class='container quests quest-detail'>";
+		print "<p class='quest-note'>Showing archived quest text (imported Lua data unavailable for this NPC).</p>";
+		include $inc;
+		print "</div></div>";
+		include('../includes/footers.php');
+		exit;
+	}
 }
 
 if ($npc_id <= 0 || in_array($npc_id, array_map('intval', $hide_npc_id))) {
@@ -45,10 +63,45 @@ if ($zone != '') {
 	$qn = GetRowByQuery($questNpcQuery . " AND $tbquestnpc.zone_short='" . addslashes($zone) . "' ORDER BY $tbquestnpc.id LIMIT 1");
 }
 if (!$qn) {
-	$qn = GetRowByQuery($questNpcQuery . " ORDER BY $tbquestnpc.id LIMIT 1");
+	$matches = array();
+	$res = mysqli_query($db, $questNpcQuery . " ORDER BY $tbquestnpc.zone_short, $tbquestnpc.id");
+	while ($res && ($row = mysqli_fetch_assoc($res))) {
+		$matches[] = $row;
+	}
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	if (count($matches) === 1) {
+		$qn = $matches[0];
+	} elseif (count($matches) > 1) {
+		$Title = "Quest: choose zone";
+		include('../includes/headers.php');
+		print "<div class='container quests'><p>This NPC has quest data in multiple zones. Choose one:</p><ul>";
+		foreach ($matches as $row) {
+			$label = $row['long_name'] ? $row['long_name'] : $row['zone_short'];
+			print "<li><a href='" . quest_npc_detail_url($npc_id, $row['zone_short']) . "'>" . htmlspecialchars($label) . "</a></li>";
+		}
+		print "</ul></div></div>";
+		include('../includes/footers.php');
+		exit;
+	}
 }
 if (!$qn) {
-	// Valid NPC id but no imported quest script — fall through to the NPC page.
+	// No imported row: optional static .inc, else NPC page.
+	$npcDbName = GetFieldByQuery('name', "SELECT name FROM $tbnpctypes WHERE id=$npc_id");
+	if ($zone != '' && $npcDbName) {
+		$inc = quest_safe_inc_path($zone, $npcDbName);
+		if ($inc) {
+			$Title = "Quest: " . htmlspecialchars(quest_npc_display_name($npcDbName));
+			include('../includes/headers.php');
+			print "<div class='container quests quest-detail'>";
+			print "<p class='quest-note'>Showing archived quest text (imported Lua data unavailable for this NPC).</p>";
+			include $inc;
+			print "</div></div>";
+			include('../includes/footers.php');
+			exit;
+		}
+	}
 	header('Location: ' . $root_url . 'npc.php?id=' . $npc_id);
 	exit;
 }
@@ -121,7 +174,7 @@ if ($tradeRes && mysqli_num_rows($tradeRes) > 0) {
 	while ($t = mysqli_fetch_assoc($tradeRes)) {
 		$tid = (int)$t['id'];
 		print "<div class='quest-trade'>";
-		$give = quest_trade_item_links($db, $tid, 'give');
+		$give = array_merge(quest_trade_item_links($db, $tid, 'give'), quest_trade_give_currency_parts($t));
 		print "<p><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)') . "</p>";
 		$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward'), quest_trade_reward_extras($t));
 		print "<p><strong>Reward:</strong> " . ($rewards ? implode(', ', $rewards) : '(none extracted)') . "</p>";
