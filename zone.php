@@ -2,14 +2,17 @@
 include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir . 'mysql.php');
+include($includes_dir . 'map_helpers.php');
 
 
-$name  = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
-$mode  = (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
-
-if ($order == "level"){
-	$order = "level desc";
+$nameRaw = isset($_GET['name']) ? (string)$_GET['name'] : '';
+$name = preg_replace('/[^a-zA-Z0-9_]/', '', $nameRaw);
+$orderRaw = isset($_GET['order']) ? (string)$_GET['order'] : 'name';
+$allowedOrders = array('name' => 'name', 'level' => 'level desc', 'race' => 'race');
+$order = isset($allowedOrders[$orderRaw]) ? $allowedOrders[$orderRaw] : 'name';
+$mode = isset($_GET['mode']) ? preg_replace('/[^a-zA-Z0-9_]/', '', (string)$_GET['mode']) : 'npcs';
+if ($mode === '') {
+	$mode = 'npcs';
 }
 
 if ($UseCustomZoneList == TRUE && $name != '') {
@@ -20,24 +23,45 @@ if ($UseCustomZoneList == TRUE && $name != '') {
 	}
 }
 
-$Title = GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='$name'") . " ($name)";
+if ($name === '') {
+	header('Location: zones.php');
+	exit;
+}
+
+$zoneLong = GetFieldByQuery("long_name", "SELECT long_name FROM $tbzones WHERE short_name='" . addslashes($name) . "'");
+if ($zoneLong === '' || $zoneLong === null) {
+	header('Location: zones.php');
+	exit;
+}
+$Title = htmlspecialchars($zoneLong) . " (" . htmlspecialchars($name) . ")";
 include($includes_dir . 'headers.php');
 include($includes_dir . 'functions.php');
-
-if (!isset($name)) {
-	print "<script>document.location=\"zones.php\";</script>";
-}
 
 $ZoneDebug = FALSE; // this is new in 0.5.3 but undocumented, it is for world builders
 
 
-$query = "SELECT $tbzones.* FROM $tbzones WHERE $tbzones.short_name='$name'";
+$query = "SELECT $tbzones.* FROM $tbzones WHERE $tbzones.short_name='" . addslashes($name) . "'";
 $result = mysqli_query($db, $query) or message_die('zones.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 $zone = mysqli_fetch_array($result);
+if (!$zone) {
+	header('Location: zones.php');
+	exit;
+}
 
 print "<div class='container zone'>";
 
+// Old ?mode=map bookmarks fold into the default zone page (map is embedded there).
+if ($mode == "map") {
+	$mode = "npcs";
+}
+
 if ($mode == "npcs") {
+	if (map_txt_available($name)) {
+		print "<h2>Map</h2>";
+		$spawn_pts = fetch_zone_succor_spawn($zone);
+		render_interactive_map($name, $spawn_pts, array(), array(), 'zone');
+	}
+
 	$query = "SELECT $tbnpctypes.id,$tbnpctypes.class,$tbnpctypes.level,$tbnpctypes.maxlevel,$tbnpctypes.race,$tbnpctypes.name,$tbnpctypes.maxlevel
 		FROM $tbnpctypes,$tbzones
 		WHERE zone.short_name='$name'
@@ -296,8 +320,13 @@ if ($DisplayNamedNPCsInfo == TRUE) {
 	print "<li><a href=zonenameds.php?name=$name&mode=npcs>" . $zone["long_name"] . " Named Mobs List</a>";
 }
 print "<li><a href=$PHP_SELF?name=$name&mode=items>" . $zone["long_name"] . " Equipment</a>";
-if (file_exists($maps_dir . $name . ".jpg")) {
-	print "<li><a href=" . $maps_url . $name . ".jpg>" . $zone["long_name"] . " Map</a>";
+$mapFileBase = preg_replace('/[^a-zA-Z0-9_]/', '', $name);
+if ($mapFileBase !== '' && file_exists($maps_dir . $mapFileBase . ".jpg")) {
+	print "<li><a href=" . htmlspecialchars($maps_url . $mapFileBase . ".jpg") . ">" . htmlspecialchars($zone["long_name"]) . " Map (image)</a>";
+} elseif ($mapFileBase !== '' && file_exists($maps_dir . $mapFileBase . ".gif")) {
+	print "<li><a href=" . htmlspecialchars($maps_url . $mapFileBase . ".gif") . ">" . htmlspecialchars($zone["long_name"]) . " Map (image)</a>";
+} elseif ($mapFileBase !== '' && file_exists($maps_dir . $mapFileBase . ".png")) {
+	print "<li><a href=" . htmlspecialchars($maps_url . $mapFileBase . ".png") . ">" . htmlspecialchars($zone["long_name"]) . " Map (image)</a>";
 }
 if ($DisplaySpawnGroupInfo == TRUE) {
 	print "<li><a href=$PHP_SELF?name=$name&mode=spawngroups>" . $zone["long_name"] . " Spawn Groups</a>";

@@ -35,7 +35,15 @@ $tbtaskactivities = "activities";
 // added tables, source the needed file from the includes/sql directory
 $tbspawnarea = "spawnarea"; // Tool Specific Table
 $tbnews = "eqbnews"; // Tool Specific Table
-$tbquestitems = "quest_items"; // Tool Specific Table
+$tbquestitems = "quest_items"; // Tool Specific Table (compat index from Lua ingest)
+$tbquestnpc = "quest_npc"; // Tool Specific Table
+$tbquesttrade = "quest_trade"; // Tool Specific Table
+$tbquesttradeitem = "quest_trade_item"; // Tool Specific Table
+$tbquestfactionhit = "quest_faction_hit"; // Tool Specific Table
+$tbquestfactionreq = "quest_faction_req"; // Tool Specific Table
+$tbquestsaybranch = "quest_say_branch"; // Tool Specific Table
+$tbquestspawn = "quest_spawn"; // Tool Specific Table (literal quest-script spawn coords)
+$tbquestdeathspawn = "quest_death_spawn"; // Tool Specific Table (death→spawn edges)
 $tbraces = "races"; // Tool Specific Table
 
 

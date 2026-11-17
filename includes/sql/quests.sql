@@ -1,9 +1,174 @@
-CREATE TABLE `quest_items` (
+-- Tool-specific quest tables for AllaClone (Lua offline ingest).
+-- Idempotent CREATE for first-time install. The importer never DROPs live
+-- tables first; it loads staging tables and swaps via RENAME TABLE.
+-- Refresh data with: php quests/import_lua_quests.php --quests /path/to/quests
+-- Runtime PHP pages only SELECT/JOIN these tables; they never parse Lua.
+
+CREATE TABLE IF NOT EXISTS `quest_npc` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `npc_name` varchar(64) NOT NULL DEFAULT '',
+  `primary_faction_id` int(11) NOT NULL DEFAULT '0',
+  `script_paths` varchar(512) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `zone_npc` (`zone_short`,`npc_id`),
+  KEY `npc_id` (`npc_id`),
+  KEY `zone_short` (`zone_short`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `quest_trade` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `quest_npc_id` int(11) NOT NULL DEFAULT '0',
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  `reward_exp` int(11) NOT NULL DEFAULT '0',
+  `copper` int(11) NOT NULL DEFAULT '0',
+  `silver` int(11) NOT NULL DEFAULT '0',
+  `gold` int(11) NOT NULL DEFAULT '0',
+  `platinum` int(11) NOT NULL DEFAULT '0',
+  `give_copper` int(11) NOT NULL DEFAULT '0',
+  `give_silver` int(11) NOT NULL DEFAULT '0',
+  `give_gold` int(11) NOT NULL DEFAULT '0',
+  `give_platinum` int(11) NOT NULL DEFAULT '0',
+  `reward_faction_flag` tinyint(4) NOT NULL DEFAULT '0',
+  `effect_notes` varchar(512) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `quest_npc_id` (`quest_npc_id`),
+  KEY `npc_id` (`npc_id`),
+  KEY `zone_short` (`zone_short`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `quest_trade_item` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `trade_id` int(11) NOT NULL DEFAULT '0',
+  `role` enum('give','reward') NOT NULL DEFAULT 'give',
+  `item_id` int(11) NOT NULL DEFAULT '0',
+  `ord` tinyint(4) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `trade_id` (`trade_id`),
+  KEY `item_id` (`item_id`),
+  KEY `role_item` (`role`,`item_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `quest_faction_hit` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `quest_npc_id` int(11) NOT NULL DEFAULT '0',
+  `trade_id` int(11) NOT NULL DEFAULT '0',
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `faction_id` int(11) NOT NULL DEFAULT '0',
+  `delta` int(11) NOT NULL DEFAULT '0',
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `faction_id` (`faction_id`),
+  KEY `npc_id` (`npc_id`),
+  KEY `quest_npc_id` (`quest_npc_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `quest_faction_req` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `quest_npc_id` int(11) NOT NULL DEFAULT '0',
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `faction_id` int(11) NOT NULL DEFAULT '0',
+  `min_raw` int(11) NOT NULL DEFAULT '0',
+  `standing_label` varchar(64) NOT NULL DEFAULT '',
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `faction_id` (`faction_id`),
+  KEY `npc_id` (`npc_id`),
+  KEY `quest_npc_id` (`quest_npc_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+CREATE TABLE IF NOT EXISTS `quest_say_branch` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `quest_npc_id` int(11) NOT NULL DEFAULT '0',
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `keyword` varchar(64) NOT NULL DEFAULT '',
+  `response_kind` varchar(32) NOT NULL DEFAULT '',
+  `response_text` varchar(512) NOT NULL DEFAULT '',
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `quest_npc_id` (`quest_npc_id`),
+  KEY `npc_id` (`npc_id`),
+  KEY `keyword` (`keyword`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- Literal eq.spawn2 / unique_spawn coords from zone scripts (quest-popped NPCs).
+CREATE TABLE IF NOT EXISTS `quest_spawn` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
+  `x` double NOT NULL DEFAULT '0',
+  `y` double NOT NULL DEFAULT '0',
+  `z` double NOT NULL DEFAULT '0',
+  `heading` double NOT NULL DEFAULT '0',
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  `call_kind` varchar(32) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `npc_zone` (`npc_id`,`zone_short`),
+  KEY `zone_short` (`zone_short`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- Death-handler spawn edges (killer NPC → spawned NPC) from event_death /
+-- event_death_complete and named Event.death / Event.death_complete callbacks.
+-- x/y/z/heading are NULL when coords are dynamic (e.g. corpse GetX/Y/Z).
+CREATE TABLE IF NOT EXISTS `quest_death_spawn` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `zone_short` varchar(64) NOT NULL DEFAULT '',
+  `source_npc_id` int(11) NOT NULL DEFAULT '0',
+  `spawned_npc_id` int(11) NOT NULL DEFAULT '0',
+  `call_kind` varchar(32) NOT NULL DEFAULT '',
+  `event_kind` varchar(32) NOT NULL DEFAULT '',
+  `x` double DEFAULT NULL,
+  `y` double DEFAULT NULL,
+  `z` double DEFAULT NULL,
+  `heading` double DEFAULT NULL,
+  `script_file` varchar(255) NOT NULL DEFAULT '',
+  `line_no` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `spawned_npc_id` (`spawned_npc_id`),
+  KEY `source_npc_id` (`source_npc_id`),
+  KEY `zone_short` (`zone_short`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- Item↔NPC index used by item-page lookups (generated by importer).
+-- New installs get npc_id in the PK. Older installs may still have
+-- PRIMARY KEY (item_id, npc, zone) without npc_id; the importer detects that
+-- legacy shape, loads new-schema staging, and swaps via RENAME (no live DROP/ALTER
+-- of quest_items before a successful validated import). Unresolvable legacy
+-- npc-name rows are omitted from staging and do not survive the swap.
+CREATE TABLE IF NOT EXISTS `quest_items` (
   `item_id` int(11) NOT NULL DEFAULT '0',
   `npc` varchar(64) NOT NULL DEFAULT '',
   `zone` varchar(64) NOT NULL DEFAULT '',
+  `npc_id` int(11) NOT NULL DEFAULT '0',
   `rewarded` tinyint(4) NOT NULL DEFAULT '0',
   `handed` tinyint(4) NOT NULL DEFAULT '0',
-  PRIMARY KEY (`item_id`,`npc`,`zone`),
-  KEY `item_id` (`item_id`)
-) ENGINE=MyISAM AUTO_INCREMENT=67544 DEFAULT CHARSET=latin1;
+  PRIMARY KEY (`item_id`,`npc_id`,`zone`),
+  KEY `item_id` (`item_id`),
+  KEY `npc_id` (`npc_id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- Last successful import manifest (source version / counts).
+CREATE TABLE IF NOT EXISTS `quest_import_meta` (
+  `id` int(11) NOT NULL DEFAULT '1',
+  `imported_at` datetime NOT NULL,
+  `importer_version` varchar(32) NOT NULL DEFAULT '',
+  `quest_root` varchar(512) NOT NULL DEFAULT '',
+  `zones` varchar(512) NOT NULL DEFAULT '',
+  `npc_count` int(11) NOT NULL DEFAULT '0',
+  `trade_count` int(11) NOT NULL DEFAULT '0',
+  `say_count` int(11) NOT NULL DEFAULT '0',
+  `spawn_count` int(11) NOT NULL DEFAULT '0',
+  `content_signature` varchar(64) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;

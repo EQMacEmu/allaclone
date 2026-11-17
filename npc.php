@@ -12,11 +12,13 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'mysql.php');
+include($includes_dir . 'quest_helpers.php');
+include($includes_dir . 'map_helpers.php');
 
 $id   = (isset($_GET['id']) ? $_GET['id'] : '');
 $name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
 
-$Title="";
+$Title = "";
 if ($id != "" && !in_array($id, $hide_npc_id) && is_numeric($id)) {
 	$Query = "SELECT * FROM $tbnpctypes WHERE id='" . $id . "'";
 	foreach ($hide_npc_id as $hideme) {
@@ -360,16 +362,19 @@ foreach ($IgnoreZones as $zid) {
 $result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 
 print "<div class='spawn-wrapper list-wrapper'>";
+$npc_map_short_name = '';
 if (mysqli_num_rows($result) > 0) {
 	$spawnentryfilter = gatefilter(array($tbspawnentry, $tbspawn2));
 	$spawn2filter = gatefilter(array($tbspawn2));
 	$row = mysqli_fetch_array($result);
 	$short_name = $row["short_name"];
 	$long_name = $row["long_name"];
+	$npc_map_short_name = $short_name;
 	print "<p><strong>This NPC spawns in:</strong></p>";
 	print "<ul>";
 	print "<li class='spawn-zone'><a href='zone.php?name=$short_name'><u>$long_name</u></a></li>";
 	print "</ul>";
+
 	if ($DisplaySpawnGroupInfo == TRUE) {
 		// Some spawngroups have multiple spawntimes in spawn2. List each set separately
 		print "<ul class='spawn-group'>";
@@ -386,10 +391,15 @@ if (mysqli_num_rows($result) > 0) {
 			JOIN $tbspawn2 ON $tbspawnentry.spawngroupID = $tbspawn2.spawngroupID
 			WHERE $tbspawnentry.npcID = $id
 			$spawnentryfilter
-			GROUP BY $tbspawngroup.id, $tbspawn2.respawntime
+			GROUP BY $tbspawngroup.id, $tbspawngroup.name, $tbspawnentry.chance,
+				$tbspawn2.respawntime, $tbspawn2.variance, $tbspawn2.boot_respawntime, $tbspawn2.boot_variance
 			ORDER BY $tbspawngroup.name
 			";
-		$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+		$result = mysqli_query($db, $query);
+		if ($result === false) {
+			message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+			exit;
+		}
 		if (mysqli_num_rows($result) > 0) {
 			while ($sgrow = mysqli_fetch_array($result)) {
 				$spawngroupID = $sgrow["spawngroupID"];
@@ -456,6 +466,7 @@ if (mysqli_num_rows($result) > 0) {
 } else {
 	print "<p><strong>This NPC does not spawn during this expansion.</strong></p>";
 }
+quest_print_npc_death_spawns($db, $id);
 print "</div>"; // spawn-wrapper
 
 function print_spell($spell, $extra = "")
@@ -521,6 +532,8 @@ if ($npc["npc_spells_id"] > 0) {
 	}
 }
 
+quest_print_npc_section($db, $id);
+
 // factions
 if ($npc["npc_faction_id"] > 0) {
 	$query = "SELECT $tbfactionlist.name,$tbfactionlist.id
@@ -576,9 +589,25 @@ if (mysqli_num_rows($result) > 0) {
 	print "</ul>";
 	print "</div>"; // list-wrapper
 }
-print "</div>"; // site-wrapper
-print "</div>"; // main
+
+// Interactive map uses the first spawn zone found for this NPC (multi-zone NPCs: one map only).
+if ($npc_map_short_name !== '' && map_txt_available($npc_map_short_name)) {
+	$mapInfo = fetch_npc_display_map_spawns($id, $npc_map_short_name);
+	if (count($mapInfo['points']) > 0) {
+		if ($mapInfo['source'] === 'quest') {
+			print "<h3>Quest spawn location</h3>";
+			print "<p class='quest-note'>No static spawn point in this zone; location taken from quest script spawn calls.</p>";
+		} else {
+			print "<h3>Spawn Map</h3>";
+		}
+		render_interactive_map($npc_map_short_name, $mapInfo['points']);
+	}
+}
+
+print "</div>"; // right-col
 print "</div>"; // npc-info
 print "</div>"; // npc-wrapper
+print "</div>"; // #main — must close before footer so footer stays a #site-wrapper grid child
+// #site-wrapper is closed in footers.php
 
 include($includes_dir . "footers.php");

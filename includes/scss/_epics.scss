@@ -1,0 +1,129 @@
+.epics {
+	grid-area: pageContent;
+	padding: 0 1rem 1rem;
+	box-sizing: border-box;
+	max-width: 960px;
+}
+
+.epic-intro {
+	margin-bottom: 1rem;
+	line-height: 1.45;
+}
+
+.epic-breadcrumb {
+	margin-top: 0;
+	font-size: 13px;
+	color: #555;
+}
+
+.epic-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	background: rgba(255, 255, 255, 0.55);
+}
+
+.epic-table th,
+.epic-table td {
+	border: 1px solid #ccc;
+	padding: 8px 10px;
+	vertical-align: top;
+	text-align: left;
+}
+
+.epic-table th {
+	background: rgba(220, 220, 220, 0.7);
+}
+
+.epic-table td:nth-child(3) {
+	font-size: 13px;
+	color: #333;
+}
+
+.epic-header {
+	margin-bottom: 1rem;
+}
+
+.epic-blurb {
+	color: #444;
+}
+
+.epic-toc ul {
+	margin: 0.25em 0 1em 1.25em;
+}
+
+.epic-prefarm {
+	margin: 1rem 0;
+	padding: 12px;
+	background: rgba(220, 220, 220, 0.45);
+	border: 1px solid #ccc;
+}
+
+.epic-checklist {
+	list-style: none;
+	margin: 0.5em 0 0;
+	padding: 0;
+}
+
+.epic-checklist li {
+	margin: 0.35em 0;
+	line-height: 1.4;
+}
+
+.epic-checklist input {
+	margin-right: 6px;
+}
+
+.epic-note {
+	color: #555;
+	font-size: 13px;
+}
+
+.epic-section {
+	margin: 1.25rem 0;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid #ddd;
+}
+
+.epic-section:last-of-type {
+	border-bottom: 0;
+}
+
+.epic-steps {
+	margin-left: 1.5em;
+	line-height: 1.45;
+}
+
+.epic-steps > li {
+	margin: 0.6em 0;
+}
+
+.epic-steps ul {
+	margin: 0.35em 0 0.35em 1.25em;
+}
+
+.epic-callout {
+	margin: 0.75em 0;
+	padding: 8px 12px;
+	border: 1px solid #ccc;
+	background: rgba(255, 255, 255, 0.65);
+	font-size: 13px;
+	line-height: 1.4;
+}
+
+.epic-callout-warning {
+	border-color: #c09040;
+	background: rgba(255, 240, 200, 0.7);
+}
+
+.epic-callout-faction {
+	border-color: #7090b0;
+	background: rgba(220, 235, 250, 0.7);
+}
+
+.epic-verified,
+.epic-coming-soon {
+	font-size: 12px;
+	color: #666;
+	margin-top: 1.5rem;
+}
