@@ -13,6 +13,5 @@
 <?php if (!empty($AllowEpics)) : ?>
 		<li><a href="<?php echo $root_url; ?>guides/epics/">Epics</a></li>
 <?php endif; ?>
-		<li><a href="https://wiki.takp.info">Wiki</a></li>
 	</ul>
 </div>
