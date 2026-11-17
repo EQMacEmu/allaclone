@@ -56,6 +56,16 @@ assert_true($reg['registered_npc_ids'] === array(12001, 12002), 'register_npc_ev
 $spawns = extract_literal_quest_spawns(file_get_contents($fixtures . '/register_and_spawn.lua'), 'register_and_spawn.lua');
 assert_true(count($spawns) === 1 && $spawns[0]['npc_id'] === 12003 && $spawns[0]['x'] == 11.0, 'literal spawn2 coords');
 
+$chi = parse_lua_file($fixtures . '/count_handed_item.lua', 'count_handed_item.lua');
+assert_true(count($chi['trades']) === 2, 'count_handed_item extracts 2 trades');
+assert_true($chi['trades'][0]['give_ids'] === array(13916), 'count_handed single give id');
+assert_true($chi['trades'][0]['reward']['reward_item_ids'] === array(13024), 'count_handed reward item');
+assert_true($chi['trades'][0]['reward']['gold'] === 9 && $chi['trades'][0]['reward']['reward_exp'] === 100, 'count_handed reward gold+exp');
+assert_true(count($chi['trades'][0]['faction_hits']) === 2, 'count_handed factions attributed to trade');
+assert_true($chi['trades'][0]['faction_hits'][0]['faction_id'] === 263 && $chi['trades'][0]['faction_hits'][0]['delta'] === 5, 'count_handed first faction hit');
+assert_true($chi['trades'][1]['give_ids'] === array(13319, 13319), 'count_handed min_count=2 emits qty');
+assert_true($chi['trades'][1]['reward']['reward_item_ids'] === array(2001), 'count_handed min_count reward');
+
 $un = parse_lua_file($fixtures . '/unsupported_multiline.lua', 'unsupported_multiline.lua');
 $kinds = array();
 foreach ($un['unsupported_hints'] as $h) {
@@ -86,9 +96,10 @@ $t4 = resolve_script_npcs('encounter', 'qeynos', array(2001), $npcMaps, $zoneIds
 assert_true(count($t4) === 0, 'register_npc_event id outside zone skipped');
 
 fwrite(STDOUT, "\nLimitations (by design):\n");
-fwrite(STDOUT, "- Multiline check_turn_in tables are not extracted.\n");
+fwrite(STDOUT, "- Multiline check_turn_in / count_handed_item tables are not extracted.\n");
 fwrite(STDOUT, "- Variable item ids and math.random rewards are not invented.\n");
 fwrite(STDOUT, "- GetFactionValue gates map to NPC primary faction (heuristic).\n");
 fwrite(STDOUT, "- Deep nesting / GetX() dynamic spawns are unsupported.\n");
+fwrite(STDOUT, "- count_handed_item multi-id arrays are listed as Give items (OR vs AND approximate).\n");
 fwrite(STDOUT, "\n$pass passed, $fail failed\n");
 exit($fail > 0 ? 1 : 0);

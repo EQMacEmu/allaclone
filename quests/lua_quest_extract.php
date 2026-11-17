@@ -220,7 +220,7 @@ function turn_in_branch_end($lines, $start) {
 	$end = $n - 1;
 	for ($j = $start + 1; $j < $n; $j++) {
 		$line = $lines[$j];
-		if (preg_match('/item_lib\.check_turn_in\s*\(/i', $line)) {
+		if (preg_match('/item_lib\.(?:check_turn_in|count_handed_item)\s*\(/i', $line)) {
 			$end = $j - 1;
 			break;
 		}
@@ -238,6 +238,86 @@ function turn_in_branch_end($lines, $start) {
 		}
 	}
 	return $end;
+}
+
+/**
+ * For count_handed_item assignments, rewards usually sit in a following
+ * `if (var > 0) then` block — use that if as the branch start when present.
+ */
+function count_handed_reward_branch_start($lines, $callLine) {
+	$n = count($lines);
+	for ($j = $callLine + 1; $j < $n && $j <= $callLine + 8; $j++) {
+		$trimmed = ltrim($lines[$j]);
+		if ($trimmed === '') {
+			continue;
+		}
+		if (preg_match('/^if\b.*>\s*0/i', $trimmed)) {
+			return $j;
+		}
+		// Next hand-in or another statement: keep call line as start.
+		break;
+	}
+	return $callLine;
+}
+
+/**
+ * Collect QuestReward + Faction hits in [branchStart, lim] into a trade row.
+ */
+function append_extracted_trade(&$result, $lines, $rel, $lineNo, $branchStart, $giveIds, $giveCurrency) {
+	$reward = array(
+		'reward_item_ids' => array(),
+		'reward_exp' => 0,
+		'reward_faction_flag' => 0,
+		'copper' => 0,
+		'silver' => 0,
+		'gold' => 0,
+		'platinum' => 0,
+		'faction_hits' => array(),
+	);
+	$lim = turn_in_branch_end($lines, $branchStart);
+	for ($j = $branchStart; $j <= $lim; $j++) {
+		$qr = parse_quest_reward($lines[$j]);
+		if ($qr !== null) {
+			$reward = $qr;
+			break;
+		}
+		if (preg_match('/e\.other:QuestReward/i', $lines[$j]) && preg_match('/math\.random/i', $lines[$j])) {
+			$result['unsupported_hints'][] = array(
+				'kind' => 'nonliteral_reward',
+				'line_no' => $j + 1,
+				'script_file' => $rel,
+			);
+		}
+	}
+	$localHits = array();
+	for ($j = $branchStart; $j <= $lim; $j++) {
+		if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$j], $fm, PREG_SET_ORDER)) {
+			foreach ($fm as $hit) {
+				$localHits[] = array(
+					'faction_id' => (int)$hit[1],
+					'delta' => (int)$hit[2],
+					'line_no' => $j + 1,
+					'script_file' => $rel,
+				);
+			}
+		}
+	}
+	foreach ($reward['faction_hits'] as $fh) {
+		$localHits[] = array(
+			'faction_id' => $fh['faction_id'],
+			'delta' => $fh['delta'],
+			'line_no' => $lineNo,
+			'script_file' => $rel,
+		);
+	}
+	$result['trades'][] = array(
+		'line_no' => $lineNo,
+		'script_file' => $rel,
+		'give_ids' => $giveIds,
+		'give_currency' => $giveCurrency,
+		'reward' => $reward,
+		'faction_hits' => $localHits,
+	);
 }
 
 function parse_lua_file($path, $rel) {
@@ -262,11 +342,12 @@ function parse_lua_text($raw, $rel) {
 		'unsupported_hints' => array(),
 	);
 
+	$emptyCurrency = array('copper' => 0, 'silver' => 0, 'gold' => 0, 'platinum' => 0);
 	$n = count($lines);
 	for ($i = 0; $i < $n; $i++) {
 		$line = $lines[$i];
 		// Multiline turn-in opening: report as unsupported, do not invent.
-		if (preg_match('/item_lib\.check_turn_in\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{\s*$/i', $line)) {
+		if (preg_match('/item_lib\.(?:check_turn_in|count_handed_item)\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{\s*$/i', $line)) {
 			$result['unsupported_hints'][] = array(
 				'kind' => 'multiline_turn_in',
 				'line_no' => $i + 1,
@@ -274,75 +355,49 @@ function parse_lua_text($raw, $rel) {
 			);
 			continue;
 		}
-		if (!preg_match('/item_lib\.check_turn_in\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{([^}]+)\}/i', $line, $m)) {
-			continue;
-		}
-		$giveIds = array();
-		if (preg_match_all('/item\s*\d+\s*=\s*(\d+)/i', $m[1], $im)) {
-			foreach ($im[1] as $id) {
-				$giveIds[] = (int)$id;
-			}
-		}
-		$giveCurrency = parse_turn_in_give_currency($m[1]);
-		$hasCurrency = ($giveCurrency['copper'] + $giveCurrency['silver'] + $giveCurrency['gold'] + $giveCurrency['platinum']) > 0;
-		if (count($giveIds) === 0 && !$hasCurrency) {
-			continue;
-		}
-		$reward = array(
-			'reward_item_ids' => array(),
-			'reward_exp' => 0,
-			'reward_faction_flag' => 0,
-			'copper' => 0,
-			'silver' => 0,
-			'gold' => 0,
-			'platinum' => 0,
-			'faction_hits' => array(),
-		);
-		$lim = turn_in_branch_end($lines, $i);
-		for ($j = $i; $j <= $lim; $j++) {
-			$qr = parse_quest_reward($lines[$j]);
-			if ($qr !== null) {
-				$reward = $qr;
-				break;
-			}
-			// Non-literal rewards: do not invent values.
-			if (preg_match('/e\.other:QuestReward/i', $lines[$j]) && preg_match('/math\.random/i', $lines[$j])) {
-				$result['unsupported_hints'][] = array(
-					'kind' => 'nonliteral_reward',
-					'line_no' => $j + 1,
-					'script_file' => $rel,
-				);
-			}
-		}
-		$localHits = array();
-		for ($j = $i; $j <= $lim; $j++) {
-			if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$j], $fm, PREG_SET_ORDER)) {
-				foreach ($fm as $hit) {
-					$localHits[] = array(
-						'faction_id' => (int)$hit[1],
-						'delta' => (int)$hit[2],
-						'line_no' => $j + 1,
-						'script_file' => $rel,
-					);
+		if (preg_match('/item_lib\.check_turn_in\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{([^}]+)\}/i', $line, $m)) {
+			$giveIds = array();
+			if (preg_match_all('/item\s*\d+\s*=\s*(\d+)/i', $m[1], $im)) {
+				foreach ($im[1] as $id) {
+					$giveIds[] = (int)$id;
 				}
 			}
+			$giveCurrency = parse_turn_in_give_currency($m[1]);
+			$hasCurrency = ($giveCurrency['copper'] + $giveCurrency['silver'] + $giveCurrency['gold'] + $giveCurrency['platinum']) > 0;
+			if (count($giveIds) === 0 && !$hasCurrency) {
+				continue;
+			}
+			append_extracted_trade($result, $lines, $rel, $i + 1, $i, $giveIds, $giveCurrency);
+			continue;
 		}
-		foreach ($reward['faction_hits'] as $fh) {
-			$localHits[] = array(
-				'faction_id' => $fh['faction_id'],
-				'delta' => $fh['delta'],
-				'line_no' => $i + 1,
-				'script_file' => $rel,
-			);
+		// count_handed_item(e.self, e.trade, {id[, id...]} [, min_count] [, text|emote])
+		if (!preg_match('/item_lib\.count_handed_item\s*\(\s*e\.self\s*,\s*e\.trade\s*,\s*\{([^}]*)\}\s*(?:,\s*(\d+))?/i', $line, $cm)) {
+			continue;
 		}
-		$result['trades'][] = array(
-			'line_no' => $i + 1,
-			'script_file' => $rel,
-			'give_ids' => $giveIds,
-			'give_currency' => $giveCurrency,
-			'reward' => $reward,
-			'faction_hits' => $localHits,
-		);
+		$ids = array();
+		if (preg_match_all('/\d+/', $cm[1], $im)) {
+			foreach ($im[0] as $id) {
+				$ids[] = (int)$id;
+			}
+		}
+		if (count($ids) === 0) {
+			continue;
+		}
+		$minCount = (isset($cm[2]) && $cm[2] !== '') ? (int)$cm[2] : 1;
+		if ($minCount < 1) {
+			$minCount = 1;
+		}
+		$unique = array_values(array_unique($ids));
+		$giveIds = array();
+		if (count($unique) === 1 && $minCount > 1) {
+			for ($k = 0; $k < $minCount; $k++) {
+				$giveIds[] = $unique[0];
+			}
+		} else {
+			$giveIds = $unique;
+		}
+		$branchStart = count_handed_reward_branch_start($lines, $i);
+		append_extracted_trade($result, $lines, $rel, $i + 1, $branchStart, $giveIds, $emptyCurrency);
 	}
 
 	for ($i = 0; $i < $n; $i++) {

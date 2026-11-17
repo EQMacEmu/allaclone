@@ -59,6 +59,7 @@ On Windows, `quests/import_lua_quests.ps1` wraps the same importer:
 From each zone’s `*.lua` scripts:
 
 - `item_lib.check_turn_in` give-items, give-currency, and nearby `QuestReward` (items, exp, money, faction flag)
+- `item_lib.count_handed_item(e.self, e.trade, {id[, id…]} [, min_count])` hand-ins (literal ids; optional literal `min_count`; rewards/factions from a following `if (… > 0)` block when present). Multi-id arrays are listed as Give items (OR vs AND is approximate).
 - `e.other:Faction(e.self, id, delta)` hits (attributed to the turn-in branch when inside that branch)
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction — **heuristic**)
 - `event_say` / `:findi("keyword")` dialogue branches (including spawn/depop-only branches)
@@ -68,7 +69,7 @@ Scripts bind to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or
 
 ### Known unsupported patterns (not invented)
 
-- Multiline `{...}` turn-in tables
+- Multiline `{...}` turn-in tables (`check_turn_in` / `count_handed_item`)
 - Variable / concatenated item ids
 - `math.random` / non-literal rewards
 - Dynamic spawn coords (`GetX()` etc.)
