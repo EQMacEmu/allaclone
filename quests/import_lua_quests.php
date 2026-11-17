@@ -537,6 +537,41 @@ $stats = array(
 
 $npcRows = array();
 $spawnRows = array();
+$allUnsupportedHints = array();
+
+function ensure_quest_npc_row(&$npcRows, $zn, $npcId, $meta, $scriptRel) {
+	$key = $zn . '|' . $npcId;
+	if (!isset($npcRows[$key])) {
+		$npcRows[$key] = array(
+			'zone_short' => $zn,
+			'npc_id' => $npcId,
+			'npc_name' => $meta['name'],
+			'primary_faction_id' => $meta['primary_faction_id'],
+			'script_paths' => array(),
+			'trades' => array(),
+			'trade_fps' => array(),
+			'faction_hits' => array(),
+			'faction_reqs' => array(),
+			'say_branches' => array(),
+		);
+	}
+	$npcRows[$key]['script_paths'][$scriptRel] = true;
+	return $key;
+}
+
+function attach_trades_to_npc(&$npcRows, $key, $trades) {
+	foreach ($trades as $t) {
+		if (!isset($t['give_currency'])) {
+			$t['give_currency'] = array('copper' => 0, 'silver' => 0, 'gold' => 0, 'platinum' => 0);
+		}
+		$fp = trade_fingerprint($t);
+		if (isset($npcRows[$key]['trade_fps'][$fp])) {
+			continue;
+		}
+		$npcRows[$key]['trade_fps'][$fp] = true;
+		$npcRows[$key]['trades'][] = $t;
+	}
+}
 
 foreach ($zones as $zone) {
 	$zn = $zone['name'];
@@ -560,6 +595,59 @@ foreach ($zones as $zone) {
 		if ($parsed === null) {
 			continue;
 		}
+		foreach ($parsed['unsupported_hints'] as $h) {
+			$allUnsupportedHints[] = $h;
+		}
+
+		$hasNamed = !empty($parsed['has_named_say_trade']);
+		$stemTargets = resolve_stem_npcs($file['stem'], $zn, $npcMaps, $zoneIds, $spawnZones);
+
+		if ($hasNamed) {
+			// Per-NPC content from named Event.say / Event.trade only.
+			$namedTargets = array();
+			foreach ($parsed['npc_content'] as $npcId => $bag) {
+				$npcId = (int)$npcId;
+				if (!npc_in_zone($npcId, $zn, $zoneIds, $spawnZones)) {
+					continue;
+				}
+				if (!isset($npcMaps['by_id'][$npcId])) {
+					continue;
+				}
+				$namedTargets[$npcId] = $npcMaps['by_id'][$npcId];
+			}
+			if (count($namedTargets) === 0 && count($stemTargets) === 0) {
+				if (ctype_digit($file['stem']) || count($parsed['registered_npc_ids']) > 0) {
+					$stats['skipped_bindings']++;
+				}
+				continue;
+			}
+			foreach ($namedTargets as $npcId => $meta) {
+				$key = ensure_quest_npc_row($npcRows, $zn, $npcId, $meta, $file['rel']);
+				$bag = $parsed['npc_content'][$npcId];
+				attach_trades_to_npc($npcRows, $key, $bag['trades']);
+				foreach ($bag['say_branches'] as $b) {
+					$npcRows[$key]['say_branches'][] = $b;
+				}
+			}
+			// Classic event_say / event_trade content → stem targets only.
+			foreach ($stemTargets as $npcId => $meta) {
+				$key = ensure_quest_npc_row($npcRows, $zn, $npcId, $meta, $file['rel']);
+				attach_trades_to_npc($npcRows, $key, $parsed['trades']);
+				foreach ($parsed['faction_hits'] as $h) {
+					$npcRows[$key]['faction_hits'][] = $h;
+				}
+				foreach ($parsed['faction_reqs'] as $r) {
+					$r['faction_id'] = $meta['primary_faction_id'];
+					$npcRows[$key]['faction_reqs'][] = $r;
+				}
+				foreach ($parsed['say_branches'] as $b) {
+					$npcRows[$key]['say_branches'][] = $b;
+				}
+			}
+			continue;
+		}
+
+		// Classic scripts: stem + register_npc_event ids share file content.
 		$targets = resolve_script_npcs($file['stem'], $zn, $parsed['registered_npc_ids'], $npcMaps, $zoneIds, $spawnZones);
 		if (count($targets) === 0) {
 			if (ctype_digit($file['stem']) || count($parsed['registered_npc_ids']) > 0) {
@@ -568,33 +656,8 @@ foreach ($zones as $zone) {
 			continue;
 		}
 		foreach ($targets as $npcId => $meta) {
-			$key = $zn . '|' . $npcId;
-			if (!isset($npcRows[$key])) {
-				$npcRows[$key] = array(
-					'zone_short' => $zn,
-					'npc_id' => $npcId,
-					'npc_name' => $meta['name'],
-					'primary_faction_id' => $meta['primary_faction_id'],
-					'script_paths' => array(),
-					'trades' => array(),
-					'trade_fps' => array(),
-					'faction_hits' => array(),
-					'faction_reqs' => array(),
-					'say_branches' => array(),
-				);
-			}
-			$npcRows[$key]['script_paths'][$file['rel']] = true;
-			foreach ($parsed['trades'] as $t) {
-				if (!isset($t['give_currency'])) {
-					$t['give_currency'] = array('copper' => 0, 'silver' => 0, 'gold' => 0, 'platinum' => 0);
-				}
-				$fp = trade_fingerprint($t);
-				if (isset($npcRows[$key]['trade_fps'][$fp])) {
-					continue;
-				}
-				$npcRows[$key]['trade_fps'][$fp] = true;
-				$npcRows[$key]['trades'][] = $t;
-			}
+			$key = ensure_quest_npc_row($npcRows, $zn, $npcId, $meta, $file['rel']);
+			attach_trades_to_npc($npcRows, $key, $parsed['trades']);
 			foreach ($parsed['faction_hits'] as $h) {
 				$npcRows[$key]['faction_hits'][] = $h;
 			}
@@ -612,6 +675,29 @@ foreach ($zones as $zone) {
 
 $sig = content_signature($npcRows, $spawnRows);
 $zoneLabel = $zoneFilter ? implode(',', array_keys($zoneFilter)) : '*';
+$hintAgg = aggregate_unsupported_hints($allUnsupportedHints);
+
+function print_unsupported_report($hintAgg) {
+	fwrite(STDOUT, "Unsupported patterns: total={$hintAgg['total']}");
+	if ($hintAgg['total'] > 0) {
+		$parts = array();
+		foreach ($hintAgg['by_kind'] as $kind => $cnt) {
+			$parts[] = "$kind=$cnt";
+		}
+		fwrite(STDOUT, " (" . implode(', ', $parts) . ")");
+	}
+	fwrite(STDOUT, "\n");
+	if ($hintAgg['total'] > 0) {
+		$i = 0;
+		foreach ($hintAgg['by_script'] as $script => $cnt) {
+			fwrite(STDOUT, "  hint-script: $script ($cnt)\n");
+			$i++;
+			if ($i >= 8) {
+				break;
+			}
+		}
+	}
+}
 
 if ($dryRun) {
 	$tradeN = 0;
@@ -625,6 +711,7 @@ if ($dryRun) {
 		fwrite(STDOUT, " (subset merge preserves other live zones)");
 	}
 	fwrite(STDOUT, "\n");
+	print_unsupported_report($hintAgg);
 	fwrite(STDOUT, "Dry run: no DDL and no writes performed. signature=$sig\n");
 	mysqli_close($db);
 	exit(0);
@@ -865,5 +952,6 @@ try {
 }
 
 fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} skipped_unknown_items={$stats['skipped_items']} skipped_bindings={$stats['skipped_bindings']} signature=$sig\n");
+print_unsupported_report($hintAgg);
 mysqli_close($db);
 exit(0);

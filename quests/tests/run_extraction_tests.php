@@ -25,6 +25,8 @@ function assert_true($cond, $msg) {
 	}
 }
 
+assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.2.0', 'extractor version 1.2.0');
+
 $multi = parse_lua_file($fixtures . '/multi_turnin.lua', 'multi_turnin.lua');
 assert_true(count($multi['trades']) === 2, 'multi_turnin extracts 2 trades');
 assert_true($multi['trades'][0]['give_ids'] === array(1001, 1002), 'multi_turnin first give ids');
@@ -73,7 +75,75 @@ foreach ($un['unsupported_hints'] as $h) {
 }
 assert_true(isset($kinds['multiline_turn_in']), 'reports multiline turn-in unsupported');
 assert_true(count($un['trades']) === 0, 'does not invent trades from multiline or variable ids');
-assert_true(isset($kinds['nonliteral_reward']) || true, 'nonliteral reward noted when QuestReward+math.random seen on single-line attempts');
+
+// itemid table rewards
+$ri = parse_lua_file($fixtures . '/reward_itemid.lua', 'reward_itemid.lua');
+assert_true(count($ri['trades']) === 3, 'reward_itemid extracts 3 trades');
+assert_true($ri['trades'][0]['reward']['reward_item_ids'] === array(2001) && $ri['trades'][0]['reward']['reward_exp'] === 50, 'itemid= reward');
+assert_true($ri['trades'][1]['reward']['reward_item_ids'] === array(2002, 2003), 'items={} still works');
+assert_true($ri['trades'][2]['reward']['reward_item_ids'] === array(2004) && $ri['trades'][2]['reward']['platinum'] === 1, 'positional still works');
+
+$rm = parse_lua_file($fixtures . '/reward_multiline_itemid.lua', 'reward_multiline_itemid.lua');
+assert_true(count($rm['trades']) === 1, 'multiline QuestReward one trade');
+assert_true($rm['trades'][0]['reward']['reward_item_ids'] === array(3002), 'multiline itemid');
+assert_true($rm['trades'][0]['reward']['reward_exp'] === 75 && $rm['trades'][0]['reward']['platinum'] === 1, 'multiline exp+plat');
+
+$rd = parse_lua_file($fixtures . '/reward_dynamic.lua', 'reward_dynamic.lua');
+assert_true(count($rd['trades']) === 3, 'dynamic fixture still records turn-ins');
+assert_true($rd['trades'][0]['reward']['reward_item_ids'] === array(), 'ChooseRandom itemid not guaranteed');
+assert_true($rd['trades'][1]['reward']['reward_item_ids'] === array(5003), 'literal itemid kept with random copper');
+assert_true($rd['trades'][1]['reward']['copper'] === 0, 'nonliteral copper not invented');
+assert_true($rd['trades'][2]['reward']['reward_item_ids'] === array(), 'positional ChooseRandom not guaranteed');
+$dk = array();
+foreach ($rd['unsupported_hints'] as $h) {
+	$dk[$h['kind']] = true;
+}
+assert_true(isset($dk['dynamic_reward']) || isset($dk['nonliteral_reward']), 'dynamic reward hinted');
+assert_true(isset($dk['partial_nonliteral_reward']), 'partial nonliteral reward hinted');
+
+// Named encounter handlers + isolation
+$enc = parse_lua_file($fixtures . '/encounter_named_handlers.lua', 'encounter_named_handlers.lua');
+assert_true(!empty($enc['has_named_say_trade']), 'named say/trade detected');
+assert_true(isset($enc['npc_content'][10101]) && isset($enc['npc_content'][10102]), 'per-NPC bags for say/trade NPCs');
+assert_true(!isset($enc['npc_content'][10999]), 'death-only NPC has no quest content bag');
+assert_true(count($enc['npc_content'][10101]['trades']) === 1 && $enc['npc_content'][10101]['trades'][0]['reward']['reward_item_ids'] === array(6002), 'alpha trade isolated');
+assert_true(count($enc['npc_content'][10102]['trades']) === 1 && $enc['npc_content'][10102]['trades'][0]['reward']['reward_item_ids'] === array(7002), 'beta trade isolated');
+assert_true(count($enc['npc_content'][10101]['say_branches']) >= 1 && $enc['npc_content'][10101]['say_branches'][0]['response_text'] === 'Alpha hail reply', 'alpha say isolated');
+assert_true(count($enc['npc_content'][10102]['say_branches']) >= 1 && $enc['npc_content'][10102]['say_branches'][0]['response_text'] === 'Beta hail reply', 'beta say isolated');
+assert_true(count($enc['trades']) === 0, 'classic trades empty when named handlers own content');
+
+// Sirran integration
+$sirran = parse_lua_file($fixtures . '/Sirran.lua', 'encounters/Sirran.lua');
+assert_true(!empty($sirran['has_named_say_trade']), 'Sirran named handlers');
+assert_true(isset($sirran['npc_content'][71058]) && isset($sirran['npc_content'][71023]), 'Sirran isle NPCs present');
+assert_true(!isset($sirran['npc_content'][71032]), 'Sirran death-only Thunder Spirit not in npc_content');
+$t58 = $sirran['npc_content'][71058]['trades'];
+$t23 = $sirran['npc_content'][71023]['trades'];
+assert_true(count($t58) === 2, 'isle1 two trades');
+assert_true(count($t23) === 1, 'isle2 one trade');
+$ids58 = array();
+foreach ($t58 as $t) {
+	foreach ($t['reward']['reward_item_ids'] as $id) {
+		$ids58[] = $id;
+	}
+}
+sort($ids58);
+assert_true($ids58 === array(20911, 20912), 'isle1 keys 20911/20912');
+assert_true($t23[0]['reward']['reward_item_ids'] === array(20913), 'isle2 key 20913 not mixed into isle1');
+$hail58 = false;
+foreach ($sirran['npc_content'][71058]['say_branches'] as $b) {
+	if ($b['keyword'] === 'hail' && strpos($b['response_text'], 'Sirran be my name') !== false) {
+		$hail58 = true;
+	}
+}
+assert_true($hail58, 'isle1 hail dialogue');
+$hail23 = false;
+foreach ($sirran['npc_content'][71023]['say_branches'] as $b) {
+	if ($b['keyword'] === 'hail' && strpos($b['response_text'], 'Swords spin no more') !== false) {
+		$hail23 = true;
+	}
+}
+assert_true($hail23, 'isle2 hail dialogue isolated');
 
 // Binding helpers
 $npcMaps = array(
@@ -97,9 +167,10 @@ assert_true(count($t4) === 0, 'register_npc_event id outside zone skipped');
 
 fwrite(STDOUT, "\nLimitations (by design):\n");
 fwrite(STDOUT, "- Multiline check_turn_in / count_handed_item tables are not extracted.\n");
-fwrite(STDOUT, "- Variable item ids and math.random rewards are not invented.\n");
+fwrite(STDOUT, "- Variable item ids and ChooseRandom/math.random item rewards are not invented.\n");
 fwrite(STDOUT, "- GetFactionValue gates map to NPC primary faction (heuristic).\n");
 fwrite(STDOUT, "- Deep nesting / GetX() dynamic spawns are unsupported.\n");
+fwrite(STDOUT, "- ipairs loop register_npc_event NPC ids without literal/const 3rd arg are unresolved.\n");
 fwrite(STDOUT, "- count_handed_item multi-id arrays are listed as Give items (OR vs AND approximate).\n");
 fwrite(STDOUT, "\n$pass passed, $fail failed\n");
 exit($fail > 0 ? 1 : 0);

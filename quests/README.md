@@ -58,21 +58,25 @@ On Windows, `quests/import_lua_quests.ps1` wraps the same importer:
 
 From each zone’s `*.lua` scripts:
 
-- `item_lib.check_turn_in` give-items, give-currency, and nearby `QuestReward` (items, exp, money, faction flag)
+- `item_lib.check_turn_in` give-items, give-currency, and nearby `QuestReward` (positional args; table `items = {…}`; table `itemid = N`; literal exp/money/faction fields; straightforward multi-line reward tables via balanced braces)
 - `item_lib.count_handed_item(e.self, e.trade, {id[, id…]} [, min_count])` hand-ins (literal ids; optional literal `min_count`; rewards/factions from a following `if (… > 0)` block when present). Multi-id arrays are listed as Give items (OR vs AND is approximate).
 - `e.other:Faction(e.self, id, delta)` hits (attributed to the turn-in branch when inside that branch)
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction — **heuristic**)
 - `event_say` / `:findi("keyword")` dialogue branches (including spawn/depop-only branches)
+- Named encounter handlers: `eq.register_npc_event(..., Event.say|Event.trade, <npc_id|local const>, Callback)` — dialogue/trades are extracted from the named callback and attributed **only** to that NPC id (death/spawn/combat registrations do not inherit quest content)
 - Literal `eq.spawn2` / `eq.unique_spawn` (and `quest::` equivalents) with numeric x/y/z into `quest_spawn`
 
-Scripts bind to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched against NPCs belonging to that zone (id range or a spawn point there), plus ids passed to `eq.register_npc_event` **that also belong to the zone**.
+Scripts bind to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched against NPCs belonging to that zone (id range or a spawn point there). Classic scripts may also bind ids from `eq.register_npc_event` **that also belong to the zone**. Encounter scripts with named say/trade callbacks bind those NPC ids only (not every registered event target).
+
+Dry-run and final import summaries report aggregated `unsupported_hints` (by kind and top scripts). No schema change is required for diagnostics.
 
 ### Known unsupported patterns (not invented)
 
 - Multiline `{...}` turn-in tables (`check_turn_in` / `count_handed_item`)
 - Variable / concatenated item ids
-- `math.random` / non-literal rewards
+- `eq.ChooseRandom` / `math.random` item slots (not recorded as guaranteed rewards; literal items with random coins may be kept with a partial hint)
 - Dynamic spawn coords (`GetX()` etc.)
+- `register_npc_event` NPC ids that are bare loop variables (no literal/local-const 3rd arg)
 - Deep nesting beyond the indent heuristic
 
 Treat summaries as approximate. Fixture tests live under `quests/tests/`.
