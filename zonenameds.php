@@ -3,7 +3,11 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir.'mysql.php');
 
-$name_raw = isset($_GET['name']) ? (string)$_GET['name'] : '';
+$name_raw = $_POST['name'] ?? $_GET['name'] ?? '';
+if (!is_string($name_raw) || !preg_match('/^[A-Za-z0-9_]+$/', $name_raw)) {
+  http_response_code(400);
+  exit('Invalid zone.');
+}
 $name = addslashes($name_raw);
 $name_q = rawurlencode($name_raw);
 $name_h = html_attr($name_raw);
@@ -17,6 +21,23 @@ if ($DisplayNamedNPCsInfo==FALSE)
 	header("Location: index.php");
 	exit();
 }
+
+// Validate once; every detail/export query below uses these integer IDs.
+$postedNpcs = $_POST['npc'] ?? array();
+if (!is_array($postedNpcs)) {
+  http_response_code(400);
+  exit('Invalid NPC selection.');
+}
+$npc_ids = array();
+foreach ($postedNpcs as $value) {
+  $id = filter_var($value, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+  if ($id === false) {
+    http_response_code(400);
+    exit('Invalid NPC selection.');
+  }
+  $npc_ids[] = $id;
+}
+$npc_ids = array_values(array_unique($npc_ids));
 
 $zone_long = GetFieldByQuery("long_name","SELECT long_name FROM $tbzones WHERE short_name='$name'");
 $Title = html_attr($zone_long) . " (" . $name_h . ")";
@@ -55,50 +76,41 @@ if (file_exists($maps_dir.$name.".jpg")) {
 print "</tr></table>";
 
 function isChecked($id) {
-  if (!isset($_POST["npc"]) || !is_array($_POST["npc"])) {
-    return false;
-  }
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
-    if($id==$_POST["npc"][$i]) return true;  
-  }
-  return false;
+  global $npc_ids;
+  return in_array((int)$id, $npc_ids, true);
 }
 
 $submitDetailCSV = isset($_POST['submitDetailCSV']);
-$submitDetail = isset($_POST['submitDetail']);
+$submitDetailMaps = isset($_POST['submitDetailMaps']);
+$submitDetail = isset($_POST['submitDetail']) || $submitDetailCSV || $submitDetailMaps;
 if ($submitDetailCSV) {
-  $submitDetail=true;
-  $liste=""; $sep="";
-  if (!isset($_POST["npc"]) || !is_array($_POST["npc"])) {
-    $_POST["npc"] = array();
-  }
-  foreach ($_POST["npc"] as $id) {
-    $liste=$liste.$sep.$id; $sep=":";
-  }
-  print "<iframe src=zonenamedscsv.php?name=$name&liste=$liste
+  $csvUrl = 'zonenamedscsv.php?name=' . $name_q . '&liste=' . rawurlencode(implode(':', $npc_ids));
+  print "<iframe src='" . html_attr($csvUrl) . "'
                 width=0
                 border=0 frameborder=0  
                 height=0>
          </iframe>";
 }
 
-if (isset($submitDetailMaps)) {
-  $submitDetail=true;
+if ($submitDetailMaps) {
   print "<p><b>Map file's entries</b><p>";
   print "<table border=0><tr><td bgcolor=white>";
   $v="";
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
+  foreach ($npc_ids as $id) {
     $query="SELECT $tbnpctypes.*
             FROM $tbnpctypes
-            WHERE $tbnpctypes.id=".$_POST["npc"][$i];
+            WHERE $tbnpctypes.id=$id";
     $mymob=GetRowByQuery($query);
+    if (!$mymob) {
+      continue;
+    }
 
     $query="SELECT $tbspawn2.x,$tbspawn2.y,$tbspawn2.z,
                $tbspawngroup.name as spawngroup,
                $tbspawngroup.id as spawngroupID,
                $tbspawn2.respawntime
                FROM $tbspawnentry,$tbspawn2,$tbspawngroup
-               WHERE $tbspawnentry.npcID=".$_POST["npc"][$i]."
+               WHERE $tbspawnentry.npcID=$id
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
@@ -114,7 +126,7 @@ if (isset($submitDetailMaps)) {
   print "</td></tr></table><p>";
 }
 
-if (isset($submitDetail)) {
+if ($submitDetail) {
   print "<p><b>Detailled List</b>";
   print "<p><table border=1><tr>";
   if ($ZoneDebug==TRUE) { print "<td class=tab_title>Id</td>"; }
@@ -125,11 +137,14 @@ if (isset($submitDetail)) {
   print "<td class=tab_title>Spawn points</td>";
   print "<td class=tab_title>Drops</td>";
   print "</tr>";
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
-    print "<tr valign=top>";
-    $query="SELECT * FROM $tbnpctypes WHERE $tbnpctypes.id=".$_POST["npc"][$i];
+  foreach ($npc_ids as $id) {
+    $query="SELECT * FROM $tbnpctypes WHERE $tbnpctypes.id=$id";
     $mymob=GetRowByQuery($query);
-    if ($ZoneDebug==TRUE) { print "<td align=center>".$_POST["npc"][$i]."</td>"; }
+    if (!$mymob) {
+      continue;
+    }
+    print "<tr valign=top>";
+    if ($ZoneDebug==TRUE) { print "<td align=center>".$id."</td>"; }
     print "<td nowrap><a href=npc.php?id=".$mymob["id"].">".str_replace(array('_','#'),' ',$mymob["name"])."</a></td>";
     print "<td nowrap>".$dbiracenames[$mymob["race"]]."</td>";
     print "<td nowrap>".$dbclasses[$mymob["class"]]."</td>";
@@ -141,7 +156,7 @@ if (isset($submitDetail)) {
                $tbspawngroup.id as spawngroupID,
                $tbspawn2.respawntime
                FROM $tbspawnentry,$tbspawn2,$tbspawngroup
-               WHERE $tbspawnentry.npcID=".$_POST["npc"][$i]."
+               WHERE $tbspawnentry.npcID=$id
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";

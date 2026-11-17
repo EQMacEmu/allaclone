@@ -5,12 +5,33 @@ include($includes_dir.'mysql.php');
 include($includes_dir.'functions.php');
 include($includes_dir.'spell.inc.php');
 
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
-$mode= (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
+if ($DisplayNamedNPCsInfo == FALSE) {
+  header('Location: index.php');
+  exit;
+}
 
-if ($name=="") exit;
+$name = $_GET['name'] ?? '';
+$liste = $_GET['liste'] ?? '';
+if (!is_string($name) || !preg_match('/^[A-Za-z0-9_]+$/', $name) || !is_string($liste)) {
+  http_response_code(400);
+  exit('Invalid zone or NPC selection.');
+}
+// This endpoint also accepts direct requests, so validate the IDs again here.
+$npcs = array();
+foreach ($liste === '' ? array() : explode(':', $liste) as $value) {
+  $id = filter_var($value, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+  if ($id === false) {
+    http_response_code(400);
+    exit('Invalid NPC selection.');
+  }
+  $npcs[] = $id;
+}
+$npcs = array_values(array_unique($npcs));
 $zone=GetRowByQuery("SELECT * FROM $tbzones WHERE short_name='$name'");
+if (!$zone) {
+  http_response_code(404);
+  exit('Unknown zone.');
+}
 
 header("Content-type: application/vnd.ms-excel");
 header("Content-disposition: attachment; filename=$name.csv"); 
@@ -18,13 +39,15 @@ header("Content-disposition: attachment; filename=$name.csv");
 print $zone["long_name"];
 print "\nName,Race,Class,Level,Spawn points,Drops\n";
 
-$npcs=preg_split("/:/",$liste);
 foreach ($npcs as $id) {
   $txt=""; 
   $spawns=array();
   $loots=array();
   $query="SELECT $tbnpctypes.* FROM $tbnpctypes WHERE $tbnpctypes.id=$id";
   $mymob=GetRowByQuery($query);
+  if (!$mymob) {
+    continue;
+  }
   $txt=str_replace(array('_','#'),' ',$mymob["name"]).",";
   $txt.=$dbiracenames[$mymob["race"]].",";
   $txt.=$dbclasses[$mymob["class"]].",";
