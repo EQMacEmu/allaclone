@@ -14,11 +14,7 @@ include($includes_dir . 'functions.php');
 $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname   = (isset($_GET['iname']) ? $_GET['iname'] : '');
 
-if ($iname == "") {
-	$name = "";
-} else {
-	$name = str_replace('_', '%', addslashes($iname));
-}
+$name = ($iname == "") ? "" : sql_like($db, $iname);
 
 $Query = "SELECT $tbfactionlist.id,$tbfactionlist.name
 				FROM $tbfactionlist
@@ -45,8 +41,8 @@ $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
 print "<div class='container factions'>";
-print "<form method='GET' action='" . $PHP_SELF . "' class='faction-search'>";
-print "<input class='full' type='text' value=\"$iname\" size='30' name='iname' placeholder='Search' />";
+print "<form method='GET' action='" . html_attr($PHP_SELF) . "' class='faction-search'>";
+print "<input class='full' type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname' placeholder='Search' />";
 print "</form>";
 
 if (isset($QueryResult)) {

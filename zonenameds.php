@@ -3,9 +3,18 @@ include('./includes/constantes.php');
 include('./includes/config.php');
 include($includes_dir.'mysql.php');
 
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-$order = (isset($_GET['order']) ? addslashes($_GET["order"]) : 'name');
+$name_raw = $_POST['name'] ?? $_GET['name'] ?? '';
+if (!is_string($name_raw) || !preg_match('/^[A-Za-z0-9_]+$/', $name_raw)) {
+  http_response_code(400);
+  exit('Invalid zone.');
+}
+$name = addslashes($name_raw);
+$name_q = rawurlencode($name_raw);
+$name_h = html_attr($name_raw);
+$order_raw = (isset($_GET['order']) ? $_GET['order'] : 'name');
 $mode= (isset($_GET['mode']) ? addslashes($_GET["mode"]) : 'npcs');
+$named_order_allow = array('name' => 'name', 'id' => 'id', 'loottable_id' => 'loottable_id', 'class' => 'class', 'race' => 'race', 'level' => 'level');
+$order = isset($named_order_allow[$order_raw]) ? $named_order_allow[$order_raw] : 'name';
 
 if ($DisplayNamedNPCsInfo==FALSE)
 {
@@ -13,9 +22,28 @@ if ($DisplayNamedNPCsInfo==FALSE)
 	exit();
 }
 
-$Title=GetFieldByQuery("long_name","SELECT long_name FROM $tbzones WHERE short_name='$name'")." ($name)";
+// Validate once; every detail/export query below uses these integer IDs.
+$postedNpcs = $_POST['npc'] ?? array();
+if (!is_array($postedNpcs)) {
+  http_response_code(400);
+  exit('Invalid NPC selection.');
+}
+$npc_ids = array();
+foreach ($postedNpcs as $value) {
+  $id = filter_var($value, FILTER_VALIDATE_INT, array('options' => array('min_range' => 1)));
+  if ($id === false) {
+    http_response_code(400);
+    exit('Invalid NPC selection.');
+  }
+  $npc_ids[] = $id;
+}
+$npc_ids = array_values(array_unique($npc_ids));
+
+$zone_long = GetFieldByQuery("long_name","SELECT long_name FROM $tbzones WHERE short_name='$name'");
+$Title = html_attr($zone_long) . " (" . $name_h . ")";
 include($includes_dir.'headers.php');
 include($includes_dir.'functions.php');
+$self = html_attr($PHP_SELF);
 
 if (!isset($name)) { print "<script>document.location=\"zones.php\";</script>"; }
 
@@ -30,6 +58,11 @@ $query="SELECT $tbzones.*
         WHERE $tbzones.short_name='$name'";
 $result=mysqli_query($db, $query) or message_die('zones.php','MYSQL_QUERY',$query,mysqli_error($db));
 $zone=mysqli_fetch_array($result);
+if (!$zone) {
+  print "<p>Unknown zone.</p>";
+  include($includes_dir.'footers.php');
+  exit;
+}
 print "<center><table border=0 width=0%><tr valign=top><td>";
 print "<p><b>Succor point : </b>".floor($zone["safe_x"])." / ".floor($zone["safe_y"])." / ".floor($zone["safe_z"]);
 if ($zone["minium_level"]>0) { print "<br><b>Minimum level : </b>".floor($zone["minium_level"]); }
@@ -43,41 +76,41 @@ if (file_exists($maps_dir.$name.".jpg")) {
 print "</tr></table>";
 
 function isChecked($id) {
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
-    if($id==$_POST["npc"][$i]) return true;  
-  }
+  global $npc_ids;
+  return in_array((int)$id, $npc_ids, true);
 }
 
-if (isset($submitDetailCSV)) {
-  $submitDetail=true;
-  $liste=""; $sep="";
-  foreach ($_POST["npc"] as $id) {
-    $liste=$liste.$sep.$id; $sep=":";
-  }
-  print "<iframe src=zonenamedscsv.php?name=$name&liste=$liste
+$submitDetailCSV = isset($_POST['submitDetailCSV']);
+$submitDetailMaps = isset($_POST['submitDetailMaps']);
+$submitDetail = isset($_POST['submitDetail']) || $submitDetailCSV || $submitDetailMaps;
+if ($submitDetailCSV) {
+  $csvUrl = 'zonenamedscsv.php?name=' . $name_q . '&liste=' . rawurlencode(implode(':', $npc_ids));
+  print "<iframe src='" . html_attr($csvUrl) . "'
                 width=0
                 border=0 frameborder=0  
                 height=0>
          </iframe>";
 }
 
-if (isset($submitDetailMaps)) {
-  $submitDetail=true;
+if ($submitDetailMaps) {
   print "<p><b>Map file's entries</b><p>";
   print "<table border=0><tr><td bgcolor=white>";
   $v="";
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
+  foreach ($npc_ids as $id) {
     $query="SELECT $tbnpctypes.*
             FROM $tbnpctypes
-            WHERE $tbnpctypes.id=".$_POST["npc"][$i];
+            WHERE $tbnpctypes.id=$id";
     $mymob=GetRowByQuery($query);
+    if (!$mymob) {
+      continue;
+    }
 
     $query="SELECT $tbspawn2.x,$tbspawn2.y,$tbspawn2.z,
                $tbspawngroup.name as spawngroup,
                $tbspawngroup.id as spawngroupID,
                $tbspawn2.respawntime
                FROM $tbspawnentry,$tbspawn2,$tbspawngroup
-               WHERE $tbspawnentry.npcID=".$_POST["npc"][$i]."
+               WHERE $tbspawnentry.npcID=$id
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
@@ -93,7 +126,7 @@ if (isset($submitDetailMaps)) {
   print "</td></tr></table><p>";
 }
 
-if (isset($submitDetail)) {
+if ($submitDetail) {
   print "<p><b>Detailled List</b>";
   print "<p><table border=1><tr>";
   if ($ZoneDebug==TRUE) { print "<td class=tab_title>Id</td>"; }
@@ -104,11 +137,14 @@ if (isset($submitDetail)) {
   print "<td class=tab_title>Spawn points</td>";
   print "<td class=tab_title>Drops</td>";
   print "</tr>";
-  for ($i=0; $i<count($_POST["npc"]); $i++) {
-    print "<tr valign=top>";
-    $query="SELECT * FROM $tbnpctypes WHERE $tbnpctypes.id=".$_POST["npc"][$i];
+  foreach ($npc_ids as $id) {
+    $query="SELECT * FROM $tbnpctypes WHERE $tbnpctypes.id=$id";
     $mymob=GetRowByQuery($query);
-    if ($ZoneDebug==TRUE) { print "<td align=center>".$_POST["npc"][$i]."</td>"; }
+    if (!$mymob) {
+      continue;
+    }
+    print "<tr valign=top>";
+    if ($ZoneDebug==TRUE) { print "<td align=center>".$id."</td>"; }
     print "<td nowrap><a href=npc.php?id=".$mymob["id"].">".str_replace(array('_','#'),' ',$mymob["name"])."</a></td>";
     print "<td nowrap>".$dbiracenames[$mymob["race"]]."</td>";
     print "<td nowrap>".$dbclasses[$mymob["class"]]."</td>";
@@ -120,7 +156,7 @@ if (isset($submitDetail)) {
                $tbspawngroup.id as spawngroupID,
                $tbspawn2.respawntime
                FROM $tbspawnentry,$tbspawn2,$tbspawngroup
-               WHERE $tbspawnentry.npcID=".$_POST["npc"][$i]."
+               WHERE $tbspawnentry.npcID=$id
                  AND $tbspawnentry.spawngroupID=$tbspawn2.spawngroupID
                  AND $tbspawn2.zone='$name'
                  AND $tbspawnentry.spawngroupID=$tbspawngroup.id";
@@ -178,18 +214,18 @@ if ($mode=="npcs") {
   $query.=" ORDER BY $order";
   $result=mysqli_query($db, $query) or message_die('zone.php','MYSQL_QUERY',$query,mysqli_error($db));
   print "<p><b>Bestiary</b><p><table border=1><tr>";
-  print "<form method=POST action=$PHP_SELF>";
+  print "<form method='POST' action='" . $self . "'>";
   print "<input type=submit name=submitDetail value=\"Detailled List\" class=form>";
   print "&nbsp;<input type=submit name=submitDetailCSV value=\"Detailled List CSV\" class=form>";
   print "&nbsp;<input type=submit name=submitDetailMaps value=\"Export map entries\" class=form>";
-  print "<input type=hidden name=name value=$name>";
-  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href=$PHP_SELF?name=$name&order=id>Id</a></td>"; }
-  print "<td class=tab_title>List</a></td><td class=tab_title><a href=$PHP_SELF?name=$name&order=name>Name</a></td>";
-  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href=$PHP_SELF?name=$name&order=loottable_id>Loottable</a></td>"; }
+  print "<input type='hidden' name='name' value=\"" . $name_h . "\">";
+  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=id'>Id</a></td>"; }
+  print "<td class=tab_title>List</a></td><td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=name'>Name</a></td>";
+  if ($ZoneDebug==TRUE) { print "<td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=loottable_id'>Loottable</a></td>"; }
   print "
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=class>Class</a></td>
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=race>Race</a></td>
-         <td class=tab_title><a href=$PHP_SELF?name=$name&order=level>Level</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=class'>Class</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=race'>Race</a></td>
+         <td class=tab_title><a href='" . $self . "?name=" . $name_q . "&order=level'>Level</a></td>
          ";
   while ($row=mysqli_fetch_array($result)) {
     print "<tr>";

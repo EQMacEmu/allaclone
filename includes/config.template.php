@@ -1,4 +1,6 @@
 <?php
+// Production: keep errors private. For local PHP 8.3 debugging, temporarily use:
+// error_reporting(E_ALL); ini_set('display_errors', '1');
 error_reporting(0);
 $PageTitle='<img class="logo" height="150" src="//www.takproject.net/forums/styles/logo.png" />';
 $SiteTitle='TAKP AllaClone';
@@ -15,20 +17,32 @@ $dbpasswd="root";
 
 $root_url='//local.sandbox.com/takp/allaclone/';
 $includes_url=$root_url.'includes/';
-$includes_dir=getcwd()."/includes/";
+$includes_dir=__DIR__.DIRECTORY_SEPARATOR;
+// Prefer SCRIPT_NAME (no PATH_INFO). Nested paths like /allaclone/items.php are kept when valid.
+// Merge this into local config.php (gitignored) on upgrade. Logic mirrors safe_script_path() in mysql.php
+// (config loads before mysql.php, so the helper is not available here yet).
+$__script = isset($_SERVER['SCRIPT_NAME']) ? (string)$_SERVER['SCRIPT_NAME'] : '';
+if ($__script !== '' && isset($__script[0]) && $__script[0] === '/' && strpos($__script, '..') === false
+	&& preg_match('#^/[A-Za-z0-9._/-]+$#', $__script)) {
+	$PHP_SELF = $__script;
+} else {
+	$__base = basename($__script);
+	$PHP_SELF = ($__base !== '' && preg_match('#^[A-Za-z0-9._-]+$#', $__base)) ? $__base : 'index.php';
+}
+unset($__script, $__base);
 $eqemu_dir="/home/eqemu/server/";
 $quests_dir=$eqemu_dir."quests/"; // live EQEmu Lua/Perl quest scripts (importer --quests source)
 // Archived static .inc tree for missing-row fallback when $AllowQuestsNPC is TRUE.
 // Prefer the repo copy (quests/datas/) or an absolute path to that same tree — not $quests_dir.
 $quests_datas=__DIR__."/../quests/datas/";
-$maps_dir=getcwd()."/maps/";
-$maps_url=$root_url."/maps/";
+$maps_dir=__DIR__."/../maps/";
+$maps_url=$root_url."maps/";
 $map_txt_dir=__DIR__."/../map_txt/";
 $map_txt_url=$root_url."map_txt/";
-$npcs_dir=getcwd()."/npcs/";
-$npcs_url=$root_url."/npcs/";
-$icons_dir=getcwd()."/icons/";
-$icons_url=$root_url."/icons/";
+$npcs_dir=__DIR__."/../npcs/";
+$npcs_url=$root_url."npcs/";
+$icons_dir=__DIR__."/../icons/";
+$icons_url=$root_url."icons/";
 $images_url=$root_url."/images/";
 $charbrowser_url=""; // Set to "" to disable CharBrowser links for character names
 
@@ -94,5 +108,9 @@ $IgnoreZones=array("load","loading","load2","nektropos","arttest","apprentice","
 $ShowAccount=FALSE; // (not in use yet)
 $ShowCharacters=FALSE; // (not in use yet)
 
-$db=mysql_connect($dbhost,$dbuser,$dbpasswd) or die("Impossible to connect to $dbhost : ".mysqli_error($db));
-mysql_select_db($dbname,$db) or die("Impossible to select $dbname : ".mysqli_error($db));
+mysqli_report(MYSQLI_REPORT_OFF);
+$db = @mysqli_connect($dbhost, $dbuser, $dbpasswd, $dbname);
+if (!$db) {
+	die('Impossible to connect to ' . htmlspecialchars($dbhost) . ' : database unavailable');
+}
+mysqli_set_charset($db, 'latin1');

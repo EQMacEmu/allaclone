@@ -37,13 +37,13 @@ my $quests_datas="/var/www/html/eq/quests/datas/";
 # database configuration, required mainly for item's and faction's names
 my $dbname="eq";
 my $dbuser="root";
-my $dbpassword="al1s0nld";
+my $dbpassword=$ENV{"ALLACLONE_DB_PASS"} // "";  # set via environment; do not hardcode
 my $dbhost="localhost";
 my $dbport=3306;
 my $dbquestitems="quest_items"; # name of the table where quest items are stored
 
 # URL of eqbrowser's root, example http://myserver.com/eqbrowser/, ends with /
-$root_url="http://phobos/eq/";
+$root_url=$ENV{"ALLACLONE_ROOT_URL"} // "http://localhost/allaclone/";
 
 # Name of the character that triggered the quest, this is just for display purposes
 $name="[Your Name]";

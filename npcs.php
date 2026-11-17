@@ -15,16 +15,11 @@ $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname   = (isset($_GET['iname']) ? $_GET['iname'] : '');
 
 if ($isearch != "") {
-	if ($iname == "") {
-		$name = "";
-	} else {
-		$name = addslashes($iname);
-	}
 	$Query = "SELECT $tbnpctypes.id,$tbnpctypes.name
 		FROM $tbnpctypes
 		WHERE 1=1";
-	if ($name != "") {
-		$name = str_replace('`', '-', str_replace('_', '%', str_replace(' ', '%', $name)));
+	if ($iname != "") {
+		$name = sql_like($db, $iname, array(' ' => '%', '_' => '%', '`' => '-'));
 		$Query .= " AND $tbnpctypes.Name like '%$name%'";
 	}
 	if ($HideInvisibleMen) {
@@ -55,8 +50,8 @@ $Title = "NPCs search";
 $XhtmlCompliant = TRUE;
 include($includes_dir . 'headers.php');
 
-echo "<form method='GET' action='" . $PHP_SELF . "'>";
-echo "<input type='text' value=\"$iname\" size='30' name='iname' placeholder='NPC Name' />";
+echo "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
+echo "<input type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname' placeholder='NPC Name' />";
 echo "<input type='submit' value='Search' name='isearch' />";
 echo "</form>";
 

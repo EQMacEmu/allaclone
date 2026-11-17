@@ -260,6 +260,10 @@ function getsize($val) {
 }
 function getspell($id) {
 	global $tbspells, $tbspellglobals, $UseSpellGlobals, $db;
+	$id = sql_int($id, 0);
+	if ($id <= 0) {
+		return false;
+	}
 	if ($UseSpellGlobals == true) {
 		$query = "SELECT " . $tbspells . ".* FROM " . $tbspells . " WHERE " . $tbspells . ".id=" . $id . "
 			AND ISNULL((SELECT " . $tbspellglobals . ".spellid FROM " . $tbspellglobals . "
@@ -807,8 +811,7 @@ function AutoDataTable($Query) {
   global $db;
 	$result = mysqli_query($db, $Query);
 	if (!$result) {
-		echo 'Could not run query: ' . mysqli_error($db);
-		exit;
+		message_die('functions.php', 'AutoDataTable', $Query, mysqli_error($db));
 	}
 	$columns = mysqli_num_fields($result);
 	echo "<table border=0 width=100%><thead>";
@@ -1146,7 +1149,7 @@ function BuildItemStats($item, $show_name_icon) {
 			$skill = 0;
 			$query = "SELECT mana, skill FROM $tbspells WHERE id=" . $item["scrolleffect"];
 			$QueryResult = mysqli_query($db, $query);
-			if (mysqli_num_rows($QueryResult) > 0) {
+			if ($QueryResult !== false && mysqli_num_rows($QueryResult) > 0) {
 				$rows = mysqli_fetch_array($QueryResult);
 				$manacost = $rows["mana"];
 				$skill = $rows["skill"];

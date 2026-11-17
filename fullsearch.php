@@ -10,16 +10,21 @@ include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 
-$iid         = (isset($_GET['iid']) ? addslashes($_GET['iid']) : '');
-$iname       = (isset($_GET['iname']) ? addslashes($_GET['iname']) : '');
-$isearchtype = (isset($_GET['isearchtype']) ? addslashes($_GET['isearchtype']) : '');
+$iid         = isset($_GET['iid']) ? $_GET['iid'] : '';
+$iname       = isset($_GET['iname']) ? $_GET['iname'] : '';
+$isearchtype = isset($_GET['isearchtype']) ? $_GET['isearchtype'] : '';
+if ($isearchtype !== 'id' && $isearchtype !== 'name') {
+	$isearchtype = '';
+}
 
-// Build the WHERE caluse
+// Build the WHERE clause
 $Where = "";
-if ($isearchtype == 'id' and $iid != "")
-	$Where = "id='" . $iid . "'";
-if ($isearchtype == 'name' and $iname != "")
-	$Where = "name like '%" . str_replace('`', '%', str_replace('_', '%', str_replace(' ', '%', $iname))) . "%'";
+if ($isearchtype == 'id' and $iid != "") {
+	$Where = "id=" . sql_int($iid, 0);
+}
+if ($isearchtype == 'name' and $iname != "") {
+	$Where = "name like '%" . sql_like($db, $iname, array(' ' => '%', '_' => '%', '`' => '%')) . "%'";
+}
 
 if ($Where == "") {
 	header("Location: items.php");
@@ -33,10 +38,12 @@ $Query = "SELECT $tbfactionlist.id,$tbfactionlist.name
         ORDER BY $tbfactionlist.name,$tbfactionlist.id
         LIMIT " . (LimitToUse($MaxFactionsReturned) + 1);
 $FoundFactions = mysqli_query($db, $Query);
+if ($FoundFactions === false) {
+	message_die('fullsearch.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
+}
 
 // Query for Items
 if ($DiscoveredItemsOnly == TRUE) {
-	$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='" . $id . "' AND discovered_items.item_id=$tbitems.id";
 	$Query = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems, discovered_items
 		WHERE $Where
@@ -51,6 +58,9 @@ if ($DiscoveredItemsOnly == TRUE) {
 		LIMIT " . (LimitToUse($MaxItemsReturned) + 1);
 }
 $FoundItems = mysqli_query($db, $Query);
+if ($FoundItems === false) {
+	message_die('fullsearch.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
+}
 
 // Query for NPCs
 $Query = "SELECT $tbnpctypes.id,$tbnpctypes.name
@@ -59,6 +69,9 @@ $Query = "SELECT $tbnpctypes.id,$tbnpctypes.name
         ORDER BY $tbnpctypes.name,$tbnpctypes.id
         LIMIT " . (LimitToUse($MaxNpcsReturned) + 1);
 $FoundNpcs = mysqli_query($db, $Query);
+if ($FoundNpcs === false) {
+	message_die('fullsearch.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
+}
 
 
 // In case only one object is found, redirect to its page

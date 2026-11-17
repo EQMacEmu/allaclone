@@ -5,8 +5,8 @@ include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 include($includes_dir . 'spell.inc.php');
 
-$id = $_GET["id"];
-$spell = getspell($id);
+$id = isset($_GET['id']) ? sql_int($_GET['id'], 0) : 0;
+$spell = ($id > 0) ? getspell($id) : false;
 $minlvl = 70;
 
 if (!$spell || in_array($id, $hide_spell_id)) {
@@ -47,7 +47,7 @@ function OutputItems($type, $id) {
 	global $db, $tbitems;
 	$itemQuery = "SELECT $tbitems.id,$tbitems.name
 		FROM $tbitems
-		WHERE $tbitems.${type}effect=$id
+		WHERE $tbitems.{$type}effect=$id
 		ORDER BY $tbitems.name ASC";
 	$result = mysqli_query($db, $itemQuery) or message_die('item.php', 'MYSQL_QUERY', $itemQuery, mysqli_error($db));
 

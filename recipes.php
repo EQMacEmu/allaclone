@@ -6,23 +6,14 @@ include($includes_dir . 'mysql.php');
 include($includes_dir . 'headers.php');
 include($includes_dir . 'functions.php');
 
-$minskill = (isset($_GET['minskill']) ? $_GET['minskill'] : 0);
-$maxskill = (isset($_GET['maxskill']) ? $_GET['maxskill'] : 0);
+$minskill = isset($_GET['minskill']) ? sql_int($_GET['minskill'], 0) : 0;
+$maxskill = isset($_GET['maxskill']) ? sql_int($_GET['maxskill'], 0) : 0;
 $isearch = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname = (isset($_GET['iname']) ? $_GET['iname'] : '');
-$iskill = (isset($_GET['iskill']) ? $_GET['iskill'] : 0);
-
-if (!isset($maxskill)) {
-	$maxskill = 0;
-}
-if (!isset($minskill)) {
-	$minskill = 0;
-}
-if (!ctype_digit($maxskill)) {
-	$maxskill = 0;
-}
-if (!ctype_digit($minskill)) {
-	$minskill = 0;
+$iskill = isset($_GET['iskill']) ? sql_int($_GET['iskill'], 0) : 0;
+$allowed_skills = array(0, 55, 56, 57, 58, 59, 60, 61, 63, 64, 65, 68, 69);
+if (!in_array($iskill, $allowed_skills, true)) {
+	$iskill = 0;
 }
 if ($minskill > $maxskill) {
 	$tempskill = $minskill;
@@ -31,14 +22,14 @@ if ($minskill > $maxskill) {
 }
 
 echo "<div class='container recipes'>";
-echo "<form method='GET' action=$PHP_SELF>";
+echo "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
 echo "<div class='recipe-container'>";
-echo "<div class='recipe-search'><b>Name : </b><input type=text value=\"$iname\" size=30 name=iname></div>";
+echo "<div class='recipe-search'><b>Name : </b><input type='text' value=\"" . html_attr($iname) . "\" size='30' name='iname'></div>";
 echo "<div class='recipe-search'><b>Tradeskill : </b>";
 echo SelectTradeSkills("iskill", $iskill);
 echo "</div>";
-echo "<div class='recipe-search'><b>Min trivial skill : </b><input type=text value=\"$minskill\" size=30 name=minskill></div>";
-echo "<div class='recipe-search'><b>Max trivial skill : </b><input type=text value=\"$maxskill\" size=30 name=maxskill></div></div>";
+echo "<div class='recipe-search'><b>Min trivial skill : </b><input type='text' value=\"" . html_attr($minskill) . "\" size='30' name='minskill'></div>";
+echo "<div class='recipe-search'><b>Max trivial skill : </b><input type='text' value=\"" . html_attr($maxskill) . "\" size='30' name='maxskill'></div></div>";
 echo "<input type='submit' value='Search' name='isearch' class='form'/> <input type='reset' value='Reset' class='form'/>";
 echo "</form>";
 echo "<div class='recipe-results'>";
@@ -53,8 +44,8 @@ if (isset($isearch) && $isearch != "") {
 				FROM $tbtradeskillrecipe";
 	$s = "WHERE";
 	if ($iname != "") {
-		$iname = str_replace(' ', '%', addslashes($iname));
-		$query .= " $s $tbtradeskillrecipe.name like '%" . $iname . "%'";
+		$search_name = sql_like($db, $iname, array(' ' => '%'));
+		$query .= " $s $tbtradeskillrecipe.name like '%" . $search_name . "%'";
 		$s = "AND";
 	}
 	if ($iskill > 0) {

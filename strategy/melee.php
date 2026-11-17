@@ -25,6 +25,9 @@ $ih2proc = (isset($_GET['ih2proc']) ? $_GET['ih2proc'] : 0);
 $i2hproc = (isset($_GET['i2hproc']) ? $_GET['i2hproc'] : 0);
 $icalculate = (isset($_GET['icalculate']) ? $_GET['icalculate'] : 0);
 $iclass = (isset($_GET['iclass']) ? $_GET['iclass'] : 0);
+$iwa = (isset($_GET['iwa']) ? $_GET['iwa'] : 0);
+$icf = (isset($_GET['icf']) ? $_GET['icf'] : 0);
+$iad = (isset($_GET['iad']) ? $_GET['iad'] : 0);
 
 if (!isset($istr)) { $istr=75; }
 if (!isset($idex)) { $idex=75; }
@@ -48,7 +51,7 @@ print "<p><center><b>Results given by the calculator are based on EQEmu's source
 print "<br><center>Proc damages are applied to the formula with full damages (ie, no resists from the mob). If you want to add resists, decrease the amount of damage made by the proc.</center>";
 
 print "<p><center><table border=0 width=0%>";
-print "<form method=GET action=$PHP_SELF>";
+print "<form method='GET' action='" . html_attr($PHP_SELF) . "'>";
 print "<tr><td nowrap><b>Class : </b></td><td>";
 print SelectIClass("iclass",$iclass);
 print " <b>Level : </b>";
