@@ -1,6 +1,2 @@
 includes/config.php
 .idea/
-
-# Brewall-format map geometry is third-party; deployers supply it (see map_txt/README.txt).
-map_txt/*
-!map_txt/README.txt
