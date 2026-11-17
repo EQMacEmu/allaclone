@@ -176,6 +176,25 @@ function quest_trade_reward_extras($tradeRow) {
 	if ((int)$tradeRow['reward_faction_flag']) {
 		$parts[] = 'faction hits';
 	}
+	if (!empty($tradeRow['effect_notes'])) {
+		global $root_url;
+		$note = htmlspecialchars($tradeRow['effect_notes']);
+		$note = preg_replace_callback(
+			'/\bteleports to zone (\d+)\b/',
+			function ($m) use ($root_url) {
+				$zid = (int)$m[1];
+				$short = GetFieldByQuery('short_name', "SELECT short_name FROM zone WHERE zoneidnumber=$zid LIMIT 1");
+				$long = GetFieldByQuery('long_name', "SELECT long_name FROM zone WHERE zoneidnumber=$zid LIMIT 1");
+				$label = $long ? $long : ($short ? $short : ("zone $zid"));
+				if ($short && !empty($root_url)) {
+					return 'teleports to <a href="' . $root_url . 'zone.php?name=' . rawurlencode($short) . '">' . htmlspecialchars($label) . '</a>';
+				}
+				return 'teleports to ' . htmlspecialchars($label);
+			},
+			$note
+		);
+		$parts[] = $note;
+	}
 	return $parts;
 }
 

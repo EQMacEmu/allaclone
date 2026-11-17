@@ -4,12 +4,12 @@
  * Used by import_lua_quests.php and quests/tests.
  *
  * Heuristic limits: offline regex / balanced-slice extraction; misses
- * concatenated strings, variable item ids, deep nesting, dynamic spawn
- * coords, and non-literal register_npc_event NPC ids (e.g. bare loop vars).
+ * concatenated strings, variable item ids, deep nesting, dynamic spawn /
+ * MovePC coords, and non-literal register_npc_event NPC ids (e.g. bare loop vars).
  */
 
 if (!defined('ALLACLONE_LUA_QUEST_EXTRACT')) {
-	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.2.0');
+	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.3.0');
 }
 
 function normalize_npc_key($name) {
@@ -601,6 +601,63 @@ function count_handed_reward_branch_start($lines, $callLine) {
 }
 
 /**
+ * Format a literal MovePC as a stable annotation string.
+ * Uses (y, x, z) ordering to match existing spawn annotations.
+ */
+function format_movepc_note($zoneId, $x, $y, $z) {
+	return 'teleports to zone ' . (int)$zoneId . ' at (' . round($y) . ', ' . round($x) . ', ' . round($z) . ')';
+}
+
+/**
+ * Parse literal MovePC(...) on a line. Returns note string, or null.
+ * Sets $hintKind to nonliteral_movepc when MovePC is present but not literal.
+ */
+function parse_literal_movepc_line($line, $locals = array(), &$hintKind = null) {
+	$hintKind = null;
+	if (!preg_match('/\bMovePC\s*\(/i', $line)) {
+		return null;
+	}
+	// e.other:MovePC / e.self:MovePC / client:MovePC / ent:CastToClient():MovePC
+	$re = '/(?:CastToClient\s*\(\s*\)\s*:)?\s*MovePC\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i';
+	if (!preg_match($re, $line, $m)) {
+		$hintKind = 'nonliteral_movepc';
+		return null;
+	}
+	$zoneTok = $m[1];
+	if (ctype_digit($zoneTok)) {
+		$zoneId = (int)$zoneTok;
+	} elseif (isset($locals[$zoneTok])) {
+		$zoneId = (int)$locals[$zoneTok];
+	} else {
+		$hintKind = 'nonliteral_movepc';
+		return null;
+	}
+	if ($zoneId <= 0) {
+		$hintKind = 'nonliteral_movepc';
+		return null;
+	}
+	return format_movepc_note($zoneId, (float)$m[2], (float)$m[3], (float)$m[4]);
+}
+
+/**
+ * Append MovePC annotation onto response text / kind (spawn-style).
+ */
+function append_movepc_annotation(&$respText, &$respKind, &$respLine, $note, $lineNo) {
+	if ($note === null || $note === '') {
+		return;
+	}
+	if ($respText === '') {
+		$respKind = 'movepc';
+		$respText = $note;
+		$respLine = $lineNo;
+	} elseif (strpos($respText, $note) === false && strpos($respText, 'teleports to zone') === false) {
+		$respText .= '; ' . $note;
+	} elseif (strpos($respText, $note) === false) {
+		$respText .= '; ' . $note;
+	}
+}
+
+/**
  * Collect QuestReward + Faction hits in [branchStart, lim] into a trade row.
  */
 function append_extracted_trade(&$result, $lines, $rel, $lineNo, $branchStart, $giveIds, $giveCurrency) {
@@ -611,6 +668,11 @@ function append_extracted_trade(&$result, $lines, $rel, $lineNo, $branchStart, $
 		$reward = $found;
 	}
 	$localHits = array();
+	$effectNotes = array();
+	$locals = array();
+	if (isset($result['_locals']) && is_array($result['_locals'])) {
+		$locals = $result['_locals'];
+	}
 	for ($j = $branchStart; $j <= $lim; $j++) {
 		if (preg_match_all('/e\.other:Faction\s*\(\s*e\.self\s*,\s*(\d+)\s*,\s*(-?\d+)/i', $lines[$j], $fm, PREG_SET_ORDER)) {
 			foreach ($fm as $hit) {
@@ -621,6 +683,18 @@ function append_extracted_trade(&$result, $lines, $rel, $lineNo, $branchStart, $
 					'script_file' => $rel,
 				);
 			}
+		}
+		$hintKind = null;
+		$mv = parse_literal_movepc_line($lines[$j], $locals, $hintKind);
+		if ($hintKind !== null) {
+			$result['unsupported_hints'][] = array(
+				'kind' => $hintKind,
+				'line_no' => $j + 1,
+				'script_file' => $rel,
+			);
+		}
+		if ($mv !== null && !in_array($mv, $effectNotes, true)) {
+			$effectNotes[] = $mv;
 		}
 	}
 	foreach ($reward['faction_hits'] as $fh) {
@@ -638,6 +712,7 @@ function append_extracted_trade(&$result, $lines, $rel, $lineNo, $branchStart, $
 		'give_currency' => $giveCurrency,
 		'reward' => $reward,
 		'faction_hits' => $localHits,
+		'effect_notes' => implode('; ', $effectNotes),
 	);
 }
 
@@ -734,7 +809,7 @@ function extract_trades_from_lines(&$bucket, $lines, $rel, $lineOffset = 0) {
 /**
  * Extract say branches from lines (all lines are in-scope, e.g. a function body).
  */
-function extract_say_branches_from_lines($lines, $rel, $sayLocals, $lineOffset = 0) {
+function extract_say_branches_from_lines($lines, $rel, $sayLocals, $lineOffset = 0, &$hints = null) {
 	$branches = array();
 	$n = count($lines);
 	for ($i = 0; $i < $n; $i++) {
@@ -811,6 +886,16 @@ function extract_say_branches_from_lines($lines, $rel, $sayLocals, $lineOffset =
 					$respText .= '; despawns';
 				}
 			}
+			$mvHint = null;
+			$mv = parse_literal_movepc_line($jl, $sayLocals, $mvHint);
+			if ($mvHint !== null && is_array($hints)) {
+				$hints[] = array(
+					'kind' => $mvHint,
+					'line_no' => $j + 1 + $lineOffset,
+					'script_file' => $rel,
+				);
+			}
+			append_movepc_annotation($respText, $respKind, $respLine, $mv, $j + 1 + $lineOffset);
 		}
 		if ($respText !== '') {
 			$branches[] = array(
@@ -823,6 +908,72 @@ function extract_say_branches_from_lines($lines, $rel, $sayLocals, $lineOffset =
 		}
 	}
 	return $branches;
+}
+
+/**
+ * Extract event_enter bodies that MovePC (proximity banish, etc.).
+ */
+function extract_event_enter_movepc_branches($lines, $rel, $locals, $lineOffset = 0, &$hints = null) {
+	$branches = array();
+	$n = count($lines);
+	$respKind = '';
+	$respText = '';
+	$respLine = 0;
+	$msg = '';
+	for ($i = 0; $i < $n; $i++) {
+		$jl = $lines[$i];
+		if ($msg === '' && preg_match('/(?:e\.other|e\.self):Message\s*\(\s*\d+\s*,\s*"([^"]{1,400})"\s*\)/i', $jl, $mm)) {
+			$msg = $mm[1];
+		}
+		if ($msg === '' && preg_match('/(?:e\.other|e\.self):Say\s*\(\s*"([^"]{1,400})"\s*\)/i', $jl, $sm)) {
+			$msg = $sm[1];
+		}
+		$mvHint = null;
+		$mv = parse_literal_movepc_line($jl, $locals, $mvHint);
+		if ($mvHint !== null && is_array($hints)) {
+			$hints[] = array(
+				'kind' => $mvHint,
+				'line_no' => $i + 1 + $lineOffset,
+				'script_file' => $rel,
+			);
+		}
+		if ($mv !== null) {
+			$respKind = 'movepc';
+			$respText = ($msg !== '' ? $msg . '; ' : '') . $mv;
+			$respLine = $i + 1 + $lineOffset;
+			break;
+		}
+	}
+	if ($respText !== '') {
+		$branches[] = array(
+			'keyword' => 'enter',
+			'response_kind' => $respKind,
+			'response_text' => $respText,
+			'line_no' => $respLine,
+			'script_file' => $rel,
+		);
+	}
+	return $branches;
+}
+
+function extract_named_event_body_lines($lines, $eventName) {
+	$out = array();
+	$in = false;
+	$start = 0;
+	foreach ($lines as $idx => $line) {
+		if (preg_match('/^\s*function\s+' . preg_quote($eventName, '/') . '\b/i', $line)) {
+			$in = true;
+			$start = $idx + 1;
+			continue;
+		}
+		if ($in && preg_match('/^\s*function\s+/i', $line)) {
+			break;
+		}
+		if ($in) {
+			$out[] = $line;
+		}
+	}
+	return array($out, $start);
 }
 
 /**
@@ -886,6 +1037,21 @@ function parse_lua_file($path, $rel) {
 	return parse_lua_text($raw, $rel);
 }
 
+/** Optional raw encounter overlays (Sirran death/timer/combat notes). */
+function apply_manual_quest_overlays(&$parsed, $rel) {
+	static $loaded = false;
+	if (!$loaded) {
+		$manual = dirname(__FILE__) . '/manual_sirran.php';
+		if (is_file($manual)) {
+			require_once $manual;
+		}
+		$loaded = true;
+	}
+	if (function_exists('apply_sirran_airplane_manual_overlay')) {
+		apply_sirran_airplane_manual_overlay($parsed, $rel);
+	}
+}
+
 /** Parse Lua source text (for fixtures / tests). */
 function parse_lua_text($raw, $rel) {
 	$raw = str_replace(array("\r\n", "\r"), "\n", $raw);
@@ -911,6 +1077,7 @@ function parse_lua_text($raw, $rel) {
 	);
 
 	$sayLocals = extract_lua_local_int_consts($raw);
+	$result['_locals'] = $sayLocals;
 
 	// Named Event.say / Event.trade callbacks → per-NPC content
 	$callbackCache = array(); // name => parsed {trades, says, hints} or false
@@ -942,12 +1109,15 @@ function parse_lua_text($raw, $rel) {
 			} else {
 				$bodyLines = explode("\n", $bodyInfo[0]);
 				$lineOffset = lua_offset_to_line($raw, $bodyInfo[1]) - 1;
-				$bag = array('trades' => array(), 'say_branches' => array(), 'unsupported_hints' => array());
-				if ($ev === 'trade' || true) {
-					// Always allow trade scan in body; say scan too — content is event-typed by binding.
-					extract_trades_from_lines($bag, $bodyLines, $rel, $lineOffset);
-					$bag['say_branches'] = extract_say_branches_from_lines($bodyLines, $rel, $sayLocals, $lineOffset);
-				}
+				$bag = array(
+					'trades' => array(),
+					'say_branches' => array(),
+					'unsupported_hints' => array(),
+					'_locals' => $sayLocals,
+				);
+				// Always allow trade scan in body; say scan too — content is event-typed by binding.
+				extract_trades_from_lines($bag, $bodyLines, $rel, $lineOffset);
+				$bag['say_branches'] = extract_say_branches_from_lines($bodyLines, $rel, $sayLocals, $lineOffset, $bag['unsupported_hints']);
 				$callbackCache[$cb] = $bag;
 			}
 		}
@@ -998,7 +1168,15 @@ function parse_lua_text($raw, $rel) {
 		}
 	}
 	if (count($classicSayLines) > 0) {
-		$result['say_branches'] = extract_say_branches_from_lines($classicSayLines, $rel, $sayLocals, $classicSayStart);
+		$result['say_branches'] = extract_say_branches_from_lines($classicSayLines, $rel, $sayLocals, $classicSayStart, $result['unsupported_hints']);
+	}
+
+	list($enterLines, $enterStart) = extract_named_event_body_lines($lines, 'event_enter');
+	if (count($enterLines) > 0) {
+		$enterBranches = extract_event_enter_movepc_branches($enterLines, $rel, $sayLocals, $enterStart, $result['unsupported_hints']);
+		foreach ($enterBranches as $eb) {
+			$result['say_branches'][] = $eb;
+		}
 	}
 
 	$tradeLines = extract_event_trade_lines($lines);
@@ -1020,7 +1198,7 @@ function parse_lua_text($raw, $rel) {
 					break;
 				}
 			}
-			$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints']);
+			$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints'], '_locals' => $sayLocals);
 			extract_trades_from_lines($bag, $tradeLines, $rel, $tradeStart);
 			$result['trades'] = $bag['trades'];
 		}
@@ -1032,12 +1210,12 @@ function parse_lua_text($raw, $rel) {
 				break;
 			}
 		}
-		$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints']);
+		$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints'], '_locals' => $sayLocals);
 		extract_trades_from_lines($bag, $tradeLines, $rel, $tradeStart);
 		$result['trades'] = $bag['trades'];
 	} else {
 		// No event_trade function: file-wide turn-in scan (legacy behavior for unusual scripts)
-		$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints']);
+		$bag = array('trades' => array(), 'unsupported_hints' => &$result['unsupported_hints'], '_locals' => $sayLocals);
 		extract_trades_from_lines($bag, $lines, $rel, 0);
 		$result['trades'] = $bag['trades'];
 	}
@@ -1079,6 +1257,9 @@ function parse_lua_text($raw, $rel) {
 			}
 		}
 	}
+
+	apply_manual_quest_overlays($result, $rel);
+	unset($result['_locals']);
 
 	return $result;
 }

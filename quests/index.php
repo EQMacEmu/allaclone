@@ -274,6 +274,21 @@ if ($sayRes && mysqli_num_rows($sayRes) > 0) {
 			},
 			$text
 		);
+		// Link "teleports to zone N" from MovePC annotations
+		$text = preg_replace_callback(
+			'/\bteleports to zone (\d+)\b/',
+			function ($m) use ($root_url) {
+				$zid = (int)$m[1];
+				$short = GetFieldByQuery('short_name', "SELECT short_name FROM zone WHERE zoneidnumber=$zid LIMIT 1");
+				$long = GetFieldByQuery('long_name', "SELECT long_name FROM zone WHERE zoneidnumber=$zid LIMIT 1");
+				$label = $long ? $long : ($short ? $short : ("zone $zid"));
+				if ($short) {
+					return 'teleports to <a href="' . $root_url . 'zone.php?name=' . rawurlencode($short) . '">' . htmlspecialchars($label) . '</a>';
+				}
+				return 'teleports to ' . htmlspecialchars($label);
+			},
+			$text
+		);
 		print "<li><strong>" . htmlspecialchars($s['keyword']) . "</strong>: " . $text . "</li>";
 	}
 	print "</ul>";

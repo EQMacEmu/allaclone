@@ -363,8 +363,8 @@ function ensure_live_schema($db) {
 	if (mysqli_errno($db)) {
 		throw new RuntimeException("Schema drain failed: " . mysqli_error($db));
 	}
-	// Upgrade older installs missing give_* columns.
-	$need = array('give_copper', 'give_silver', 'give_gold', 'give_platinum');
+	// Upgrade older installs missing give_* / effect_notes columns.
+	$needInt = array('give_copper', 'give_silver', 'give_gold', 'give_platinum');
 	$res = mysqli_query($db, "SHOW COLUMNS FROM quest_trade");
 	$have = array();
 	if ($res) {
@@ -373,10 +373,13 @@ function ensure_live_schema($db) {
 		}
 		mysqli_free_result($res);
 	}
-	foreach ($need as $col) {
+	foreach ($needInt as $col) {
 		if (!isset($have[$col])) {
 			sql_or_die($db, "ALTER TABLE quest_trade ADD COLUMN `$col` int(11) NOT NULL DEFAULT '0'", "alter quest_trade.$col");
 		}
+	}
+	if (!isset($have['effect_notes'])) {
+		sql_or_die($db, "ALTER TABLE quest_trade ADD COLUMN `effect_notes` varchar(512) NOT NULL DEFAULT ''", "alter quest_trade.effect_notes");
 	}
 }
 
@@ -801,8 +804,9 @@ try {
 			$ggo = isset($t['give_currency']) ? (int)$t['give_currency']['gold'] : 0;
 			$gpl = isset($t['give_currency']) ? (int)$t['give_currency']['platinum'] : 0;
 			$rf = (int)$t['reward']['reward_faction_flag'];
-			sql_or_die($db, "INSERT INTO quest_trade_stg (quest_npc_id,zone_short,npc_id,script_file,line_no,reward_exp,copper,silver,gold,platinum,give_copper,give_silver,give_gold,give_platinum,reward_faction_flag)
-				VALUES ($questNpcId,'$zn',$npcId,'$sf',$ln,$re,$cu,$si,$go,$pl,$gcu,$gsi,$ggo,$gpl,$rf)", "quest_trade_stg insert");
+			$en = sql_escape($db, isset($t['effect_notes']) ? substr($t['effect_notes'], 0, 512) : '');
+			sql_or_die($db, "INSERT INTO quest_trade_stg (quest_npc_id,zone_short,npc_id,script_file,line_no,reward_exp,copper,silver,gold,platinum,give_copper,give_silver,give_gold,give_platinum,reward_faction_flag,effect_notes)
+				VALUES ($questNpcId,'$zn',$npcId,'$sf',$ln,$re,$cu,$si,$go,$pl,$gcu,$gsi,$ggo,$gpl,$rf,'$en')", "quest_trade_stg insert");
 			$tradeId = (int)mysqli_insert_id($db);
 			if ($tradeId <= 0) {
 				throw new RuntimeException("quest_trade_stg insert produced no insert id");

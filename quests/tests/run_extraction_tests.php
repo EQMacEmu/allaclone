@@ -25,7 +25,7 @@ function assert_true($cond, $msg) {
 	}
 }
 
-assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.2.0', 'extractor version 1.2.0');
+assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.3.0', 'extractor version 1.3.0');
 
 $multi = parse_lua_file($fixtures . '/multi_turnin.lua', 'multi_turnin.lua');
 assert_true(count($multi['trades']) === 2, 'multi_turnin extracts 2 trades');
@@ -101,6 +101,27 @@ foreach ($rd['unsupported_hints'] as $h) {
 assert_true(isset($dk['dynamic_reward']) || isset($dk['nonliteral_reward']), 'dynamic reward hinted');
 assert_true(isset($dk['partial_nonliteral_reward']), 'partial nonliteral reward hinted');
 
+// MovePC (say, enter, trade) + nonliteral hint
+$mv = parse_lua_file($fixtures . '/reward_movepc.lua', 'reward_movepc.lua');
+$port = null;
+$enter = null;
+foreach ($mv['say_branches'] as $b) {
+	if ($b['keyword'] === 'port me') {
+		$port = $b;
+	}
+	if ($b['keyword'] === 'enter') {
+		$enter = $b;
+	}
+}
+assert_true($port !== null && strpos($port['response_text'], 'teleports to zone 27') !== false, 'say MovePC annotated');
+assert_true($enter !== null && strpos($enter['response_text'], 'teleports to zone 27') !== false, 'event_enter MovePC annotated');
+assert_true(count($mv['trades']) === 1 && strpos($mv['trades'][0]['effect_notes'], 'teleports to zone 87') !== false, 'trade MovePC in effect_notes');
+$mvKinds = array();
+foreach ($mv['unsupported_hints'] as $h) {
+	$mvKinds[$h['kind']] = true;
+}
+assert_true(isset($mvKinds['nonliteral_movepc']), 'nonliteral MovePC hinted');
+
 // Named encounter handlers + isolation
 $enc = parse_lua_file($fixtures . '/encounter_named_handlers.lua', 'encounter_named_handlers.lua');
 assert_true(!empty($enc['has_named_say_trade']), 'named say/trade detected');
@@ -112,11 +133,30 @@ assert_true(count($enc['npc_content'][10101]['say_branches']) >= 1 && $enc['npc_
 assert_true(count($enc['npc_content'][10102]['say_branches']) >= 1 && $enc['npc_content'][10102]['say_branches'][0]['response_text'] === 'Beta hail reply', 'beta say isolated');
 assert_true(count($enc['trades']) === 0, 'classic trades empty when named handlers own content');
 
-// Sirran integration
+// Sirran integration (+ raw death/timer/combat overlay)
 $sirran = parse_lua_file($fixtures . '/Sirran.lua', 'encounters/Sirran.lua');
 assert_true(!empty($sirran['has_named_say_trade']), 'Sirran named handlers');
 assert_true(isset($sirran['npc_content'][71058]) && isset($sirran['npc_content'][71023]), 'Sirran isle NPCs present');
-assert_true(!isset($sirran['npc_content'][71032]), 'Sirran death-only Thunder Spirit not in npc_content');
+assert_true(isset($sirran['manual_overlay']) && $sirran['manual_overlay'] === 'sirran_airplane', 'Sirran manual overlay applied');
+assert_true(isset($sirran['npc_content'][71032]), 'Thunder Spirit death overlay bag');
+$death32 = null;
+foreach ($sirran['npc_content'][71032]['say_branches'] as $b) {
+	if ($b['keyword'] === 'death' && strpos($b['response_text'], 'spawns NPC 71058') !== false) {
+		$death32 = $b;
+	}
+}
+assert_true($death32 !== null, 'Thunder Spirit death → isle1 spawn note');
+$spawnNote = false;
+$timerNote = false;
+foreach ($sirran['npc_content'][71058]['say_branches'] as $b) {
+	if ($b['keyword'] === 'spawn' && strpos($b['response_text'], '71032') !== false) {
+		$spawnNote = true;
+	}
+	if ($b['keyword'] === 'timer' && stripos($b['response_text'], 'despawn') !== false) {
+		$timerNote = true;
+	}
+}
+assert_true($spawnNote && $timerNote, 'isle1 spawn source + timer notes');
 $t58 = $sirran['npc_content'][71058]['trades'];
 $t23 = $sirran['npc_content'][71023]['trades'];
 assert_true(count($t58) === 2, 'isle1 two trades');
@@ -144,6 +184,7 @@ foreach ($sirran['npc_content'][71023]['say_branches'] as $b) {
 	}
 }
 assert_true($hail23, 'isle2 hail dialogue isolated');
+assert_true(count($sirran['npc_content'][71032]['trades']) === 0, 'death boss has no inherited trades');
 
 // Binding helpers
 $npcMaps = array(

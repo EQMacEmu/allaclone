@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS `quest_trade` (
   `give_gold` int(11) NOT NULL DEFAULT '0',
   `give_platinum` int(11) NOT NULL DEFAULT '0',
   `reward_faction_flag` tinyint(4) NOT NULL DEFAULT '0',
+  `effect_notes` varchar(512) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `quest_npc_id` (`quest_npc_id`),
   KEY `npc_id` (`npc_id`),

@@ -64,7 +64,9 @@ From each zone’s `*.lua` scripts:
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction — **heuristic**)
 - `event_say` / `:findi("keyword")` dialogue branches (including spawn/depop-only branches)
 - Named encounter handlers: `eq.register_npc_event(..., Event.say|Event.trade, <npc_id|local const>, Callback)` — dialogue/trades are extracted from the named callback and attributed **only** to that NPC id (death/spawn/combat registrations do not inherit quest content)
+- **Sirran exception:** `quests/manual_sirran.php` adds raw death→spawn / timer / combat notes for `airplane/encounters/Sirran.lua` (dynamic corpse spawns are not invented as coordinates)
 - Literal `eq.spawn2` / `eq.unique_spawn` (and `quest::` equivalents) with numeric x/y/z into `quest_spawn`
+- Literal `MovePC(zone, x, y, z[, h])` on the player (`e.other` / `e.self` / `CastToClient()`): annotated on say/`event_enter` branches and on turn-ins via `quest_trade.effect_notes` (non-literal destinations are hinted, not invented)
 
 Scripts bind to `npc_types.id` the way the server loads them: `<npc_id>.lua`, or `<npc_name>.lua` matched against NPCs belonging to that zone (id range or a spawn point there). Classic scripts may also bind ids from `eq.register_npc_event` **that also belong to the zone**. Encounter scripts with named say/trade callbacks bind those NPC ids only (not every registered event target).
 
