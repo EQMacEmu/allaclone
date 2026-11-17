@@ -3521,6 +3521,24 @@ form.item-refine div .checkbox input:checked + span::after {
 .drop-information ul + h3 {
   margin-top: 1rem;
 }
+.drop-information .item-quest-sources {
+  margin-top: 1rem;
+}
+.drop-information .item-quest-sources ul li {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  line-height: 1.35;
+}
+.drop-information .item-quest-sources ul li a {
+  display: inline;
+  padding: 0;
+}
+.drop-information .item-quest-sources .item-quest-trades {
+  margin: 2px 0 6px;
+}
+.drop-information .item-quest-sources .item-quest-trades li {
+  padding-left: 20px;
+}
 
 .spell-search {
   grid-area: pageContent;
@@ -3791,4 +3809,316 @@ table#resists-table th,
   min-width: 200px;
   box-sizing: border-box;
   padding: 10px;
+}
+
+/* DB-backed quest pages */
+.quests {
+  grid-area: pageContent;
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
+}
+.quest-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+  padding: 12px;
+  margin-bottom: 1rem;
+  background: rgba(220, 220, 220, 0.5);
+  border: 1px solid #ccc;
+}
+.quest-search label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: bold;
+  font-size: 13px;
+}
+.quest-search select,
+.quest-search input[type=text] {
+  min-width: 200px;
+  padding: 6px 8px;
+  font-weight: normal;
+  font-size: 14px;
+  border: 1px solid #999;
+}
+.quest-search input[type=submit] {
+  padding: 7px 18px;
+  cursor: pointer;
+}
+.quest-search-reset {
+  align-self: center;
+}
+.quest-npc-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.quest-npc-list li {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.6);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.quest-npc-list li a {
+  font-weight: bold;
+}
+.quest-npc-meta,
+.quest-npc-zone {
+  display: block;
+  font-size: 12px;
+  color: #555;
+}
+.quest-breadcrumb {
+  margin-top: 0;
+}
+.quest-note,
+.quest-source {
+  font-size: 12px;
+  color: #666;
+}
+.quest-detail ul {
+  margin-left: 1.5em;
+}
+.quest-trade {
+  margin-bottom: 1em;
+  padding: 0.5em;
+  border: 1px solid #ccc;
+}
+.quest-trade p {
+  margin: 0.25em 0;
+}
+
+/* Interactive Brewall / Konva maps */
+.interactive-map-wrap {
+  clear: both;
+  margin: 16px 0 24px;
+  max-width: 100%;
+}
+.map-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(220, 220, 220, 0.65);
+  border: 1px solid #bbb;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.map-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.map-controls .map-z-floor {
+  gap: 4px;
+}
+.map-controls .map-z-floor[hidden] {
+  display: none !important;
+}
+.map-controls .map-z-fade input[type="range"] {
+  width: 7rem;
+  vertical-align: middle;
+}
+.map-controls .map-z-fade [data-map-control="z-fade-value"] {
+  min-width: 2.5rem;
+  font-variant-numeric: tabular-nums;
+}
+.map-controls select[data-map-control="z-focus"] {
+  max-width: 14rem;
+  padding: 2px 4px;
+  font-size: 13px;
+}
+.map-controls button[data-map-control="z-prev"],
+.map-controls button[data-map-control="z-next"] {
+  min-width: 1.6rem;
+  padding: 2px 6px;
+}
+.map-controls button {
+  padding: 3px 10px;
+  border: 1px solid #888;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+}
+.konva-container {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  background: #e8e4c8;
+  border: 1px solid #888;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+.konva-container.map-active,
+.konva-container:focus {
+  outline: 2px solid #2a5d77;
+  outline-offset: -2px;
+}
+.map-coord-display {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  background: rgba(80, 80, 80, 0.85);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: Consolas, monospace;
+  pointer-events: none;
+}
+.map-credit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.map-hint {
+  font-size: 12px;
+  color: #555;
+  margin: 6px 0 0;
+}
+@media only screen and (min-width: 900px) {
+  .konva-container {
+    height: 640px;
+  }
+}
+.epics {
+  grid-area: pageContent;
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
+  max-width: 960px;
+}
+
+.epic-intro {
+  margin-bottom: 1rem;
+  line-height: 1.45;
+}
+
+.epic-breadcrumb {
+  margin-top: 0;
+  font-size: 13px;
+  color: #555;
+}
+
+.epic-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.epic-table th,
+.epic-table td {
+  border: 1px solid #ccc;
+  padding: 8px 10px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.epic-table th {
+  background: rgba(220, 220, 220, 0.7);
+}
+
+.epic-table td:nth-child(3) {
+  font-size: 13px;
+  color: #333;
+}
+
+.epic-header {
+  margin-bottom: 1rem;
+}
+
+.epic-blurb {
+  color: #444;
+}
+
+.epic-toc ul {
+  margin: 0.25em 0 1em 1.25em;
+}
+
+.epic-prefarm {
+  margin: 1rem 0;
+  padding: 12px;
+  background: rgba(220, 220, 220, 0.45);
+  border: 1px solid #ccc;
+}
+
+.epic-checklist {
+  list-style: none;
+  margin: 0.5em 0 0;
+  padding: 0;
+}
+
+.epic-checklist li {
+  margin: 0.35em 0;
+  line-height: 1.4;
+}
+
+.epic-checklist input {
+  margin-right: 6px;
+}
+
+.epic-note {
+  color: #555;
+  font-size: 13px;
+}
+
+.epic-section {
+  margin: 1.25rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.epic-section:last-of-type {
+  border-bottom: 0;
+}
+
+.epic-steps {
+  margin-left: 1.5em;
+  line-height: 1.45;
+}
+
+.epic-steps > li {
+  margin: 0.6em 0;
+}
+
+.epic-steps ul {
+  margin: 0.35em 0 0.35em 1.25em;
+}
+
+.epic-callout {
+  margin: 0.75em 0;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  background: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.epic-callout-warning {
+  border-color: #c09040;
+  background: rgba(255, 240, 200, 0.7);
+}
+
+.epic-callout-faction {
+  border-color: #7090b0;
+  background: rgba(220, 235, 250, 0.7);
+}
+
+.epic-verified,
+.epic-coming-soon {
+  font-size: 12px;
+  color: #666;
+  margin-top: 1.5rem;
 }
