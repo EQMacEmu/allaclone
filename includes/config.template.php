@@ -63,6 +63,7 @@ $SortZoneLevelList=TRUE; // sort or not the zones in zone levels list
 $AllowQuestsNPC=FALSE;
 $ItemQuestSource=FALSE; // quest reward / hand-in details on item.php; requires the same tables
 $AlwaysBuildQuest=FALSE; // legacy Perl live-parse (unused for Lua DB quests; leave FALSE)
+$AllowEpics=FALSE; // Epic 1.0 guide hub under guides/epics/ (navbar + pages)
 $GroupNpcsByName=TRUE; // groups the NPCs by their name in zone npcs lists
 $HideInvisibleMen=TRUE; // hide the invisible mens in bestiaries
 $ItemAddChanceToDrop=FALSE; // shows what are the chances to see the item droped by the npcs 
