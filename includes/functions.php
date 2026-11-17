@@ -379,7 +379,7 @@ function SelectSlot($name, $selected) {
 	print "<SELECT name=\"$name\">";
 	print "<option value='0'>Slot</option>\n";
 	$skip = array(1, 9, 15);
-	for ($i = 1; $i < 20; $i++) {
+	for ($i = 1; $i <= 20; $i++) {
 		if (in_array($i, $skip))
 			continue;
 		$key = $dbslots[$i];

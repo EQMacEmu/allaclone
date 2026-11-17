@@ -7,6 +7,5 @@
 		<li><a href="advnpcs.php">NPCs</a></li>
 		<li><a href="pets.php">Pets</a></li>
 		<li><a href="zonelist.php">Zones</a></li>
-		<li><a href="https://wiki.takp.info">Wiki</a></li>
 	</ul>
 </div>
