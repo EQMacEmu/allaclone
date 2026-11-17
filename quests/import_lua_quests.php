@@ -190,6 +190,7 @@ $QUEST_TABLES = array(
 	'quest_say_branch',
 	'quest_trade',
 	'quest_spawn',
+	'quest_death_spawn',
 	'quest_npc',
 	'quest_items',
 	'quest_import_meta',
@@ -437,6 +438,7 @@ function seed_staging_from_live_except_zones($db, $zoneFilter) {
 		JOIN quest_npc n ON n.id = s.quest_npc_id
 		WHERE LOWER(n.zone_short) NOT IN ($notIn)", "seed quest_say_branch_stg");
 	sql_or_die($db, "INSERT INTO quest_spawn_stg SELECT * FROM quest_spawn WHERE LOWER(zone_short) NOT IN ($notIn)", "seed quest_spawn_stg");
+	sql_or_die($db, "INSERT INTO quest_death_spawn_stg SELECT * FROM quest_death_spawn WHERE LOWER(zone_short) NOT IN ($notIn)", "seed quest_death_spawn_stg");
 	seed_quest_items_stg_from_live($db, $notIn);
 }
 
@@ -465,7 +467,7 @@ function live_meta_counts($db) {
 
 function staging_counts($db) {
 	$out = array();
-	foreach (array('quest_npc', 'quest_trade', 'quest_say_branch', 'quest_spawn', 'quest_items') as $t) {
+	foreach (array('quest_npc', 'quest_trade', 'quest_say_branch', 'quest_spawn', 'quest_death_spawn', 'quest_items') as $t) {
 		$r = mysqli_query($db, "SELECT COUNT(*) AS c FROM `{$t}_stg`");
 		$out[$t] = ($r && ($row = mysqli_fetch_assoc($r))) ? (int)$row['c'] : 0;
 		if ($r) mysqli_free_result($r);
@@ -503,7 +505,7 @@ function swap_staging_to_live($db, $tables) {
 	}
 }
 
-function content_signature($npcRows, $spawnRows) {
+function content_signature($npcRows, $spawnRows, $deathSpawnRows = array()) {
 	$bits = array();
 	$keys = array_keys($npcRows);
 	sort($keys);
@@ -513,6 +515,9 @@ function content_signature($npcRows, $spawnRows) {
 	$sk = array_keys($spawnRows);
 	sort($sk);
 	$bits[] = 'spawns:' . implode(',', $sk);
+	$dk = array_keys($deathSpawnRows);
+	sort($dk);
+	$bits[] = 'death_spawns:' . implode(',', $dk);
 	return substr(sha1(implode(';', $bits)), 0, 16);
 }
 
@@ -535,12 +540,42 @@ if ($zoneFilter && count($zones) === 0) {
 
 $stats = array(
 	'zones' => 0, 'npcs' => 0, 'trades' => 0, 'says' => 0, 'hits' => 0, 'reqs' => 0,
-	'skipped_items' => 0, 'spawns' => 0, 'skipped_bindings' => 0,
+	'skipped_items' => 0, 'spawns' => 0, 'death_spawns' => 0, 'skipped_bindings' => 0,
 );
 
 $npcRows = array();
 $spawnRows = array();
+$deathSpawnRows = array();
 $allUnsupportedHints = array();
+
+/**
+ * Attribute parsed death→spawn edges to zone NPC sources and collect rows.
+ * Named edges use source_npc_id; classic (null source) use stem targets.
+ */
+function collect_death_spawn_rows(&$deathSpawnRows, &$npcRows, $zn, $edges, $stemTargets, $npcMaps, $zoneIds, $spawnZones, $scriptRel) {
+	foreach ($edges as $edge) {
+		$sources = array();
+		if ($edge['source_npc_id'] !== null) {
+			$sid = (int)$edge['source_npc_id'];
+			if (npc_in_zone($sid, $zn, $zoneIds, $spawnZones) && isset($npcMaps['by_id'][$sid])) {
+				$sources[$sid] = $npcMaps['by_id'][$sid];
+			}
+		} else {
+			$sources = $stemTargets;
+		}
+		foreach ($sources as $sid => $meta) {
+			ensure_quest_npc_row($npcRows, $zn, $sid, $meta, $scriptRel);
+			$dk = $zn . '|' . $sid . '|' . $edge['spawned_npc_id'] . '|' . $edge['line_no'] . '|' . $edge['call_kind'];
+			if (isset($deathSpawnRows[$dk])) {
+				continue;
+			}
+			$row = $edge;
+			$row['zone_short'] = $zn;
+			$row['source_npc_id'] = $sid;
+			$deathSpawnRows[$dk] = $row;
+		}
+	}
+}
 
 function ensure_quest_npc_row(&$npcRows, $zn, $npcId, $meta, $scriptRel) {
 	$key = $zn . '|' . $npcId;
@@ -604,6 +639,7 @@ foreach ($zones as $zone) {
 
 		$hasNamed = !empty($parsed['has_named_say_trade']);
 		$stemTargets = resolve_stem_npcs($file['stem'], $zn, $npcMaps, $zoneIds, $spawnZones);
+		$deathEdges = isset($parsed['death_spawns']) ? $parsed['death_spawns'] : array();
 
 		if ($hasNamed) {
 			// Per-NPC content from named Event.say / Event.trade only.
@@ -618,7 +654,20 @@ foreach ($zones as $zone) {
 				}
 				$namedTargets[$npcId] = $npcMaps['by_id'][$npcId];
 			}
-			if (count($namedTargets) === 0 && count($stemTargets) === 0) {
+			$hasDeathSources = false;
+			foreach ($deathEdges as $de) {
+				if ($de['source_npc_id'] !== null) {
+					$sid = (int)$de['source_npc_id'];
+					if (npc_in_zone($sid, $zn, $zoneIds, $spawnZones) && isset($npcMaps['by_id'][$sid])) {
+						$hasDeathSources = true;
+						break;
+					}
+				} elseif (count($stemTargets) > 0) {
+					$hasDeathSources = true;
+					break;
+				}
+			}
+			if (count($namedTargets) === 0 && count($stemTargets) === 0 && !$hasDeathSources) {
 				if (ctype_digit($file['stem']) || count($parsed['registered_npc_ids']) > 0) {
 					$stats['skipped_bindings']++;
 				}
@@ -647,12 +696,13 @@ foreach ($zones as $zone) {
 					$npcRows[$key]['say_branches'][] = $b;
 				}
 			}
+			collect_death_spawn_rows($deathSpawnRows, $npcRows, $zn, $deathEdges, $stemTargets, $npcMaps, $zoneIds, $spawnZones, $file['rel']);
 			continue;
 		}
 
 		// Classic scripts: stem + register_npc_event ids share file content.
 		$targets = resolve_script_npcs($file['stem'], $zn, $parsed['registered_npc_ids'], $npcMaps, $zoneIds, $spawnZones);
-		if (count($targets) === 0) {
+		if (count($targets) === 0 && count($deathEdges) === 0) {
 			if (ctype_digit($file['stem']) || count($parsed['registered_npc_ids']) > 0) {
 				$stats['skipped_bindings']++;
 			}
@@ -672,11 +722,12 @@ foreach ($zones as $zone) {
 				$npcRows[$key]['say_branches'][] = $b;
 			}
 		}
+		collect_death_spawn_rows($deathSpawnRows, $npcRows, $zn, $deathEdges, $stemTargets, $npcMaps, $zoneIds, $spawnZones, $file['rel']);
 	}
 	fwrite(STDOUT, "  scanned $zn (" . count($files) . " lua)\n");
 }
 
-$sig = content_signature($npcRows, $spawnRows);
+$sig = content_signature($npcRows, $spawnRows, $deathSpawnRows);
 $zoneLabel = $zoneFilter ? implode(',', array_keys($zoneFilter)) : '*';
 $hintAgg = aggregate_unsupported_hints($allUnsupportedHints);
 
@@ -709,7 +760,7 @@ if ($dryRun) {
 		$tradeN += count($row['trades']);
 		$sayN += count($row['say_branches']);
 	}
-	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " scanned quest NPCs, $tradeN trades, $sayN says, " . count($spawnRows) . " quest spawn points");
+	fwrite(STDOUT, "Dry run: would write " . count($npcRows) . " scanned quest NPCs, $tradeN trades, $sayN says, " . count($spawnRows) . " quest spawn points, " . count($deathSpawnRows) . " death→spawn edges");
 	if ($zoneFilter) {
 		fwrite(STDOUT, " (subset merge preserves other live zones)");
 	}
@@ -733,7 +784,7 @@ try {
 		throw new RuntimeException("Injected failure after staging_ready");
 	}
 
-	fwrite(STDOUT, "Writing " . count($npcRows) . " scanned quest NPCs and " . count($spawnRows) . " quest spawn points into staging...\n");
+	fwrite(STDOUT, "Writing " . count($npcRows) . " scanned quest NPCs, " . count($spawnRows) . " quest spawn points, and " . count($deathSpawnRows) . " death→spawn edges into staging...\n");
 
 	$itemIndex = array();
 	$insertCount = 0;
@@ -923,6 +974,24 @@ try {
 		$stats['spawns']++;
 	}
 
+	foreach ($deathSpawnRows as $ds) {
+		$zn = sql_escape($db, $ds['zone_short']);
+		$src = (int)$ds['source_npc_id'];
+		$spawned = (int)$ds['spawned_npc_id'];
+		$ck = sql_escape($db, substr($ds['call_kind'], 0, 32));
+		$ek = sql_escape($db, substr($ds['event_kind'], 0, 32));
+		$sf = sql_escape($db, substr($ds['script_file'], 0, 255));
+		$ln = (int)$ds['line_no'];
+		if (!empty($ds['coords_dynamic']) || $ds['x'] === null) {
+			$xyz = 'NULL,NULL,NULL,NULL';
+		} else {
+			$xyz = ((float)$ds['x']) . ',' . ((float)$ds['y']) . ',' . ((float)$ds['z']) . ',' . ((float)$ds['heading']);
+		}
+		sql_or_die($db, "INSERT INTO quest_death_spawn_stg (zone_short,source_npc_id,spawned_npc_id,call_kind,event_kind,x,y,z,heading,script_file,line_no)
+			VALUES ('$zn',$src,$spawned,'$ck','$ek',$xyz,'$sf',$ln)", "quest_death_spawn_stg");
+		$stats['death_spawns']++;
+	}
+
 	// Rebuild item index rows for seeded (non-filtered) zones already in staging.
 	// Meta row for this import.
 	$rootEsc = sql_escape($db, substr($questRoot, 0, 512));
@@ -940,7 +1009,8 @@ try {
 	}
 
 	$finalCounts = validate_staging($db, $zoneFilter, $forceIncomplete, $prior);
-	fwrite(STDOUT, "Validation OK: staging npcs={$finalCounts['quest_npc']} trades={$finalCounts['quest_trade']} spawns={$finalCounts['quest_spawn']}\n");
+	$deathC = isset($finalCounts['quest_death_spawn']) ? (int)$finalCounts['quest_death_spawn'] : 0;
+	fwrite(STDOUT, "Validation OK: staging npcs={$finalCounts['quest_npc']} trades={$finalCounts['quest_trade']} spawns={$finalCounts['quest_spawn']} death_spawns=$deathC\n");
 	fwrite(STDOUT, "Swapping staging -> live via RENAME TABLE...\n");
 	swap_staging_to_live($db, $QUEST_TABLES);
 } catch (Exception $e) {
@@ -955,7 +1025,7 @@ try {
 	exit(1);
 }
 
-fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} skipped_unknown_items={$stats['skipped_items']} skipped_bindings={$stats['skipped_bindings']} signature=$sig\n");
+fwrite(STDOUT, "Done. zones={$stats['zones']} npcs={$stats['npcs']} trades={$stats['trades']} says={$stats['says']} faction_hits={$stats['hits']} faction_reqs={$stats['reqs']} quest_spawns={$stats['spawns']} death_spawns={$stats['death_spawns']} skipped_unknown_items={$stats['skipped_items']} skipped_bindings={$stats['skipped_bindings']} signature=$sig\n");
 print_unsupported_report($hintAgg);
 mysqli_close($db);
 exit(0);

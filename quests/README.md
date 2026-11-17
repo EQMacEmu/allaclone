@@ -64,7 +64,8 @@ From each zone’s `*.lua` scripts:
 - `GetFactionValue(e.self) >= N` standing gates (mapped to the NPC’s primary faction — **heuristic**)
 - `event_say` / `:findi("keyword")` dialogue branches (including spawn/depop-only branches)
 - Named encounter handlers: `eq.register_npc_event(..., Event.say|Event.trade, <npc_id|local const>, Callback)` — dialogue/trades are extracted from the named callback and attributed **only** to that NPC id (death/spawn/combat registrations do not inherit quest content)
-- **Sirran exception:** `quests/manual_sirran.php` adds raw death→spawn / timer / combat notes for `airplane/encounters/Sirran.lua` (dynamic corpse spawns are not invented as coordinates)
+- Death→spawn edges into `quest_death_spawn`: classic `event_death` / `event_death_complete`, and named `Event.death` / `Event.death_complete` callbacks that call `spawn2` / `unique_spawn` (literal or local-const NPC id; literal coords kept, corpse/`GetX` coords stored as NULL)
+- **Sirran exception:** `quests/manual_sirran.php` adds timer / combat notes for `airplane/encounters/Sirran.lua` (death→spawn comes from generic extraction)
 - Literal `eq.spawn2` / `eq.unique_spawn` (and `quest::` equivalents) with numeric x/y/z into `quest_spawn`
 - Literal `MovePC(zone, x, y, z[, h])` on the player (`e.other` / `e.self` / `CastToClient()`): annotated on say/`event_enter` branches and on turn-ins via `quest_trade.effect_notes` (non-literal destinations are hinted, not invented)
 
@@ -77,7 +78,9 @@ Dry-run and final import summaries report aggregated `unsupported_hints` (by kin
 - Multiline `{...}` turn-in tables (`check_turn_in` / `count_handed_item`)
 - Variable / concatenated item ids
 - `eq.ChooseRandom` / `math.random` item slots (not recorded as guaranteed rewards; literal items with random coins may be kept with a partial hint)
-- Dynamic spawn coords (`GetX()` etc.)
+- Dynamic spawn coords (`GetX()` etc.) for `quest_spawn` map points (death edges still record the NPC link with NULL coords)
+- Inline anonymous `register_npc_event(..., function(e) …)` death handlers
+- Death spawns via helper functions / call graphs (e.g. `ActivateAvatar`) or `eq.ChooseRandom` NPC ids
 - `register_npc_event` NPC ids that are bare loop variables (no literal/local-const 3rd arg)
 - Deep nesting beyond the indent heuristic
 
@@ -85,4 +88,4 @@ Treat summaries as approximate. Fixture tests live under `quests/tests/`.
 
 ## Tables
 
-Defined in `includes/sql/quests.sql` (`quest_npc`, `quest_trade*`, `quest_faction_*`, `quest_say_branch`, `quest_spawn`, `quest_items`, `quest_import_meta`).
+Defined in `includes/sql/quests.sql` (`quest_npc`, `quest_trade*`, `quest_faction_*`, `quest_say_branch`, `quest_spawn`, `quest_death_spawn`, `quest_items`, `quest_import_meta`).

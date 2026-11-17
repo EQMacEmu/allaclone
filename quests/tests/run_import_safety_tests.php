@@ -230,11 +230,11 @@ try {
 
 	foreach (array(
 		'quest_trade_item','quest_faction_hit','quest_faction_req','quest_say_branch',
-		'quest_trade','quest_spawn','quest_npc','quest_items','quest_import_meta',
+		'quest_trade','quest_spawn','quest_death_spawn','quest_npc','quest_items','quest_import_meta',
 		'quest_trade_item_stg','quest_faction_hit_stg','quest_faction_req_stg','quest_say_branch_stg',
-		'quest_trade_stg','quest_spawn_stg','quest_npc_stg','quest_items_stg','quest_import_meta_stg',
+		'quest_trade_stg','quest_spawn_stg','quest_death_spawn_stg','quest_npc_stg','quest_items_stg','quest_import_meta_stg',
 		'quest_trade_item_old','quest_faction_hit_old','quest_faction_req_old','quest_say_branch_old',
-		'quest_trade_old','quest_spawn_old','quest_npc_old','quest_items_old','quest_import_meta_old',
+		'quest_trade_old','quest_spawn_old','quest_death_spawn_old','quest_npc_old','quest_items_old','quest_import_meta_old',
 	) as $t) {
 		mysqli_query($admin, "DROP TABLE IF EXISTS `$t`");
 	}

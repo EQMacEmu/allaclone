@@ -257,6 +257,8 @@ if ($npcFactionId > 0) {
 	}
 }
 
+quest_print_npc_death_spawns($db, $npc_id, $zone);
+
 // Say branches
 $sayRes = mysqli_query($db, "SELECT * FROM $tbquestsaybranch WHERE quest_npc_id=$questNpcId ORDER BY line_no LIMIT 200");
 if ($sayRes && mysqli_num_rows($sayRes) > 0) {

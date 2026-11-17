@@ -307,6 +307,108 @@ function quest_print_npc_section($db, $npcId) {
 	print "</ul></div>";
 }
 
+/** True when quest_death_spawn exists (created by schema/import). */
+function quest_death_spawn_table_ready($db) {
+	global $tbquestdeathspawn;
+	static $ready = null;
+	if ($ready !== null) {
+		return $ready;
+	}
+	if (empty($tbquestdeathspawn)) {
+		$ready = false;
+		return $ready;
+	}
+	$res = @mysqli_query($db, "SHOW TABLES LIKE '" . addslashes($tbquestdeathspawn) . "'");
+	$ready = ($res && mysqli_num_rows($res) > 0);
+	if ($res) {
+		mysqli_free_result($res);
+	}
+	return $ready;
+}
+
+/** Linked NPC label for death-spawn lists. */
+function quest_npc_link_html($npcId, $rootUrl = null) {
+	global $root_url;
+	if ($rootUrl === null) {
+		$rootUrl = isset($root_url) ? $root_url : '';
+	}
+	$npcId = (int)$npcId;
+	$name = GetFieldByQuery('name', "SELECT name FROM npc_types WHERE id=$npcId");
+	$label = $name ? ReadableNpcName($name) : ("NPC $npcId");
+	return '<a href="' . htmlspecialchars($rootUrl) . 'npc.php?id=' . $npcId . '">' . htmlspecialchars($label) . '</a>';
+}
+
+/**
+ * NPC-page / quest-detail death→spawn lists:
+ * "Appears when" (reverse) and "On death spawns" (forward).
+ */
+function quest_print_npc_death_spawns($db, $npcId, $zoneShort = '') {
+	global $AllowQuestsNPC, $tbquestdeathspawn, $root_url, $hide_npc_id;
+
+	if (empty($AllowQuestsNPC)) {
+		return;
+	}
+	if (!quest_death_spawn_table_ready($db)) {
+		return;
+	}
+	$npcId = (int)$npcId;
+	$zoneClause = '';
+	if ($zoneShort !== '') {
+		$zoneClause = " AND zone_short='" . addslashes($zoneShort) . "'";
+	}
+	$hideClause = '';
+	if (!empty($hide_npc_id)) {
+		$ids = implode(',', array_map('intval', $hide_npc_id));
+		$hideClause = " AND source_npc_id NOT IN ($ids) AND spawned_npc_id NOT IN ($ids)";
+	}
+
+	$appears = mysqli_query($db, "SELECT DISTINCT source_npc_id, zone_short, call_kind, event_kind
+		FROM $tbquestdeathspawn
+		WHERE spawned_npc_id=$npcId
+		$zoneClause
+		$hideClause
+		ORDER BY zone_short, source_npc_id
+		LIMIT 100");
+	if ($appears && mysqli_num_rows($appears) > 0) {
+		print "<div class='list-wrapper'><p><strong>Appears when:</strong></p><ul>";
+		while ($row = mysqli_fetch_assoc($appears)) {
+			$src = (int)$row['source_npc_id'];
+			$kind = htmlspecialchars($row['call_kind'] ? $row['call_kind'] : 'spawn');
+			$zone = htmlspecialchars($row['zone_short']);
+			print "<li>" . quest_npc_link_html($src, $root_url) . " dies ($kind"
+				. ($zoneShort === '' ? ", $zone" : '')
+				. ")</li>";
+		}
+		print "</ul></div>";
+		mysqli_free_result($appears);
+	} elseif ($appears) {
+		mysqli_free_result($appears);
+	}
+
+	$spawns = mysqli_query($db, "SELECT DISTINCT spawned_npc_id, zone_short, call_kind, event_kind
+		FROM $tbquestdeathspawn
+		WHERE source_npc_id=$npcId
+		$zoneClause
+		$hideClause
+		ORDER BY zone_short, spawned_npc_id
+		LIMIT 100");
+	if ($spawns && mysqli_num_rows($spawns) > 0) {
+		print "<div class='list-wrapper'><p><strong>On death spawns:</strong></p><ul>";
+		while ($row = mysqli_fetch_assoc($spawns)) {
+			$dst = (int)$row['spawned_npc_id'];
+			$kind = htmlspecialchars($row['call_kind'] ? $row['call_kind'] : 'spawn');
+			$zone = htmlspecialchars($row['zone_short']);
+			print "<li>" . quest_npc_link_html($dst, $root_url) . " ($kind"
+				. ($zoneShort === '' ? ", $zone" : '')
+				. ")</li>";
+		}
+		print "</ul></div>";
+		mysqli_free_result($spawns);
+	} elseif ($spawns) {
+		mysqli_free_result($spawns);
+	}
+}
+
 /** One faction-page list ("Raised by quests" etc.), grouping an NPC's hits into a single entry. */
 function quest_print_faction_list($db, $query, $cssClass, $heading, $describe) {
 	$res = mysqli_query($db, $query);

@@ -466,6 +466,7 @@ if (mysqli_num_rows($result) > 0) {
 } else {
 	print "<p><strong>This NPC does not spawn during this expansion.</strong></p>";
 }
+quest_print_npc_death_spawns($db, $id);
 print "</div>"; // spawn-wrapper
 
 function print_spell($spell, $extra = "")

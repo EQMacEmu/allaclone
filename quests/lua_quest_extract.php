@@ -9,7 +9,7 @@
  */
 
 if (!defined('ALLACLONE_LUA_QUEST_EXTRACT')) {
-	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.3.0');
+	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.4.0');
 }
 
 function normalize_npc_key($name) {
@@ -266,6 +266,175 @@ function extract_lua_function_body($text, $funcName) {
 		$i++;
 	}
 	return null;
+}
+
+/**
+ * Parse spawn2/unique_spawn calls from lines into death-spawn edge records.
+ * Resolves literal or local-const NPC ids; keeps coords only when numeric.
+ * $sourceNpcId null = classic handler (importer attributes to stem NPC).
+ */
+function extract_spawn_calls_as_death_edges($lines, $rel, $locals, $lineOffset, $eventKind, $sourceNpcId, &$hints = null) {
+	$out = array();
+	$n = count($lines);
+	for ($i = 0; $i < $n; $i++) {
+		$line = $lines[$i];
+		if (!preg_match('/\b(?:eq\.|quest::)(spawn2|unique_spawn)\s*\(/i', $line)) {
+			continue;
+		}
+		$lineNo = $i + 1 + $lineOffset;
+		if (preg_match('/\b(?:eq\.|quest::)(?:spawn2|unique_spawn)\s*\(\s*(?:eq\.)?ChooseRandom\s*\(/i', $line)
+			|| preg_match('/\b(?:eq\.|quest::)(?:spawn2|unique_spawn)\s*\(\s*[^,\)]*math\.random/i', $line)) {
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'dynamic_death_spawn',
+					'line_no' => $lineNo,
+					'script_file' => $rel,
+				);
+			}
+			continue;
+		}
+		if (!preg_match('/\b(?:eq\.|quest::)(spawn2|unique_spawn)\s*\(\s*([A-Za-z_][A-Za-z0-9_]*|\d+)\s*,/i', $line, $m)) {
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'unresolved_death_spawn',
+					'line_no' => $lineNo,
+					'script_file' => $rel,
+				);
+			}
+			continue;
+		}
+		$callKind = strtolower($m[1]);
+		$token = $m[2];
+		if (ctype_digit($token)) {
+			$spawnedId = (int)$token;
+		} elseif (isset($locals[$token])) {
+			$spawnedId = (int)$locals[$token];
+		} else {
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'unresolved_death_spawn',
+					'line_no' => $lineNo,
+					'script_file' => $rel,
+					'detail' => $token,
+				);
+			}
+			continue;
+		}
+		if ($spawnedId <= 0) {
+			continue;
+		}
+		$x = null;
+		$y = null;
+		$z = null;
+		$heading = null;
+		$coordsDynamic = true;
+		if (preg_match(
+			'/\b(?:eq\.|quest::)(?:spawn2|unique_spawn)\s*\(\s*(?:[A-Za-z_][A-Za-z0-9_]*|\d+)\s*,\s*[^,]+\s*,\s*[^,]+\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)(?:\s*,\s*(-?\d+(?:\.\d+)?))?/i',
+			$line,
+			$cm
+		)) {
+			$x = (float)$cm[1];
+			$y = (float)$cm[2];
+			$z = (float)$cm[3];
+			$heading = isset($cm[4]) && $cm[4] !== '' ? (float)$cm[4] : 0.0;
+			$coordsDynamic = false;
+		}
+		$out[] = array(
+			'source_npc_id' => $sourceNpcId,
+			'spawned_npc_id' => $spawnedId,
+			'call_kind' => $callKind,
+			'event_kind' => $eventKind,
+			'x' => $x,
+			'y' => $y,
+			'z' => $z,
+			'heading' => $heading,
+			'coords_dynamic' => $coordsDynamic,
+			'script_file' => $rel,
+			'line_no' => $lineNo,
+		);
+	}
+	return $out;
+}
+
+/**
+ * Death→spawn edges from classic event_death(_complete) and named
+ * Event.death / Event.death_complete register_npc_event callbacks.
+ */
+function extract_death_spawn_edges($text, $rel, &$hints = null) {
+	$locals = extract_lua_local_int_consts($text);
+	$text = str_replace(array("\r\n", "\r"), "\n", $text);
+	$lines = explode("\n", $text);
+	$out = array();
+
+	foreach (array('event_death_complete' => 'death_complete', 'event_death' => 'death') as $fn => $eventKind) {
+		list($bodyLines, $start) = extract_named_event_body_lines($lines, $fn);
+		if (count($bodyLines) === 0) {
+			continue;
+		}
+		foreach (extract_spawn_calls_as_death_edges($bodyLines, $rel, $locals, $start, $eventKind, null, $hints) as $edge) {
+			$out[] = $edge;
+		}
+	}
+
+	$bindings = extract_npc_event_bindings($text);
+	$callbackCache = array();
+	foreach ($bindings as $b) {
+		$ev = $b['event'];
+		if ($ev !== 'death' && $ev !== 'death_complete') {
+			continue;
+		}
+		if ($b['npc_id'] === null) {
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'unresolved_registration',
+					'line_no' => $b['line_no'],
+					'script_file' => $rel,
+					'detail' => $b['npc_token'],
+				);
+			}
+			continue;
+		}
+		if ($b['callback'] === null || $b['callback'] === '') {
+			// Inline / anonymous death handlers are not extracted.
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'inline_death_handler',
+					'line_no' => $b['line_no'],
+					'script_file' => $rel,
+				);
+			}
+			continue;
+		}
+		$cb = $b['callback'];
+		if (!array_key_exists($cb, $callbackCache)) {
+			$bodyInfo = extract_lua_function_body($text, $cb);
+			if ($bodyInfo === null) {
+				$callbackCache[$cb] = false;
+			} else {
+				$bodyLines = explode("\n", $bodyInfo[0]);
+				$lineOffset = lua_offset_to_line($text, $bodyInfo[1]) - 1;
+				$callbackCache[$cb] = array($bodyLines, $lineOffset);
+			}
+		}
+		if ($callbackCache[$cb] === false) {
+			if (is_array($hints)) {
+				$hints[] = array(
+					'kind' => 'unresolved_callback',
+					'line_no' => $b['line_no'],
+					'script_file' => $rel,
+					'detail' => $cb,
+				);
+			}
+			continue;
+		}
+		list($bodyLines, $lineOffset) = $callbackCache[$cb];
+		$eventKind = ($ev === 'death_complete') ? 'death_complete' : 'death';
+		foreach (extract_spawn_calls_as_death_edges($bodyLines, $rel, $locals, $lineOffset, $eventKind, (int)$b['npc_id'], $hints) as $edge) {
+			$out[] = $edge;
+		}
+	}
+
+	return $out;
 }
 
 /**
@@ -1037,7 +1206,7 @@ function parse_lua_file($path, $rel) {
 	return parse_lua_text($raw, $rel);
 }
 
-/** Optional raw encounter overlays (Sirran death/timer/combat notes). */
+/** Optional raw encounter overlays (Sirran timer/combat notes). */
 function apply_manual_quest_overlays(&$parsed, $rel) {
 	static $loaded = false;
 	if (!$loaded) {
@@ -1069,6 +1238,7 @@ function parse_lua_text($raw, $rel) {
 		'faction_hits' => array(),
 		'faction_reqs' => array(),
 		'say_branches' => array(),
+		'death_spawns' => array(),
 		'registered_npc_ids' => array_keys($registered),
 		'event_bindings' => $bindings,
 		'npc_content' => array(),
@@ -1257,6 +1427,8 @@ function parse_lua_text($raw, $rel) {
 			}
 		}
 	}
+
+	$result['death_spawns'] = extract_death_spawn_edges($raw, $rel, $result['unsupported_hints']);
 
 	apply_manual_quest_overlays($result, $rel);
 	unset($result['_locals']);

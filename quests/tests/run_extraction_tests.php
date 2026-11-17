@@ -25,7 +25,7 @@ function assert_true($cond, $msg) {
 	}
 }
 
-assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.3.0', 'extractor version 1.3.0');
+assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.4.0', 'extractor version 1.4.0');
 
 $multi = parse_lua_file($fixtures . '/multi_turnin.lua', 'multi_turnin.lua');
 assert_true(count($multi['trades']) === 2, 'multi_turnin extracts 2 trades');
@@ -133,30 +133,57 @@ assert_true(count($enc['npc_content'][10101]['say_branches']) >= 1 && $enc['npc_
 assert_true(count($enc['npc_content'][10102]['say_branches']) >= 1 && $enc['npc_content'][10102]['say_branches'][0]['response_text'] === 'Beta hail reply', 'beta say isolated');
 assert_true(count($enc['trades']) === 0, 'classic trades empty when named handlers own content');
 
-// Sirran integration (+ raw death/timer/combat overlay)
+// Classic + named death→spawn extraction
+$dClassic = parse_lua_file($fixtures . '/death_spawn_classic.lua', 'death_spawn_classic.lua');
+assert_true(count($dClassic['death_spawns']) === 2, 'classic death extracts 2 spawn edges');
+$lit = null;
+$dyn = null;
+foreach ($dClassic['death_spawns'] as $e) {
+	if ((int)$e['spawned_npc_id'] === 90016) {
+		$lit = $e;
+	}
+	if ((int)$e['spawned_npc_id'] === 36091) {
+		$dyn = $e;
+	}
+}
+assert_true($lit !== null && $lit['source_npc_id'] === null && $lit['call_kind'] === 'unique_spawn' && $lit['coords_dynamic'] === false && $lit['x'] == 28.1, 'classic literal death spawn');
+assert_true($dyn !== null && $dyn['coords_dynamic'] === true && $dyn['x'] === null, 'classic dynamic death spawn keeps null coords');
+
+$dNamed = parse_lua_file($fixtures . '/death_spawn_named.lua', 'death_spawn_named.lua');
+assert_true(count($dNamed['death_spawns']) === 2, 'named death extracts 2 edges');
+$bossEdge = null;
+$otherEdge = null;
+foreach ($dNamed['death_spawns'] as $e) {
+	if ((int)$e['source_npc_id'] === 71032) {
+		$bossEdge = $e;
+	}
+	if ((int)$e['source_npc_id'] === 71000) {
+		$otherEdge = $e;
+	}
+}
+assert_true($bossEdge !== null && (int)$bossEdge['spawned_npc_id'] === 71058 && $bossEdge['coords_dynamic'] === true, 'named local-const death spawn');
+assert_true($otherEdge !== null && (int)$otherEdge['spawned_npc_id'] === 71060 && $otherEdge['coords_dynamic'] === false && $otherEdge['x'] == -1462.2, 'named literal death spawn');
+
+// Sirran integration (death edges + timer/combat overlay; no fake death say_branches)
 $sirran = parse_lua_file($fixtures . '/Sirran.lua', 'encounters/Sirran.lua');
 assert_true(!empty($sirran['has_named_say_trade']), 'Sirran named handlers');
 assert_true(isset($sirran['npc_content'][71058]) && isset($sirran['npc_content'][71023]), 'Sirran isle NPCs present');
 assert_true(isset($sirran['manual_overlay']) && $sirran['manual_overlay'] === 'sirran_airplane', 'Sirran manual overlay applied');
-assert_true(isset($sirran['npc_content'][71032]), 'Thunder Spirit death overlay bag');
-$death32 = null;
-foreach ($sirran['npc_content'][71032]['say_branches'] as $b) {
-	if ($b['keyword'] === 'death' && strpos($b['response_text'], 'spawns NPC 71058') !== false) {
-		$death32 = $b;
+$sirranDeath = null;
+foreach ($sirran['death_spawns'] as $e) {
+	if ((int)$e['source_npc_id'] === 71032 && (int)$e['spawned_npc_id'] === 71058) {
+		$sirranDeath = $e;
 	}
 }
-assert_true($death32 !== null, 'Thunder Spirit death → isle1 spawn note');
-$spawnNote = false;
+assert_true($sirranDeath !== null && $sirranDeath['coords_dynamic'] === true, 'Thunder Spirit death → isle1 via death_spawns');
+assert_true(!isset($sirran['npc_content'][71032]), 'Thunder Spirit has no quest content bag (death-only)');
 $timerNote = false;
 foreach ($sirran['npc_content'][71058]['say_branches'] as $b) {
-	if ($b['keyword'] === 'spawn' && strpos($b['response_text'], '71032') !== false) {
-		$spawnNote = true;
-	}
 	if ($b['keyword'] === 'timer' && stripos($b['response_text'], 'despawn') !== false) {
 		$timerNote = true;
 	}
 }
-assert_true($spawnNote && $timerNote, 'isle1 spawn source + timer notes');
+assert_true($timerNote, 'isle1 timer note from manual overlay');
 $t58 = $sirran['npc_content'][71058]['trades'];
 $t23 = $sirran['npc_content'][71023]['trades'];
 assert_true(count($t58) === 2, 'isle1 two trades');
@@ -184,7 +211,6 @@ foreach ($sirran['npc_content'][71023]['say_branches'] as $b) {
 	}
 }
 assert_true($hail23, 'isle2 hail dialogue isolated');
-assert_true(count($sirran['npc_content'][71032]['trades']) === 0, 'death boss has no inherited trades');
 
 // Binding helpers
 $npcMaps = array(
