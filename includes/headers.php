@@ -1,29 +1,40 @@
+<?php
+$headerName = (string)($name ?? '');
+// Some pages already escape their heading; preserve existing entities.
+$headerTitle = htmlspecialchars((string)($Title ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
+$headerStats = trim(strip_tags((string)($stats ?? '')));
+$canonicalUrl = '';
+// Only advertise a canonical item URL when the operator supplies the public base.
+if (!empty($site_url) && !empty($ItemRow['id'])) {
+    $canonicalUrl = rtrim($site_url, '/') . '/item.php?id=' . (int)$ItemRow['id'];
+}
+?>
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="tooltip.js"></script>
-  <script src="spawnpoints.js"></script>
+  <script src="<?php echo html_attr($root_url . 'tooltip.js'); ?>"></script>
+  <script src="<?php echo html_attr($root_url . 'spawnpoints.js'); ?>"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1" />
-  <meta property="og:site_name" content="TAKP AllaClone">
+  <meta property="og:site_name" content="<?php echo html_attr($SiteTitle); ?>">
   <meta property="og:type" content="article">
-  <?php if ($name) { ?>
-    <meta property="og:title" content="<?php echo $name; ?>">
-    <?php if (strlen($stats)) { ?>
-        <meta property="og:description" content="<?php echo $stats ?>">
+  <?php if ($headerName !== '') { ?>
+    <meta property="og:title" content="<?php echo html_attr($headerName); ?>">
+    <?php if ($headerStats !== '') { ?>
+        <meta property="og:description" content="<?php echo html_attr($headerStats); ?>">
     <?php } ?>
-    <meta name="description" content="TAKP Item Information for <?php echo $name; ?>">
-    <?php if ($item_icon) { ?>
-      <meta property="og:image" content="<?php echo $item_icon; ?>">
+    <meta name="description" content="<?php echo html_attr($SiteTitle . ' information for ' . $headerName); ?>">
+    <?php if (!empty($item_icon)) { ?>
+      <meta property="og:image" content="<?php echo html_attr($item_icon); ?>">
     <?php } ?>
-    <?php if ($id) { ?>
-      <meta property="og:url" content="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
-      <link rel="canonical" href="https://www.takproject.net/allaclone/item.php?id=<?php echo $id; ?>">
+    <?php if ($canonicalUrl !== '') { ?>
+      <meta property="og:url" content="<?php echo html_attr($canonicalUrl); ?>">
+      <link rel="canonical" href="<?php echo html_attr($canonicalUrl); ?>">
     <?php
     }
   } ?>
-	<title><?php echo $SiteTitle . ' ' . ($Title != "" ? " :: $Title" : "");
-      if ($name) {
-        echo " :: $name";
+	<title><?php echo html_attr($SiteTitle) . ($headerTitle !== '' ? " :: $headerTitle" : '');
+      if ($headerName !== '') {
+        echo ' :: ' . html_attr($headerName);
       }
     ?></title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
@@ -69,4 +80,4 @@
 		</header>
 		<div id="main">
 			<?php include(__DIR__ . '/menu.php'); ?>
-			<h2 class="page_title"><?php echo $Title; ?></h2>
+			<h2 class="page_title"><?php echo $headerTitle; ?></h2>

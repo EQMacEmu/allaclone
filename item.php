@@ -27,7 +27,7 @@ $name = $ItemRow["Name"];
  *    The item actually exists
  */
 
-if ( $item_icon == "" ) {
+if (empty($item_icon)) {
   $item_icon = $icons_url . "item_" . $ItemRow["icon"] . ".gif";
 }
 

@@ -16,6 +16,9 @@ $dbuser="root";
 $dbpasswd="root";
 
 $root_url='//local.sandbox.com/takp/allaclone/';
+// Optional public URL including the installation path, e.g. https://example.org/allaclone/.
+// Leave empty for development; canonical/og:url metadata will be omitted.
+$site_url='';
 $includes_url=$root_url.'includes/';
 $includes_dir=__DIR__.DIRECTORY_SEPARATOR;
 // Prefer SCRIPT_NAME (no PATH_INFO). Nested paths like /allaclone/items.php are kept when valid.
@@ -43,7 +46,7 @@ $npcs_dir=__DIR__."/../npcs/";
 $npcs_url=$root_url."npcs/";
 $icons_dir=__DIR__."/../icons/";
 $icons_url=$root_url."icons/";
-$images_url=$root_url."/images/";
+$images_url=$root_url."images/";
 $charbrowser_url=""; // Set to "" to disable CharBrowser links for character names
 
 $DefaultCSS = "2022";

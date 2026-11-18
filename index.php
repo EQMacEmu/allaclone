@@ -13,7 +13,7 @@ include($includes_dir . 'headers.php');
 		perpetually stuck in the early Planes of Power expansion, receiving no content updates for the decade of its life.
 		Many bugs/quirks from this time period have been replicated which gives the server a certain charm, and one of the most "classic" or era-appropriate experiences available today.</p>
 	<p>This website is a tool for you to look up items, spells, NPC entities, recipes, etc.</p>
-	<img id="box-art" src='<?php echo $root_url; ?>/images/eqmac.jpg' />
+	<img id="box-art" src='<?php echo html_attr($images_url . 'eqmac.jpg'); ?>' />
 </div>
 </div>
 <?php include($includes_dir . "footers.php");

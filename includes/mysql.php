@@ -69,7 +69,7 @@ function sql_ident($value, array $allowlist) {
 /**
  * Allowlist a SQL comparison operator.
  */
-function sql_op($value, array $ops = null) {
+function sql_op($value, ?array $ops = null) {
 	if ($ops === null) {
 		$ops = array('>=', '<=', '=', '<', '>');
 	}

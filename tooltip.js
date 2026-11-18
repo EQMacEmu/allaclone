@@ -1,3 +1,6 @@
+// Resolve preview endpoints beside this script, including on nested guide pages.
+const tooltipBaseUrl = new URL('.', document.currentScript.src);
+
 document.addEventListener("DOMContentLoaded", () => {
   const tooltip = document.getElementById("tooltip");
   let timeoutId;
@@ -9,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Fetch item stats from the server
     try {
-      const response = await fetch(`item-preview.php?id=${itemId}`);
+      const response = await fetch(new URL(`item-preview.php?id=${encodeURIComponent(itemId)}`, tooltipBaseUrl));
       const data = await response.text();
       showTooltip(event, data);
 
@@ -25,7 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Fetch spell effects from the server
     try {
-      const response = await fetch(`spell-preview.php?id=${spellId}`);
+      const response = await fetch(new URL(`spell-preview.php?id=${encodeURIComponent(spellId)}`, tooltipBaseUrl));
       const data = await response.text();
       showTooltip(event, data);
 
@@ -54,19 +57,18 @@ document.addEventListener("DOMContentLoaded", () => {
       tooltip.style.left = `${event.pageX + 10}px`;
       tooltip.style.top = `${event.pageY + 10}px`;
     });
-    link.addEventListener("mouseenter", () => {
-      e = event;
+    link.addEventListener("mouseenter", (event) => {
       timeoutId = setTimeout(() => {
-        showItemStats(e);
+        showItemStats(event);
       }, 500);
     });
     link.addEventListener("mouseleave", () => {
         clearTimeout(timeoutId);
-        hideTooltip(e);
+        hideTooltip();
     });
-    link.addEventListener("onclick", () => {
+    link.addEventListener("click", () => {
         clearTimeout(timeoutId);
-        hideTooltip(e);
+        hideTooltip();
     });
   });
 
@@ -77,19 +79,18 @@ document.addEventListener("DOMContentLoaded", () => {
       tooltip.style.left = `${event.pageX + 10}px`;
       tooltip.style.top = `${event.pageY + 10}px`;
     });
-    link.addEventListener("mouseenter", () => {
-      e = event;
+    link.addEventListener("mouseenter", (event) => {
       timeoutId = setTimeout(() => {
-        showSpellEffects(e);
+        showSpellEffects(event);
       }, 500);
     });
     link.addEventListener("mouseleave", () => {
         clearTimeout(timeoutId);
-        hideTooltip(e);
+        hideTooltip();
     });
-    link.addEventListener("onclick", () => {
+    link.addEventListener("click", () => {
         clearTimeout(timeoutId);
-        hideTooltip(e);
+        hideTooltip();
     });
   });
 });
