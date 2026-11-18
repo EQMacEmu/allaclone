@@ -5,8 +5,9 @@
  * Scans EQEmu quest scripts (*.lua), extracts turn-ins, rewards, faction hits,
  * standing gates, and say branches, then loads tool tables in the peq DB via
  * staging tables + RENAME TABLE swap. Live quest_* data is never DROPped first.
- * DDL auto-commits in MySQL — safety comes from leaving live tables untouched
- * until a validated staging set is swapped in one RENAME batch.
+ * DDL auto-commits in MySQL. Schema upgrades may apply before staging; live
+ * rows are replaced by one RENAME batch after validation. A later cleanup
+ * failure does not undo that replacement.
  *
  * Usage:
  *   php import_lua_quests.php --quests /path/to/quests --host localhost --user root --pass root --db peq
@@ -41,7 +42,7 @@ $opts = getopt('', array(
 
 if (isset($opts['help']) || empty($opts['quests'])) {
 	fwrite(STDOUT, "Usage: php import_lua_quests.php --quests <quest_root> [--host H] [--user U] [--pass P] [--db D] [--zones z1,z2] [--dry-run] [--force-incomplete]\n");
-	fwrite(STDOUT, "Loads into staging tables then RENAME-swaps. Live data is preserved on failure.\n");
+	fwrite(STDOUT, "Loads into staging tables then RENAME-swaps. Failures report whether replacement occurred.\n");
 	fwrite(STDOUT, "DB settings fall back to ALLACLONE_DB_HOST / _USER / _PASS / _NAME, then localhost / root / root / peq.\n");
 	exit(isset($opts['help']) ? 0 : 1);
 }
@@ -387,6 +388,11 @@ function ensure_live_schema($db) {
 function drop_staging_tables($db, $tables) {
 	foreach ($tables as $t) {
 		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_stg`", "drop {$t}_stg");
+	}
+}
+
+function drop_old_tables($db, $tables) {
+	foreach ($tables as $t) {
 		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_old`", "drop {$t}_old");
 	}
 }
@@ -493,16 +499,15 @@ function validate_staging($db, $zoneFilter, $forceIncomplete, $prior) {
 	return $counts;
 }
 
-function swap_staging_to_live($db, $tables) {
+function swap_staging_to_live($db, $tables, &$liveReplaced) {
 	$parts = array();
 	foreach ($tables as $t) {
 		$parts[] = "`$t` TO `{$t}_old`";
 		$parts[] = "`{$t}_stg` TO `$t`";
 	}
 	sql_or_die($db, "RENAME TABLE " . implode(', ', $parts), "RENAME swap");
-	foreach ($tables as $t) {
-		sql_or_die($db, "DROP TABLE IF EXISTS `{$t}_old`", "drop {$t}_old");
-	}
+	$liveReplaced = true;
+	drop_old_tables($db, $tables);
 }
 
 function content_signature($npcRows, $spawnRows, $deathSpawnRows = array()) {
@@ -771,9 +776,11 @@ if ($dryRun) {
 	exit(0);
 }
 
+$liveReplaced = false;
 try {
 	ensure_live_schema($db);
 	drop_staging_tables($db, $QUEST_TABLES);
+	drop_old_tables($db, $QUEST_TABLES);
 	create_staging_tables($db, $QUEST_TABLES);
 	if ($zoneFilter && table_exists($db, 'quest_npc') && $prior['npc_count'] > 0) {
 		fwrite(STDOUT, "Seeding staging from live zones outside filter...\n");
@@ -1012,14 +1019,18 @@ try {
 	$deathC = isset($finalCounts['quest_death_spawn']) ? (int)$finalCounts['quest_death_spawn'] : 0;
 	fwrite(STDOUT, "Validation OK: staging npcs={$finalCounts['quest_npc']} trades={$finalCounts['quest_trade']} spawns={$finalCounts['quest_spawn']} death_spawns=$deathC\n");
 	fwrite(STDOUT, "Swapping staging -> live via RENAME TABLE...\n");
-	swap_staging_to_live($db, $QUEST_TABLES);
+	swap_staging_to_live($db, $QUEST_TABLES, $liveReplaced);
 } catch (Exception $e) {
 	fwrite(STDERR, "Import aborted: " . $e->getMessage() . "\n");
-	fwrite(STDERR, "Live quest_* tables were not replaced.\n");
-	try {
-		drop_staging_tables($db, $QUEST_TABLES);
-	} catch (Exception $e2) {
-		fwrite(STDERR, "Staging cleanup warning: " . $e2->getMessage() . "\n");
+	if ($liveReplaced) {
+		fwrite(STDERR, "Live quest_* tables were replaced before cleanup failed. Remaining *_old tables were preserved.\n");
+	} else {
+		fwrite(STDERR, "Live quest_* tables were not replaced.\n");
+		try {
+			drop_staging_tables($db, $QUEST_TABLES);
+		} catch (Exception $e2) {
+			fwrite(STDERR, "Staging cleanup warning: " . $e2->getMessage() . "\n");
+		}
 	}
 	mysqli_close($db);
 	exit(1);
