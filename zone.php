@@ -323,8 +323,8 @@ if ($mode == "tasks") {
 } // end Tasks
 print "<div class='zone-resources'>";
 print "<p><strong>Succor point : X (</strong>" . floor($zone["safe_x"]) . ")  Y (" . floor($zone["safe_y"]) . ") Z (" . floor($zone["safe_z"]) . ")";
-if ($zone["minium_level"] > 0) {
-	print "<strong>Minimum level : </strong>" . floor($zone["minium_level"]);
+if ($zone["min_level"] > 0) {
+	print "<strong>Minimum level : </strong>" . floor($zone["min_level"]);
 }
 $zone_label = html_attr($zone["long_name"]);
 print "<ul><li><a href='" . $self . "?name=" . $name_q . "&mode=npcs'>" . $zone_label . " Bestiary</a>";

@@ -83,7 +83,7 @@ if ($item["light"] > 0) {
 echo "</div>"; // item-stats
 
 if (file_exists(getcwd() . "/icons/item_" . $item['icon'] . ".gif")) {
-	if ($item["slots"] & $wearable_slot && $item["color"] > 0)
+	if ($item["slots"] & $wearable_slots && $item["color"] > 0)
 	{
 		$hexcolor = sprintf('%06x', $item["color"]);
 		echo "<div class='img-color'; style='background-color: #$hexcolor'></div>";

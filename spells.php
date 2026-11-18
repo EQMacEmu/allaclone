@@ -15,7 +15,7 @@ $opt = (isset($_GET['opt']) ? $_GET['opt'] : '');
 $namestring = (isset($_GET['name']) ? $_GET['name'] : '');
 $level = (isset($_GET['level']) ? (int)$_GET['level'] : 0);
 $type = (isset($_GET['type']) ? (int)$_GET['type'] : 0);
-$allowed_spell_classes = array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+$allowed_spell_classes = array_values(array_intersect(range(0, 16), array_keys($dbclasses)));
 if (!in_array($type, $allowed_spell_classes, true)) {
 	$type = 0;
 }
@@ -51,7 +51,6 @@ echo '<div class="container spell-search">
                 <option value="0"' . ($type == 0 ? ' selected="1"' : '') . '>All Classes</option>
                 <option value="8"' . ($type == 8 ? ' selected="1"' : '') . '>Bard</option>
                 <option value="15"' . ($type == 15 ? ' selected="1"' : '') . '>Beastlord</option>
-                <option value="16"' . ($type == 16 ? ' selected="1"' : '') . '>Berserker</option>
                 <option value="2"' . ($type == 2 ? ' selected="1"' : '') . '>Cleric</option>
                 <option value="6"' . ($type == 6 ? ' selected="1"' : '') . '>Druid</option>
                 <option value="14"' . ($type == 14 ? ' selected="1"' : '') . '>Enchanter</option>
@@ -125,9 +124,8 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 
 	echo ' <table border="0" cellpadding="5" cellspacing="15">';
 
-	$LevelCheck = $level + $OpDiff;
+	$LevelCheck = null;
 	$Class = 'classes' . $type;
-	$ClassName = $dbclasses[$type];
 	$RowClass = "lr";
 
 	while ($row = mysqli_fetch_array($result)) {
@@ -136,9 +134,11 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 		if ( !in_array($row['id'], $hide_spell_id) ) {
 			/* This will only come through when the Level Changes */
 			$DBSkill = $dbskills[$row["skill"]];
-			if ($LevelCheck != $row[$Class]) {
-				$LevelCheck = $row[$Class];
-				echo '<tr class="level"><td colspan="4"><h3>Level: ' . $row['classes' . $type] . '</h3></td></tr>';
+			if ($LevelCheck === null || ($type != 0 && $LevelCheck != $row[$Class])) {
+				$LevelCheck = $type != 0 ? $row[$Class] : 0;
+				if ($type != 0) {
+					echo '<tr class="level"><td colspan="4"><h3>Level: ' . $LevelCheck . '</h3></td></tr>';
+				}
 				echo '<tr>
 							<td colspan=2>Name</td>
 							<td class="left">Class</td>
@@ -148,6 +148,16 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 							<td class="right">Target</td>
 						</tr>';
 			}
+			$classLevels = array();
+			foreach ($allowed_spell_classes as $classId) {
+				if ($classId === 0) {
+					continue;
+				}
+				$classLevel = $row['classes' . $classId] ?? 255;
+				if (($type == 0 || $classId == $type) && $classLevel > 0 && $classLevel < 255) {
+					$classLevels[] = $dbclasses[$classId] . ' ' . $classLevel;
+				}
+			}
 			echo '<tr>
 						<td width="5%">
 							<a href="spell.php?id=' . $row['id'] . '"><img src="' . $icons_url . $row['new_icon'] . '.gif" align="center" border="1"></a>
@@ -155,7 +165,7 @@ if (($type != 0 && $level != 0) || $namestring != '') {
 						<td width="20%">
 							<a href="spell.php?id=' . $row['id'] . '">' . $row['name'] . '</a>
 						</td>
-						<td width="10%">' . $ClassName . " " . $LevelCheck . '</td>
+						<td width="10%">' . html_attr(implode(', ', $classLevels)) . '</td>
 						<td width="40%"><ul>';
 			for ($n = 1; $n <= 12; $n++) {
 				SpellDescription($row, $n);

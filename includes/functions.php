@@ -729,6 +729,8 @@ function SpecialAttacks($specialstr) {
 }
 function price($price) {
 	$res = "";
+	$sep = "";
+	$p = $g = $s = 0;
 	if ($price >= 1000) {
 		$p = floor($price / 1000);
 		$price -= $p * 1000;

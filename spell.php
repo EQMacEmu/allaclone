@@ -20,7 +20,7 @@ function OutputClasses() {
 	global $dbclasses, $spell, $minlvl;
 	$v = "";
 	for ($i = 1; $i <= 16; $i++) {
-		if (($spell["classes$i"] > 0) and ($spell["classes$i"] < 255)) {
+		if (isset($dbclasses[$i], $spell["classes$i"]) && $spell["classes$i"] > 0 && $spell["classes$i"] < 255) {
 			print "$v " . $dbclasses[$i] . " (" . $spell["classes$i"] . ")";
 			$v = ",";
 			if ($spell["classes$i"] < $minlvl) {

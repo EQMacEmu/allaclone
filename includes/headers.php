@@ -1,4 +1,8 @@
 <?php
+// Static pages can render this header before loading the database helpers.
+$headerAttr = static function ($value) {
+    return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+};
 $headerName = (string)($name ?? '');
 // Some pages already escape their heading; preserve existing entities.
 $headerTitle = htmlspecialchars((string)($Title ?? ''), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
@@ -12,29 +16,29 @@ if (!empty($site_url) && !empty($ItemRow['id'])) {
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="<?php echo html_attr($root_url . 'tooltip.js'); ?>"></script>
-  <script src="<?php echo html_attr($root_url . 'spawnpoints.js'); ?>"></script>
+  <script src="<?php echo $headerAttr($root_url . 'tooltip.js'); ?>"></script>
+  <script src="<?php echo $headerAttr($root_url . 'spawnpoints.js'); ?>"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1" />
-  <meta property="og:site_name" content="<?php echo html_attr($SiteTitle); ?>">
+  <meta property="og:site_name" content="<?php echo $headerAttr($SiteTitle); ?>">
   <meta property="og:type" content="article">
   <?php if ($headerName !== '') { ?>
-    <meta property="og:title" content="<?php echo html_attr($headerName); ?>">
+    <meta property="og:title" content="<?php echo $headerAttr($headerName); ?>">
     <?php if ($headerStats !== '') { ?>
-        <meta property="og:description" content="<?php echo html_attr($headerStats); ?>">
+        <meta property="og:description" content="<?php echo $headerAttr($headerStats); ?>">
     <?php } ?>
-    <meta name="description" content="<?php echo html_attr($SiteTitle . ' information for ' . $headerName); ?>">
+    <meta name="description" content="<?php echo $headerAttr($SiteTitle . ' information for ' . $headerName); ?>">
     <?php if (!empty($item_icon)) { ?>
-      <meta property="og:image" content="<?php echo html_attr($item_icon); ?>">
+      <meta property="og:image" content="<?php echo $headerAttr($item_icon); ?>">
     <?php } ?>
     <?php if ($canonicalUrl !== '') { ?>
-      <meta property="og:url" content="<?php echo html_attr($canonicalUrl); ?>">
-      <link rel="canonical" href="<?php echo html_attr($canonicalUrl); ?>">
+      <meta property="og:url" content="<?php echo $headerAttr($canonicalUrl); ?>">
+      <link rel="canonical" href="<?php echo $headerAttr($canonicalUrl); ?>">
     <?php
     }
   } ?>
-	<title><?php echo html_attr($SiteTitle) . ($headerTitle !== '' ? " :: $headerTitle" : '');
+	<title><?php echo $headerAttr($SiteTitle) . ($headerTitle !== '' ? " :: $headerTitle" : '');
       if ($headerName !== '') {
-        echo ' :: ' . html_attr($headerName);
+        echo ' :: ' . $headerAttr($headerName);
       }
     ?></title>
 	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
