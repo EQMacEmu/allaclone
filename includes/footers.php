@@ -4,7 +4,7 @@
         </footer>
         </div>
         </div>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+        <script src="<?php echo $includes_url; ?>js/jquery-2.2.4.min.js"></script>
         <script src="<?php echo $includes_url; ?>js/jquery.floatHead.js"></script>
         <script>
         	$(document).ready(function() {

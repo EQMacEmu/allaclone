@@ -1,0 +1,62 @@
+Allaclone local browser assets
+Downloaded: 2026-11-18 UTC
+
+These files replace the existing remote resources without changing their bytes.
+jQuery remains version 2.2.4; its copyright header and upstream license are retained.
+Raleway remains normal style, weights 400 and 700. Google serves shared variable
+WOFF2 files for these weights; all five original language subsets are retained.
+The font family and font bytes are unchanged. License: fonts/OFL.txt (SIL OFL 1.1).
+The existing TAKP background is copied unchanged; it is not covered by the
+jQuery or font licenses. No new artwork or image processing is involved.
+
+Original font stylesheet: https://fonts.googleapis.com/css?family=Raleway:400,700
+Stylesheet request User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Original stylesheet SHA256: d6220453989b1aeb4fb59f9d18c807006a6892f0aade51e8bdda8412b5d617d6
+includes/fonts.css changes only font URLs to relative local paths.
+jQuery license: includes/js/jquery-2.2.4.LICENSE.txt (MIT and included notices).
+
+includes/js/jquery-2.2.4.min.js
+  Source: https://code.jquery.com/jquery-2.2.4.min.js
+  SHA256: 05b85d96f41fff14d8f608dad03ab71e2c1017c2da0914d7c59291bad7a54f8e
+  Bytes: 85578
+
+includes/js/jquery-2.2.4.LICENSE.txt
+  Source: https://raw.githubusercontent.com/jquery/jquery/2.2.4/LICENSE.txt
+  SHA256: f980a306a01e5881cc8004115f7e6dde44e7f5296477237d37d169a86ce7c094
+  Bytes: 1606
+
+images/kelethinimage31-2000x1250.jpg
+  Source: https://www.takproject.net/assets/images/kelethinimage31-2000x1250.jpg
+  SHA256: 522bd593aba7cf5ecd2c3a7ec89211ad1f370050c6419fc72225f78872ce21fb
+  Bytes: 134999
+
+fonts/OFL.txt
+  Source: https://raw.githubusercontent.com/google/fonts/37a6dd7a5aef8e3fc8df3435a35a72312e556811/ofl/raleway/OFL.txt
+  SHA256: 7e946cf1171784d1015279e7dc35f827957a6b5d1f1f659ae0c98e5f5e37ed9b
+  Bytes: 4497
+
+fonts/raleway-v37-cyrillic-ext.woff2
+  Source: https://fonts.gstatic.com/s/raleway/v37/1Ptug8zYS_SKggPNyCAIT5lu.woff2
+  SHA256: 36920a27f3f245302f04e96a331d42b81dceda91b5229dfd757873bf12db4b05
+  Bytes: 26988
+
+fonts/raleway-v37-cyrillic.woff2
+  Source: https://fonts.gstatic.com/s/raleway/v37/1Ptug8zYS_SKggPNyCkIT5lu.woff2
+  SHA256: ac99ad1c437b60ef445a7c13c958d4d574ef98050de2ccf182ba6ccdb3bfbdfd
+  Bytes: 25864
+
+fonts/raleway-v37-vietnamese.woff2
+  Source: https://fonts.gstatic.com/s/raleway/v37/1Ptug8zYS_SKggPNyCIIT5lu.woff2
+  SHA256: 49d1df38711652b72cbb3ed91dfda0a981b88f75be4abb02eb6640f74f2a5bee
+  Bytes: 11384
+
+fonts/raleway-v37-latin-ext.woff2
+  Source: https://fonts.gstatic.com/s/raleway/v37/1Ptug8zYS_SKggPNyCMIT5lu.woff2
+  SHA256: 2d603982caea60f15b741581c9e7bd88d1a7680fc52978137f9bc67c2dec61e0
+  Bytes: 31480
+
+fonts/raleway-v37-latin.woff2
+  Source: https://fonts.gstatic.com/s/raleway/v37/1Ptug8zYS_SKggPNyC0ITw.woff2
+  SHA256: b1bef1f03a77a36fc257c5525e32a1dd621bb6f935b743a419da7ed0b18dc8f5
+  Bytes: 48264
+

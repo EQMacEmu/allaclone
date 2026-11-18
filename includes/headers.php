@@ -41,7 +41,7 @@ if (!empty($site_url) && !empty($ItemRow['id'])) {
         echo ' :: ' . $headerAttr($headerName);
       }
     ?></title>
-	<link href="//fonts.googleapis.com/css?family=Raleway:400,700" rel="stylesheet">
+	<link href="<?php echo $headerAttr($includes_url . 'fonts.css'); ?>" rel="stylesheet">
 	<link rel="stylesheet" href="<?php echo $includes_url . $CssStyle; ?>.css?v=<?php
 		$cssFile = __DIR__ . DIRECTORY_SEPARATOR . $CssStyle . '.css';
 		if (!is_file($cssFile)) {
