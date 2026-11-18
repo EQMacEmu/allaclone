@@ -25,7 +25,45 @@ function assert_true($cond, $msg) {
 	}
 }
 
-assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.4.0', 'extractor version 1.4.0');
+assert_true(ALLACLONE_LUA_QUEST_EXTRACT === '1.4.1', 'extractor version 1.4.1');
+
+// Comment filtering must retain string contents and source locations.
+$commentRaw = file_get_contents($fixtures . '/comments.lua');
+$commented = parse_lua_text($commentRaw, 'comments.lua');
+assert_true(count($commented['trades']) === 1 && $commented['trades'][0]['give_ids'] === array(1001), 'line and long comments do not create trades');
+assert_true($commented['trades'][0]['reward']['reward_item_ids'] === array(2001), 'commented reward does not replace live reward');
+assert_true($commented['trades'][0]['line_no'] === 24, 'trade retains original line number after comments');
+assert_true($commented['trades'][0]['give_currency']['platinum'] === 50, 'live currency requirement survives comment filtering');
+assert_true(count($commented['faction_hits']) === 0, 'commented faction hit is ignored');
+assert_true(count($commented['say_branches']) === 1 && $commented['say_branches'][0]['response_text'] === 'Hello -- this is dialogue, not a comment.', 'dialogue keeps literal comment marker and ignores disabled reply');
+assert_true($commented['say_branches'][0]['line_no'] === 34, 'dialogue retains original line number');
+assert_true(extract_lua_local_int_consts($commentRaw) === array('TARGET' => 12003), 'commented constant cannot shadow a live constant');
+$commentBindings = extract_npc_event_bindings($commentRaw);
+assert_true(count($commentBindings) === 1 && $commentBindings[0]['npc_id'] === 12001 && $commentBindings[0]['line_no'] === 45, 'direct binding scan ignores comments and preserves location');
+$commentSpawns = extract_literal_quest_spawns($commentRaw, 'comments.lua');
+assert_true(count($commentSpawns) === 1 && $commentSpawns[0]['npc_id'] === 12003 && $commentSpawns[0]['line_no'] === 41, 'direct raw spawn scan ignores comments and preserves location');
+$commentDeaths = extract_death_spawn_edges($commentRaw, 'comments.lua');
+assert_true(count($commentDeaths) === 2 && array_column($commentDeaths, 'spawned_npc_id') === array(12003, 12003) && array_column($commentDeaths, 'line_no') === array(41, 41), 'classic and registered death scans ignore comments and preserve location');
+assert_true(extract_lua_function_body($commentRaw, 'discarded_death') === null, 'commented function declaration cannot create a callback body');
+
+$stringLiterals = <<<'LUA'
+local single = 'it\'s -- still text';
+local double = "an escaped \" quote -- still text";
+local plain = [[-- long string
+--[[ still a string ]=] ] ==]];
+local equal = [==[-- another long string
+--[=[ ]] ]=] still a string]==];
+LUA;
+assert_true(lua_mask_comments($stringLiterals) === $stringLiterals, 'quoted/escaped and long-bracket strings remain byte-identical');
+$masked = lua_mask_comments($commentRaw);
+assert_true(strlen($masked) === strlen($commentRaw) && substr_count($masked, "\n") === substr_count($commentRaw, "\n"), 'comment masking preserves source byte length and newlines');
+foreach (array("\r\n", "\r") as $newline) {
+	$withNewlines = str_replace("\n", $newline, $commentRaw);
+	assert_true(parse_lua_text($withNewlines, 'comments.lua') === $commented && extract_literal_quest_spawns($withNewlines, 'comments.lua') === $commentSpawns, 'comment filtering handles ' . ($newline === "\r" ? 'CR' : 'CRLF') . ' line endings');
+}
+$onlyComments = "-- if item_lib.check_turn_in(e.self, e.trade, {item1=9001}) then\n-- eq.spawn2(99999, 0, 0, 1, 2, 3, 0);";
+assert_true(count(parse_lua_text($onlyComments, 'comments-only.lua')['trades']) === 0 && extract_literal_quest_spawns($onlyComments, 'comments-only.lua') === array(), 'comment-only file has no fallback trades or spawns, including EOF comment');
+assert_true(trim(lua_mask_comments('--[=[ unfinished comment')) === '', 'unterminated long comment remains a comment through EOF');
 
 $multi = parse_lua_file($fixtures . '/multi_turnin.lua', 'multi_turnin.lua');
 assert_true(count($multi['trades']) === 2, 'multi_turnin extracts 2 trades');

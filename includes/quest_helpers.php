@@ -228,18 +228,20 @@ function quest_print_item_trades($db, $itemId, $role) {
 		echo " — <a href='{$root_url}zone.php?name=" . urlencode($row['zone']) . "'>" . htmlspecialchars($zoneLabel) . "</a>";
 
 		$zoneEsc = addslashes($row['zone']);
-		$tq = "SELECT t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag
+		$tq = "SELECT t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag,
+				t.give_copper, t.give_silver, t.give_gold, t.give_platinum
 			FROM $tbquesttrade t
 			JOIN $tbquesttradeitem ti ON ti.trade_id = t.id AND ti.role='$role' AND ti.item_id=$itemId
 			WHERE t.npc_id=$npcId AND t.zone_short='$zoneEsc'
-			GROUP BY t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag, t.line_no
+			GROUP BY t.id, t.reward_exp, t.copper, t.silver, t.gold, t.platinum, t.reward_faction_flag, t.line_no,
+				t.give_copper, t.give_silver, t.give_gold, t.give_platinum
 			ORDER BY t.line_no, t.id";
 		$tr = mysqli_query($db, $tq);
 		if ($tr && mysqli_num_rows($tr) > 0) {
 			echo "<ul class='item-quest-trades'>";
 			while ($trade = mysqli_fetch_assoc($tr)) {
 				$tid = (int)$trade['id'];
-				$give = quest_trade_item_links($db, $tid, 'give', $itemId);
+				$give = array_merge(quest_trade_item_links($db, $tid, 'give', $itemId), quest_trade_give_currency_parts($trade));
 				$rewards = array_merge(quest_trade_item_links($db, $tid, 'reward', $itemId), quest_trade_reward_extras($trade));
 				echo "<li><strong>Give:</strong> " . ($give ? implode(', ', $give) : '(none resolved)');
 				echo " · <strong>Reward:</strong> ";

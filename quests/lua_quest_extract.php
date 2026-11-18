@@ -9,7 +9,7 @@
  */
 
 if (!defined('ALLACLONE_LUA_QUEST_EXTRACT')) {
-	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.4.0');
+	define('ALLACLONE_LUA_QUEST_EXTRACT', '1.4.1');
 }
 
 function normalize_npc_key($name) {
@@ -78,6 +78,7 @@ function empty_quest_reward() {
  * Build local NAME => digits map from a Lua script (first assignment wins).
  */
 function extract_lua_local_int_consts($text) {
+	$text = lua_mask_comments($text);
 	$map = array();
 	if (preg_match_all('/\blocal\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\d{3,})\b/', $text, $m, PREG_SET_ORDER)) {
 		foreach ($m as $hit) {
@@ -113,10 +114,54 @@ function lua_skip_comment($text, &$i) {
 			return true;
 		}
 	}
-	while ($i < $len && $text[$i] !== "\n") {
+	while ($i < $len && $text[$i] !== "\n" && $text[$i] !== "\r") {
 		$i++;
 	}
 	return true;
+}
+
+/**
+ * Replace Lua comments with spaces, retaining strings, byte offsets and newlines.
+ * Both quoted strings and long-bracket strings may contain literal '--' text.
+ */
+function lua_mask_comments($text) {
+	if (strpos($text, '--') === false) {
+		return $text;
+	}
+	$len = strlen($text);
+	$out = '';
+	$copied = 0;
+	$i = 0;
+	while ($i < $len) {
+		$ch = $text[$i];
+		if ($ch === '"' || $ch === "'") {
+			$quote = $ch;
+			$i++;
+			while ($i < $len) {
+				if ($text[$i] === '\\') {
+					$i = min($i + 2, $len);
+				} elseif ($text[$i++] === $quote) {
+					break;
+				}
+			}
+			continue;
+		}
+		if ($ch === '[' && preg_match('/\G\[(=*)\[/', $text, $m, 0, $i)) {
+			$close = ']' . $m[1] . ']';
+			$end = strpos($text, $close, $i + strlen($m[0]));
+			$i = $end === false ? $len : $end + strlen($close);
+			continue;
+		}
+		$start = $i;
+		if ($ch === '-' && lua_skip_comment($text, $i)) {
+			$out .= substr($text, $copied, $start - $copied);
+			$out .= preg_replace('/[^\r\n]/', ' ', substr($text, $start, $i - $start));
+			$copied = $i;
+			continue;
+		}
+		$i++;
+	}
+	return $out . substr($text, $copied);
 }
 
 /**
@@ -199,6 +244,7 @@ function lua_offset_to_line($text, $offset) {
  * Returns array(body_text, start_offset, end_offset) or null.
  */
 function extract_lua_function_body($text, $funcName) {
+	$text = lua_mask_comments($text);
 	$re = '/\bfunction\s+' . preg_quote($funcName, '/') . '\s*\(/i';
 	if (!preg_match($re, $text, $m, PREG_OFFSET_CAPTURE)) {
 		return null;
@@ -361,6 +407,7 @@ function extract_spawn_calls_as_death_edges($lines, $rel, $locals, $lineOffset, 
  * Event.death / Event.death_complete register_npc_event callbacks.
  */
 function extract_death_spawn_edges($text, $rel, &$hints = null) {
+	$text = lua_mask_comments($text);
 	$locals = extract_lua_local_int_consts($text);
 	$text = str_replace(array("\r\n", "\r"), "\n", $text);
 	$lines = explode("\n", $text);
@@ -441,6 +488,7 @@ function extract_death_spawn_edges($text, $rel, &$hints = null) {
  * Literal eq.spawn2 / unique_spawn (and quest::) calls with numeric x,y,z.
  */
 function extract_literal_quest_spawns($text, $rel) {
+	$text = lua_mask_comments($text);
 	$locals = extract_lua_local_int_consts($text);
 	$text = str_replace(array("\r\n", "\r"), "\n", $text);
 	$lines = explode("\n", $text);
@@ -493,6 +541,7 @@ function extract_literal_quest_spawns($text, $rel) {
  * Returns list of {event, npc_id|null, npc_token, callback|null, line_no}.
  */
 function extract_npc_event_bindings($text) {
+	$text = lua_mask_comments($text);
 	$locals = extract_lua_local_int_consts($text);
 	$text = str_replace(array("\r\n", "\r"), "\n", $text);
 	$out = array();
@@ -1224,6 +1273,7 @@ function apply_manual_quest_overlays(&$parsed, $rel) {
 /** Parse Lua source text (for fixtures / tests). */
 function parse_lua_text($raw, $rel) {
 	$raw = str_replace(array("\r\n", "\r"), "\n", $raw);
+	$raw = lua_mask_comments($raw);
 	$lines = explode("\n", $raw);
 	$bindings = extract_npc_event_bindings($raw);
 	$registered = array();
