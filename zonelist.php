@@ -27,7 +27,7 @@ if ($expansion > 3) {
 
 <div class="container zonelist">
 	<ul class="expansion-list">
-<?
+<?php
 foreach ($expansionStrings as $short => $long) {
 	print "<li><a href=\"static/$short.php\">$long</a></li>";
 }
