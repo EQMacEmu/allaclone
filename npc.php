@@ -513,7 +513,7 @@ if ($npc["npc_spells_id"] > 0) {
 		$result2 = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 		if (mysqli_num_rows($result2) > 0) {
 			//print "<p><strong>Listname : </strong>" . ReadableNpcName($g["name"] . "</p>");
-			if ($DebugNpc) {
+			if (!empty($DebugNpc)) {
 				print " (" . $npc["npc_spells_id"] . ")";
 			}
 			print "<ul>";
@@ -522,7 +522,7 @@ if ($npc["npc_spells_id"] > 0) {
 				$mana = $row["manacost"] > 0 ? $row["manacost"] : $spell["mana"];
 				$recast = $row["recast_delay"] > 0 ? $row["recast_delay"] : round($spell["recast_time"] / 1000, 2);
 				print_spell($spell, "Mana: $mana, Recast: {$recast}s");
-				if ($DebugNpc) {
+				if (!empty($DebugNpc)) {
 					print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
 				}
 				print "</li>";

@@ -719,11 +719,13 @@ function CalcBuffDuration($lvl, $form, $duration) { // spells.cpp, carefull, ret
 }
 function SpecialAttacks($specialstr) {
 	global $specialattack;
-	$specials = explode("^", $specialstr);
+	$specials = explode("^", (string)$specialstr);
 	$result = array();
 	foreach ($specials as $valuestr) {
 		$values = explode(",", $valuestr);
-		array_push($result, $specialattack[$values[0]]);
+		if (isset($specialattack[$values[0]])) {
+			$result[] = $specialattack[$values[0]];
+		}
 	}
 	return implode(", ", $result);
 }
