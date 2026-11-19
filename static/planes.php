@@ -15,6 +15,6 @@ include('../includes/functions.php');
 	</ul>
 </div>
 </div>
-<?
+<?php
 include('../includes/footers.php');
 ?>
