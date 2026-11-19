@@ -1,0 +1,19 @@
+[client-server]
+socket = /app/run/mysql/mysql.sock
+
+[mariadbd]
+datadir = /app/data/mysql
+pid-file = /app/run/mysql/mysql.pid
+tmpdir = /app/run/mysql
+skip-networking
+skip-name-resolve
+max_connections = 1000
+# Match the container's nofile limit; errors go to Supervisor's bounded log.
+open_files_limit = 524288
+
+# Keep slow queries for tuning; general query logging stays off.
+log_output = FILE
+general_log = OFF
+slow_query_log = ON
+slow_query_log_file = /app/logs/mysql/slow.log
+long_query_time = 1

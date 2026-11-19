@@ -1,0 +1,30 @@
+name: allaclone
+services:
+  allaclone:
+    image: takp/allaclone:trixie-20261117T000000Z
+    restart: unless-stopped
+    stop_grace_period: 240s
+    ports:
+      - "127.0.0.1:8080:80/tcp"
+      - "127.0.0.1:8443:443/tcp"
+      - "127.0.0.1:8443:443/udp"
+    volumes:
+      - .:/app
+      - ..:/source:ro
+    tmpfs:
+      - /app/run
+    ulimits:
+      nofile:
+        soft: 524288
+        hard: 524288
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "/bin/sh", "/app/ops/health.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

@@ -1,0 +1,82 @@
+/app/logs/nginx/access.log {
+    weekly
+    maxsize 128M
+    rotate 80
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%dT%H%M%S
+    create 0640 www-data www-data
+    postrotate
+        /usr/sbin/nginx -s reopen -c /app/config/nginx.conf
+    endscript
+}
+
+/app/logs/nginx/error.log {
+    weekly
+    maxsize 32M
+    rotate 16
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%dT%H%M%S
+    create 0640 www-data www-data
+    postrotate
+        /usr/sbin/nginx -s reopen -c /app/config/nginx.conf
+    endscript
+}
+
+/app/logs/php/*.log {
+    weekly
+    maxsize 32M
+    rotate 16
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%dT%H%M%S
+    sharedscripts
+    create 0640 www-data www-data
+    postrotate
+        /bin/kill -USR1 "$(cat /app/run/php/php-fpm.pid)"
+    endscript
+}
+
+/app/logs/certbot-renew.log /app/logs/logrotate.log {
+    weekly
+    maxsize 5M
+    rotate 4
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%dT%H%M%S
+    create 0640 root root
+}
+
+/app/logs/mysql/slow.log {
+    weekly
+    maxsize 64M
+    rotate 32
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    dateformat -%Y%m%dT%H%M%S
+    create 0640 mysql mysql
+    postrotate
+        /usr/bin/mariadb-admin --defaults-file=/app/config/mariadb.cnf --user=root flush-slow-log
+    endscript
+}

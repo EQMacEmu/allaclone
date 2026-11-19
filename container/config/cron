@@ -1,0 +1,7 @@
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+# Empty Certbot storage is fine: renew exits successfully without issuing a cert.
+17 3,15 * * * root /usr/bin/certbot renew --quiet >> /app/logs/certbot-renew.log 2>&1
+*/5 * * * * root /usr/sbin/logrotate --state /app/data/logrotate.status /app/config/logrotate >> /app/logs/logrotate.log 2>&1

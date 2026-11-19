@@ -1,0 +1,11 @@
+/build/
+/data/
+/logs/
+/run/
+/tls/
+/letsencrypt/
+/acme/
+/config/application.php
+/.maintenance.lock
+/source/
+/www/

@@ -1,0 +1,120 @@
+#!/bin/bash
+# Run explicit application maintenance from the Docker host.
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+
+database_url='https://raw.githubusercontent.com/EQMacEmu/Server/main/utils/sql/database_full/alkabor_latest.zip'
+usage() {
+    cat <<EOF
+Usage:
+  ./maintenance setup
+  ./maintenance update-database [ZIP_URL]
+  ./maintenance update-allaclone
+  ./maintenance update-quests [--local]
+
+setup             Prepare application config, database and user.
+update-database   Download, check, drop and import the TAKP reference tables.
+                  Existing reference data is replaced; other tables are kept.
+update-allaclone  Deploy tracked application code/maps from the parent checkout.
+                  Run git pull separately to fetch application updates.
+update-quests     Fetch source/quests and rebuild the generated quest tables.
+                  --local uses the existing Lua checkout without fetching.
+
+Default ZIP_URL:
+  $database_url
+
+Override example:
+  ./maintenance update-database https://example.org/alkabor_latest.zip
+EOF
+}
+
+case "${1:-help}" in
+    help|-h|--help)
+        usage
+        exit 0
+        ;;
+    setup|update-allaclone)
+        if [[ "${2:-}" == --help || "${2:-}" == -h ]]; then
+            usage
+            exit 0
+        fi
+        if (( $# != 1 )); then
+            echo "Usage: ./maintenance $1" >&2
+            exit 1
+        fi
+        ;;
+    update-quests)
+        if [[ "${2:-}" == --help || "${2:-}" == -h ]]; then
+            usage
+            exit 0
+        fi
+        if (( $# > 2 )) || [[ $# == 2 && $2 != --local ]]; then
+            echo "Usage: ./maintenance $1 [--local]" >&2
+            exit 1
+        fi
+        ;;
+    update-database)
+        if [[ "${2:-}" == --help || "${2:-}" == -h ]]; then
+            usage
+            exit 0
+        fi
+        if (( $# > 2 )); then
+            echo 'Usage: ./maintenance update-database [ZIP_URL]' >&2
+            exit 1
+        fi
+        database_url=${2-$database_url}
+        case "$database_url" in
+            https://*|http://*) ;;
+            *) echo 'Provide an HTTP or HTTPS URL for a trusted TAKP ZIP snapshot.' >&2; exit 1 ;;
+        esac
+        ;;
+    *)
+        echo 'Unknown command. Run ./maintenance --help.' >&2
+        exit 1
+        ;;
+esac
+
+umask 077
+exec 9>.maintenance.lock
+if ! flock -n 9; then
+    echo 'Another maintenance command is running.' >&2
+    exit 1
+fi
+
+# Maintenance requires the existing container.
+compose=(docker compose --project-directory "$PWD" -f compose.yaml)
+if [[ -e config/application.php || -L config/application.php ]]; then
+    if ! "${compose[@]}" exec -T --user www-data allaclone test -r /app/config/application.php; then
+        echo 'Check that the container is running and www-data can read config/application.php.' >&2
+        exit 1
+    fi
+fi
+case "$1" in
+    setup)
+        "${compose[@]}" exec -T --user root allaclone php /app/ops/setup-application.php
+        ;;
+    update-allaclone)
+        bash ops/update-allaclone.sh
+        ;;
+    update-quests)
+        bash ops/update-quests.sh "${2:-}"
+        ;;
+    update-database)
+        if [[ ! -f config/application.php ]]; then
+            echo 'Run ./maintenance setup before importing the database.' >&2
+            exit 1
+        fi
+        # Fetch on the host; SQL operations use the container through the bind mount.
+        mkdir -p data/database
+        download_dir=$(mktemp -d data/database/.download.XXXXXX)
+        trap 'rm -rf -- "$download_dir"' EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
+        echo 'Downloading TAKP database snapshot...'
+        curl --fail --silent --show-error --location --retry 2 --connect-timeout 15 \
+            --proto '=http,https' --proto-redir '=http,https' \
+            --output "$download_dir/archive.zip" --url "$database_url"
+        "${compose[@]}" exec -T --user root allaclone bash /app/ops/update-database.sh \
+            "$database_url" "/app/$download_dir/archive.zip"
+        ;;
+esac
