@@ -176,6 +176,7 @@ function printLootDrop($loottable)
 	$table_chance = $tbl_chance*$tbl_diff;
 	$table_chance = round($tbl_chance * 100, 2);
 	$sum = round($drp_sum * 100, 2);
+	$no_weighted_drops = ($drp_min != 0 || $drp_max != 0) && $drp_sum <= 0;
 	//print "<li>[$lootdrop_id] $name</li>";
 	print "<li>Table ($tbl_min:$tbl_max:$table_chance%) Drop ($drp_min:$drp_max:$sum%)</li>";
 	print "<li><u>";
@@ -198,7 +199,9 @@ function printLootDrop($loottable)
 			print "Has a {$table_chance}% to run.";
 		}
 	}
-	if ($drp_min == 0 && $drp_max == 0) {
+	if ($no_weighted_drops) {
+		print " No entry has a positive drop chance.";
+	} elseif ($drp_min == 0 && $drp_max == 0) {
 		print " Each entry rolls independently.";
 	} else if ($drp_diff == 0) {
 		if ($drp_min == 1) {
@@ -242,10 +245,14 @@ function printLootDrop($loottable)
 			print "<li>";
 			print "<img width='20' heigth='20' src='{$icons_url}item_$icon.gif' />";
 			print "<a href='item.php?id=$item_id' data-item-id='$item_id'>$name</a>";
+			if ($no_weighted_drops) {
+				print "(0%)</li>";
+				continue;
+			}
 			if (($drp_min == 0 && $drp_max == 0) || $drp_mult > 1) {
 				$chance = round($drp_chance * 100, 2);
 			} else {
-				$chance = round($drp_chance / ($sum / 100) * 100, 2);
+				$chance = round($drp_chance / $drp_sum * 100, 2);
 			}
 			if ($drp_mult == 1) {
 				print "($chance%)";

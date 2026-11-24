@@ -230,11 +230,11 @@ if ($ItemFoundInfo) {
 
 				// Calculate drop values
 				$drop_chance = 0;
-				$drop_failure = 0;
+				$drop_failure = 1;
 				if ($drp_min == 0 && $drp_max == 0) {
 					$drop_chance = $drp_chance * $drp_mult;
 					$drop_failure = (1-$drp_chance)**$drp_mult;
-				} else {
+				} elseif ($lde_sum > 0) {
 					$sum_chance = $drp_chance/$lde_sum;
 					if ($lde_sum > 1) {
 						$drops = $drp_max;
