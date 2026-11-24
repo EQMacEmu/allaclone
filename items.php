@@ -63,6 +63,10 @@ if ($isearch != "") {
 		$Query .= ",$tblootdropentries,$tbloottableentries,$tbnpctypes";
 	}
 	$Query  .= ")";
+	if ($iavailability == 2) {
+		// merchant sold
+		$Query .= " INNER JOIN $tbmerchantlist ON $tbmerchantlist.item=$tbitems.id";
+	}
 	$s = " WHERE";
 	if ($ieffect != "") {
 		$effect = "%" . sql_like($db, $ieffect, array(' ' => '%', ',' => '%')) . "%";
@@ -106,11 +110,6 @@ if ($isearch != "") {
 		if ($iavaillevel > 0) {
 			$Query .= " AND $tbnpctypes.level<=$iavaillevel";
 		}
-		$s = "AND";
-	}
-	if ($iavailability == 2) // merchant sold
-	{
-		$Query .= ",$tbmerchantlist $s $tbmerchantlist.item=$tbitems.id";
 		$s = "AND";
 	}
 	if ($DiscoveredItemsOnly == TRUE) {
