@@ -18,7 +18,6 @@ function PrintQueryResults(
 	$ExtraFieldDescription = null,
 	$ExtraSkill = null
 ) {
-	global $dbskills;
 	$ObjectsToShow = mysqli_num_rows($FoundObjects);
 	if ($ObjectsToShow > LimitToUse($MaxObjectsReturned)) {
 		$ObjectsToShow = LimitToUse($MaxObjectsReturned);
@@ -53,7 +52,7 @@ function PrintQueryResults(
 			$PrintString .= " ($id)</a>";
 
 			if ($ExtraField && $ExtraFieldDescription && $ExtraSkill) {
-				$PrintString .= " - " . ucfirstwords(str_replace("_", " ", $dbskills[$row[$ExtraSkill]])) . ", $ExtraFieldDescription " . $row[$ExtraField];
+				$PrintString .= " - " . ucfirstwords(str_replace("_", " ", RecipeSkillName($row[$ExtraSkill]))) . ", $ExtraFieldDescription " . $row[$ExtraField];
 			}
 			echo  $PrintString;
 			echo  "</li>";
@@ -434,6 +433,14 @@ function SelectLevel($name, $maxlevel, $selevel) {
 	}
 	print "</SELECT>";
 }
+function RecipeSkillName($skill) {
+	global $dbskills;
+	if ((int)$skill === 75) {
+		return 'No Skill Check';
+	}
+	return $dbskills[$skill] ?? '';
+}
+
 function SelectTradeSkills($name, $selected) {
 	print "<SELECT name=\"$name\">";
 	WriteIt("0", "-", $selected);

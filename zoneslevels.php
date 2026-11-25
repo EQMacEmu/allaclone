@@ -54,8 +54,8 @@ while ($res = mysqli_fetch_array($result)) {
           GROUP BY $tbnpctypes.id";
 	$result2 = mysqli_query($db, $query) or message_die('zoneslevels.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 	while ($row = mysqli_fetch_array($result2)) {
-		$lvl = floor($row["level"] / 5);
-		$zones[$cpt][$lvl]++;
+		$lvl = intdiv((int) $row["level"] - 1, 5);
+		$zones[$cpt][$lvl] = ($zones[$cpt][$lvl] ?? 0) + 1;
 		$zones[$cpt]["npcs"]++;
 	}
 	$cpt++;
@@ -68,7 +68,7 @@ if ($SortZoneLevelList == true) {
 			$zones[$i]["val"] = 0;
 			$nb               = 0;
 			foreach ($levels as $lkey => $lval) {
-				if ($zones[$i][$lkey] > $lowlimit) {
+				if (($zones[$i][$lkey] ?? 0) > $lowlimit) {
 					$zones[$i]["val"] += $levels[$lkey] * $zones[$i][$lkey];
 					$nb += $zones[$i][$lkey];
 				}
@@ -116,7 +116,7 @@ print "</tr></thead>";
 //print "</pre>";
 
 $nb = 0;
-for ($i = 0; $i <= $cpt; $i++) {
+for ($i = 0; $i < $cpt; $i++) {
 	if ($zones[$i]["npcs"] > $lowlimit) {
 		$nb++;
 		if (modulo($nb, 10) == 1) {
@@ -139,7 +139,7 @@ for ($i = 0; $i <= $cpt; $i++) {
 		}
 		foreach ($levels as $lkey => $lval) {
 			print "<td class = " . $lkey . " align=center width='4%'>";
-			if ($zones[$i][$lkey] > $lowlimit) {
+			if (($zones[$i][$lkey] ?? 0) > $lowlimit) {
 				if ($ShowNPCNumberInZoneLevelList == true) {
 					print $zones[$i][$lkey];
 				} else {

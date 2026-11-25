@@ -4,27 +4,31 @@ include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
+$name = $_GET['name'] ?? '';
+if (!is_string($name) || $name === '') {
+	header("Location: pets.php");
+	exit();
+}
+
+$escaped_name = mysqli_real_escape_string($db, $name);
+$query = "SELECT $tbnpctypes.*
+        FROM $tbnpctypes
+        WHERE $tbnpctypes.name = '$escaped_name' LIMIT 1";
+$result = mysqli_query($db, $query) or message_die('pet.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+$npc = mysqli_fetch_array($result);
+if (!$npc) {
+	header("Location: pets.php");
+	exit();
+}
 
 $Title = "PET :: $name";
 include($includes_dir . 'headers.php');
 
-
-if (!isset($name)) {
-	print "<script>document.location=\"index.php\";</script>";
-}
-
-
-$query = "SELECT $tbnpctypes.*
-        FROM $tbnpctypes
-        WHERE $tbnpctypes.name = '$name' LIMIT 1";
-$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-$npc = mysqli_fetch_array($result);
-
 print "<div class='container pets'>";
 print "<table border=0 width=0%><tr valign=top><td width=100%>\n";
-if (file_exists($npcs_dir . $id . ".jpg")) {
-	print "<center><img src=" . $npcs_dir . $id . ".jpg></center>";
+$portrait = $npc['id'] . '.jpg';
+if (file_exists($npcs_dir . $portrait)) {
+	print "<center><img src='" . html_attr($npcs_url . $portrait) . "'></center>";
 }
 print "<p><table border=0 width=100%>";
 print "<tr><td nowrap><b>Full name : </b></td><td>" . str_replace("_", " ", $npc["name"]);
@@ -54,8 +58,9 @@ print "<tr><td nowrap><b>Disease Resist : </b></td><td>" . $npc["DR"] . "</td></
 print "<tr><td nowrap><b>Poison Resist : </b></td><td>" . $npc["PR"] . "</td></tr>";
 
 
-if ($npc["npcspecialattks"] != '') {
-	print "<tr><td nowrap><b>Special attacks : </b></td><td>" . SpecialAttacks($npc["npcspecialattks"]) . "</td></tr>";
+$abilities = SpecialAttacks($npc["special_abilities"]);
+if ($abilities !== '') {
+	print "<tr><td nowrap><b>Special abilities : </b></td><td>" . $abilities . "</td></tr>";
 }
 
 print "</tr></table>";

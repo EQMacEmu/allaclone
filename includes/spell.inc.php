@@ -1,6 +1,6 @@
 <?php
 function SpellDescription($spell, $n, $csv = false) {
-	global $dbspelleffects, $tbitems, $dbiracenames, $tbspells, $ServerMaxLevel, $dbspelltargets;
+	global $dbspelleffects, $tbitems, $dbiracenames, $tbspells, $ServerMaxLevel, $dbspelltargets, $dbspellresists;
 	$minlvl = 70;
 	$duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buffduration"]);
 	// "spacer" effects use the same effectid as CHA (10), have a base
@@ -223,20 +223,14 @@ function SpellDescription($spell, $n, $csv = false) {
 			case 105: // Anti-Gate
 			case 115: // Food/Water
 			case 117: // Make Weapons Magical
-			case 135: // Limit: Resist(XXX allowed)
-				switch($spell["effect_base_value$n"])
-				{
-				    case 1:
-					$type = "Magic";
-					break;
-				    case 2:
-					$type = "Fire";
-					break;
-				    case 3:
-					$type = "Cold";
-					break;
-				}
-				print $dbspelleffects[$spell["effectid$n"]] . "($type allowed)";
+				print $dbspelleffects[$spell["effectid$n"]];
+				break;
+			case 135: // Limit: Resist
+				$resist = (int)$spell["effect_base_value$n"];
+				$resistId = abs($resist);
+				$type = $dbspellresists[$resistId] ?? "Resist $resistId";
+				$restriction = $resist < 0 ? "excluded" : "allowed";
+				print $dbspelleffects[$spell["effectid$n"]] . " ($type $restriction)";
 				break;
 			case 137: // Limit: Effect
 				print $dbspelleffects[$spell["effectid$n"]];

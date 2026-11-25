@@ -104,7 +104,7 @@ if (mysqli_num_rows($result) > 0) {
   $TradeskillResults .= "<h3>Used in:</h3>";
 	$TradeskillResults .= "<ul> ";
 	while ($row = mysqli_fetch_array($result)) {
-		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . ucfirstwords($dbskills[$row["tradeskill"]]) . ")</li>";
+		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . ucfirstwords(RecipeSkillName($row["tradeskill"])) . ")</li>";
 	}
 	$TradeskillResults .= "</ul>";
 }
@@ -118,7 +118,7 @@ $TradeskillResults = "";
 if (mysqli_num_rows($result) > 0) {
 	$TradeskillResults .= "<h3>Result of: </h3><ul>";
 	while ($row = mysqli_fetch_array($result)) {
-		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . $dbskills[$row["tradeskill"]] . ")</li>";
+		$TradeskillResults .= "<li><a style='display: inline;' href='recipe.php?id=" . $row["id"] . "'>" . str_replace("_", " ", $row["name"]) . "</a> (" . RecipeSkillName($row["tradeskill"]) . ")</li>";
 	}
 	$TradeskillResults .= "</ul>";
 }

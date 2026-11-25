@@ -94,7 +94,7 @@ if (isset($class) && $class != 0) {
 		print "<td>" . $row["class"] . "</td>";
 		print "<td>" . $row["hp"] . "</td>";
 		print "<td>" . $row["mana"] . "</td>";
-		print "<td>" . $row["ac"] . "</td>";
+		print "<td>" . $row["AC"] . "</td>";
 		print "<td>" . $row["mindmg"] . "</td>";
 		print "<td>" . $row["maxdmg"] . "</td>";
 		print "</tr>";

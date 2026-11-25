@@ -28,7 +28,7 @@ $recipe = mysqli_fetch_array($result);
 print "<div class='container recipes'>";
 print "<table border=0 width=0%>";
 print "<tr><td nowrap><b>Recipe : </b></td><td nowrap>" . ucfirstwords(str_replace('_', ' ', $recipe["name"])) . "</td></tr>";
-print "<tr><td nowrap><b>Tradeskill : </b></td><td nowrap>" . ucfirstwords($dbskills[$recipe["tradeskill"]]) . "</td></tr>";
+print "<tr><td nowrap><b>Tradeskill : </b></td><td nowrap>" . ucfirstwords(RecipeSkillName($recipe["tradeskill"])) . "</td></tr>";
 if ($recipe["skillneeded"] > 0) {
 	print "<tr><td nowrap><b>Skill needed : </b></td><td nowrap>" . $recipe["skillneeded"] . "</td></tr>";
 }
