@@ -10,20 +10,20 @@ if (!is_numeric($id)) {
 	exit();
 }
 
-$Title = "Recipe : " . str_replace('_', ' ', GetFieldByQuery("name", "SELECT name FROM $tbtradeskillrecipe WHERE id=$id"));
-include($includes_dir . 'headers.php');
-include($includes_dir . 'functions.php');
-
-if (!isset($id)) {
-	print "<script>document.location=\"index.php\";</script>";
-}
-
 $query = "SELECT *
 			FROM $tbtradeskillrecipe
 			WHERE id=$id";
 
 $result = mysqli_query($db, $query) or message_die('recipe.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 $recipe = mysqli_fetch_array($result);
+if (!$recipe) {
+	header("Location: recipes.php");
+	exit();
+}
+
+$Title = "Recipe : " . str_replace('_', ' ', $recipe["name"]);
+include($includes_dir . 'headers.php');
+include($includes_dir . 'functions.php');
 
 print "<div class='container recipes'>";
 print "<table border=0 width=0%>";

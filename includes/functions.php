@@ -1078,11 +1078,11 @@ function BuildItemStats($item, $show_name_icon) {
 		array_push($line, "MAGIC ITEM");
 	}
 	$i = 0;
-	if ($item["lore"][$i] == '*') {
+	if (($item["lore"][$i] ?? '') === '*') {
 		$i++;
 		array_push($line, "LORE ITEM");
 	}
-	if ($item["lore"][$i] == '#') {
+	if (($item["lore"][$i] ?? '') === '#') {
 		array_push($line, "ARTIFACT");
 	}
 	if ($item["nodrop"] == 0) {

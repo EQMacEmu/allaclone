@@ -19,10 +19,21 @@ $query="SELECT $tbspawngroup.name AS sgname, $tbspawn2.*,
           AND $tbspawn2.zone=$tbzones.short_name";
 $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
 $spawn=mysqli_fetch_array($result);
-$Title=$spawn["sgname"] ." (".$spawn["zone"]." : ".floor($spawn["y"]).",".floor($spawn["x"]).",".floor($spawn["z"]).")";
-$x=floor($spawn["x"]);
-$y=floor($spawn["y"]);
-$z=floor($spawn["z"]);
+if ($spawn) {
+    $x=floor($spawn["x"]);
+    $y=floor($spawn["y"]);
+    $z=floor($spawn["z"]);
+    $Title=$spawn["sgname"]." (".$spawn["zone"]." : $y,$x,$z)";
+} else {
+    $query="SELECT name FROM $tbspawngroup WHERE id=$id";
+    $result=mysqli_query($db, $query) or message_die('spawngroup.php','MYSQL_QUERY',$query,mysqli_error($db));
+    $group=mysqli_fetch_assoc($result);
+    if (!$group) {
+        header("Location: index.php");
+        exit();
+    }
+    $Title=$group["name"];
+}
 
 include($includes_dir.'headers.php');
 
@@ -48,6 +59,12 @@ if (mysqli_num_rows($result)>0) {
 }
 print "</ul>";
 print "</div>"; // spawngroup-info
+if (!$spawn) {
+    print "<p>No recorded spawn location.</p></div></div>";
+    include($includes_dir."footers.php");
+    return;
+}
+
 print "<div class='spawngroup-nearby'>";
 print "<ul>";
 print "<b>NPCs spawning around that spawngroup : </b><br>(Max range : $SpawngroupAroundRange)<ul>";

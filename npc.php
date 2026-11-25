@@ -78,7 +78,8 @@ if ($npc["lastname"] != "") {
 
 print "<div class='secondary-info'>";
 
-print "<p><strong>Race/Body:</strong> " . $dbiracenames[$npc["race"]] . " / " . $dbbodytypes[$npc["bodytype"]] . "</p>";
+$bodyType = $dbbodytypes[$npc["bodytype"]] ?? "Unknown (" . $npc["bodytype"] . ")";
+print "<p><strong>Race/Body:</strong> " . $dbiracenames[$npc["race"]] . " / " . $bodyType . "</p>";
 $greed="";
 if ($npc["class"] == 41) {
 	$greed = " (" . $npc["greed"] . ")";
@@ -494,17 +495,13 @@ if ($npc["npc_spells_id"] > 0) {
 	$result = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
 	if (mysqli_num_rows($result) > 0) {
 		$g = mysqli_fetch_array($result);
-		print "<div class='list-wrapper'>";
-		if ($g["attack_proc"] > 0) {
-			print "<p><strong>This NPC procs:</strong></p>";
-			$spellid = $g["attack_proc"];
-			$chance = $g["proc_chance"];
-			$spell = getspell($spellid);
-			print "<ul>";
-			print_spell($spell, "$chance%");
+		$proc = getspell($g["attack_proc"]);
+		if ($proc) {
+			print "<div class='list-wrapper'>";
+			print "<p><strong>This NPC procs:</strong></p><ul>";
+			print_spell($proc, $g["proc_chance"] . "%");
 			print "</ul>";
 		}
-		print "<p><strong>This NPC casts the following spells:</strong></p>";
 		$in = strval($npc["npc_spells_id"]);
 		if ($g["parent_list"] > 0) {
 			$in .= ",".$g["parent_list"];
@@ -518,24 +515,36 @@ if ($npc["npc_spells_id"] > 0) {
 					AND ($tbnpcspellsentries.max_expansion = -1 OR $tbnpcspellsentries.max_expansion >= $expansion)
 					ORDER BY $tbnpcspellsentries.priority DESC";
 		$result2 = mysqli_query($db, $query) or message_die('npc.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-		if (mysqli_num_rows($result2) > 0) {
-			//print "<p><strong>Listname : </strong>" . ReadableNpcName($g["name"] . "</p>");
-			if (!empty($DebugNpc)) {
-				print " (" . $npc["npc_spells_id"] . ")";
+		$hasCasts = false;
+		while ($row = mysqli_fetch_array($result2)) {
+			$spell = getspell($row["spellid"]);
+			if (!$spell) {
+				continue;
 			}
-			print "<ul>";
-			while ($row = mysqli_fetch_array($result2)) {
-				$spell = getspell($row["spellid"]);
-				$mana = $row["manacost"] > 0 ? $row["manacost"] : $spell["mana"];
-				$recast = $row["recast_delay"] > 0 ? $row["recast_delay"] : round($spell["recast_time"] / 1000, 2);
-				print_spell($spell, "Mana: $mana, Recast: {$recast}s");
-				if (!empty($DebugNpc)) {
-					print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
+			if (!$hasCasts) {
+				if (!$proc) {
+					print "<div class='list-wrapper'>";
 				}
-				print "</li>";
+				print "<p><strong>This NPC casts the following spells:</strong></p>";
+				if (!empty($DebugNpc)) {
+					print " (" . $npc["npc_spells_id"] . ")";
+				}
+				print "<ul>";
+				$hasCasts = true;
+			}
+			$mana = $row["manacost"] > 0 ? $row["manacost"] : $spell["mana"];
+			$recast = $row["recast_delay"] > 0 ? $row["recast_delay"] : round($spell["recast_time"] / 1000, 2);
+			print_spell($spell, "Mana: $mana, Recast: {$recast}s");
+			if (!empty($DebugNpc)) {
+				print " (recast=" . $row["recast_delay"] . ", priority= " . $row["priority"] . ")";
 			}
 		}
-		print "</ul></div>"; // list-wrapper
+		if ($hasCasts) {
+			print "</ul>";
+		}
+		if ($proc || $hasCasts) {
+			print "</div>"; // list-wrapper
+		}
 	}
 }
 
