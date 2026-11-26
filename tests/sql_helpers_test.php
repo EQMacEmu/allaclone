@@ -4,6 +4,7 @@
  * Run: docker run --rm -v "$PWD:/app" -w /app php:8.3-cli php tests/sql_helpers_test.php
  */
 require __DIR__ . '/../includes/mysql.php';
+require __DIR__ . '/../includes/functions.php';
 
 $failed = 0;
 
@@ -34,7 +35,10 @@ assert_true(sql_op('OR') === '', 'sql_op rejects OR');
 assert_true(sql_op('=') === '=', 'sql_op accepts =');
 
 // Crafted items.php-style payloads must not survive allowlists
-$item_stat_cols = array('hp','mana','ac','attack','aagi','acha','adex','aint','asta','astr','awis','damage','delay','ratio','haste','regen','manaregen','enduranceregen');
+$item_stat_cols = array_keys(ITEM_SEARCH_STATS);
+foreach (['attack', 'haste', 'regen', 'manaregen', 'enduranceregen'] as $retired) {
+	assert_true(sql_ident($retired, $item_stat_cols) === '', "retired item stat $retired rejected");
+}
 $item_comps = array('>=','<=','=','<','>');
 assert_true(sql_ident('sleep(1)', $item_stat_cols) === '', 'istat1=sleep(1) rejected');
 assert_true(sql_op('OR', $item_comps) === '', 'istat1comp=OR rejected');

@@ -409,18 +409,6 @@ function SelectSpellEffect($name, $selected) {
 	} while (next($dbspelleffects));
 	print "</SELECT>";
 }
-function SelectAugSlot($name, $selected) {
-	print "<SELECT name=\"$name\">";
-	print "<option value='0'>Augment Slot</option>\n";
-	for ($i = 1; $i <= 25; $i++) {
-		print "<option value='" . $i . "'";
-		if ($i == $selected) {
-			print " selected='1'";
-		}
-		print ">slot $i</option>\n";
-	}
-	print "</SELECT>";
-}
 function SelectLevel($name, $maxlevel, $selevel) {
 	print "<SELECT name=\"$name\" class='level-select'>";
 	print "<option value='0'>Level</option>\n";
@@ -465,47 +453,31 @@ function WriteIt($value, $name, $sel) {
 	}
 	print ">$name</option>\n";
 }
+const ITEM_SEARCH_STATS = [
+	'hp' => 'Hit Points',
+	'mana' => 'Mana',
+	'ac' => 'AC',
+	'aagi' => 'Agility',
+	'acha' => 'Charisma',
+	'adex' => 'Dexterity',
+	'aint' => 'Intelligence',
+	'asta' => 'Stamina',
+	'astr' => 'Strength',
+	'awis' => 'Wisdom',
+	'damage' => 'Damage',
+	'delay' => 'Delay',
+	'ratio' => 'Ratio (Damage / Delay)',
+];
+
 function SelectStats($name, $stat) {
 	print "<select name=\"$name\">\n";
 	print "  <option value=''>Stat</option>\n";
-	WriteIt("hp", "Hit Points", $stat);
-	WriteIt("mana", "Mana", $stat);
-	WriteIt("ac", "AC", $stat);
-	WriteIt("attack", "Attack", $stat);
-	WriteIt("aagi", "Agility", $stat);
-	WriteIt("acha", "Charisma", $stat);
-	WriteIt("adex", "Dexterity", $stat);
-	WriteIt("aint", "Intelligence", $stat);
-	WriteIt("asta", "Stamina", $stat);
-	WriteIt("astr", "Strength", $stat);
-	WriteIt("awis", "Wisdom", $stat);
-	WriteIt("damage", "Damage", $stat);
-	WriteIt("delay", "Delay", $stat);
-	WriteIt("ratio", "Ratio (Damage / Delay)", $stat);
-	WriteIt("haste", "Haste", $stat);
-	WriteIt("regen", "HP Regen", $stat);
-	WriteIt("manaregen", "Mana Regen", $stat);
-	WriteIt("enduranceregen", "Endurance Regen", $stat);
+	foreach (ITEM_SEARCH_STATS as $column => $label) {
+		WriteIt($column, $label, $stat);
+	}
 	print "</select>\n";
 }
-function SelectHeroicStats($name, $stat, $heroic) {
-	print "<select name=\"$name\">\n";
-	print "  <option value=''>H. Stat</option>\n";
-	WriteIt("heroic_agi", "Heroic Agility", $stat);
-	WriteIt("heroic_cha", "Heroic Charisma", $stat);
-	WriteIt("heroic_dex", "Heroic Dexterity", $stat);
-	WriteIt("heroic_int", "Heroic Intelligence", $stat);
-	WriteIt("heroic_sta", "Heroic Stamina", $stat);
-	WriteIt("heroic_str", "Heroic Strength", $stat);
-	WriteIt("heroic_wis", "Heroic Wisdom", $stat);
-	WriteIt("heroic_mr", "Heroic Resist Magic", $heroic);
-	WriteIt("heroic_fr", "Heroic Resist Fire", $heroic);
-	WriteIt("heroic_cr", "Heroic Resist Cold", $heroic);
-	WriteIt("heroic_pr", "Heroic Resist Poison", $heroic);
-	WriteIt("heroic_dr", "Heroic Resist Disease", $heroic);
-	WriteIt("heroic_svcorrup", "Heroic Resist Corruption", $heroic);
-	print "</select>\n";
-}
+
 const ITEM_RESISTS = [
 	'mr' => 'Resist Magic',
 	'fr' => 'Resist Fire',
@@ -520,27 +492,6 @@ function SelectResists($name, $resist) {
 	foreach (ITEM_RESISTS as $column => $label) {
 		WriteIt($column, $label, $resist);
 	}
-	print "</select>\n";
-}
-function SelectModifiers($name, $mod) {
-	print "<select name=\"$name\">\n";
-	print "  <option value=''>Modifiers</option>\n";
-	WriteIt("avoidance", "Avoidance", $mod);
-	WriteIt("accuracy", "Accuracy", $mod);
-	WriteIt("backstabdmg", "Backstab Damage", $mod);
-	WriteIt("clairvoyance", "Clairvoyance", $mod);
-	WriteIt("combateffects", "Combat Effects", $mod);
-	WriteIt("damageshield", "Damage Shield", $mod);
-	WriteIt("dsmitigation", "Damage Shield Mit", $mod);
-	WriteIt("dotshielding", "DoT Shielding", $mod);
-	WriteIt("extradmgamt", "Extra Damage", $mod);
-	WriteIt("healamt", "Heal Amount", $mod);
-	WriteIt("purity", "Purity", $mod);
-	WriteIt("shielding", "Shielding", $mod);
-	WriteIt("spelldmg", "Spell Damage", $mod);
-	WriteIt("spellshield", "Spell Shielding", $mod);
-	WriteIt("strikethrough", "Strikethrough", $mod);
-	WriteIt("stunresist", "Stun Resist", $mod);
 	print "</select>\n";
 }
 function signred($stat) {

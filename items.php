@@ -14,8 +14,7 @@ include($includes_dir . 'functions.php');
 
 $isearch       = (isset($_GET['isearch']) ? $_GET['isearch'] : '');
 $iname         = (isset($_GET['iname']) ? $_GET['iname'] : '');
-$item_stat_cols = array('hp','mana','ac','attack','aagi','acha','adex','aint','asta','astr','awis','damage','delay','ratio','haste','regen','manaregen','enduranceregen');
-$item_mod_cols = array('avoidance','accuracy','backstabdmg','clairvoyance','combateffects','damageshield','dsmitigation','dotshielding','extradmgamt','healamt','purity','shielding','spelldmg','spellshield','strikethrough','stunresist');
+$item_stat_cols = array_keys(ITEM_SEARCH_STATS);
 $item_comps = array('>=','<=','=','<','>');
 $iclass        = isset($_GET['iclass']) ? sql_int($_GET['iclass'], -1) : -1;
 $irace         = isset($_GET['irace']) ? sql_int($_GET['irace'], -1) : -1;
@@ -30,24 +29,28 @@ $iresists      = sql_ident($_GET['iresists'] ?? '', array_keys(ITEM_RESISTS));
 $iresistscomp  = sql_op($_GET['iresistscomp'] ?? '>=', $item_comps);
 $resistInput   = $_GET['iresistsvalue'] ?? '';
 $iresistsvalue = is_string($resistInput) ? trim($resistInput) : null;
-$resistError   = '';
+$searchError   = '';
 if ($iresistsvalue !== '') {
 	if (($_GET['iresists'] ?? '') === 'svcorruption') {
-		$resistError = 'Corruption resistance is unavailable in this database. Choose another resistance.';
+		$searchError = 'Corruption resistance is unavailable in this database. Choose another resistance.';
 	} elseif ($iresists === '') {
-		$resistError = 'Choose a supported resistance (Magic, Fire, Cold, Poison or Disease).';
+		$searchError = 'Choose a supported resistance (Magic, Fire, Cold, Poison or Disease).';
 	} elseif ($iresistscomp === '' || filter_var($iresistsvalue, FILTER_VALIDATE_FLOAT) === false) {
-		$resistError = 'Choose a comparison and enter a number for the resist filter.';
+		$searchError = 'Choose a comparison and enter a number for the resist filter.';
 	}
 }
-$iheroics      = (isset($_GET['iheroics']) ? $_GET['iheroics'] : '');
-$iheroicscomp  = (isset($_GET['iheroicscomp']) ? $_GET['iheroicscomp'] : '');
-$iheroicsvalue = (isset($_GET['iheroicsvalue']) ? $_GET['iheroicsvalue'] : '');
-$imod          = isset($_GET['imod']) ? sql_ident($_GET['imod'], $item_mod_cols) : '';
-$imodcomp      = isset($_GET['imodcomp']) ? sql_op($_GET['imodcomp'], $item_comps) : '';
-$imodvalue     = (isset($_GET['imodvalue']) && is_numeric($_GET['imodvalue']) ? $_GET['imodvalue'] + 0 : '');
+// Old search forms submitted empty modifier fields alongside ordinary criteria.
+if (($istat1 === '' && ($_GET['istat1'] ?? '') !== '' && ($_GET['istat1value'] ?? '') !== '')
+	|| ($istat2 === '' && ($_GET['istat2'] ?? '') !== '' && ($_GET['istat2value'] ?? '') !== '')) {
+	$searchError = 'This stat is unavailable as a TAKP item-search filter. Choose a listed stat and search again.';
+} elseif (($_GET['imod'] ?? '') !== '' && ($_GET['imodvalue'] ?? '') !== '') {
+	$searchError = 'Item modifier searches are unavailable on TAKP. Choose a listed filter and search again.';
+} elseif (($_GET['iheroics'] ?? '') !== '' && ($_GET['iheroicsvalue'] ?? '') !== '') {
+	$searchError = 'Heroic stat searches are unavailable on TAKP. Choose a listed filter and search again.';
+} elseif (isset($_GET['iaugslot']) && (!is_string($_GET['iaugslot']) || sql_int($_GET['iaugslot']) > 0)) {
+	$searchError = 'Augment slot searches are unavailable on TAKP. Choose a listed filter and search again.';
+}
 $itype         = isset($_GET['itype']) ? sql_int($_GET['itype'], -1) : -1;
-$iaugslot      = isset($_GET['iaugslot']) ? sql_int($_GET['iaugslot'], 0) : 0;
 $ieffect       = (isset($_GET['ieffect']) ? $_GET['ieffect'] : '');
 $ireqlevel     = isset($_GET['ireqlevel']) ? sql_int($_GET['ireqlevel'], 0) : 0;
 $iminlevel     = isset($_GET['iminlevel']) ? sql_int($_GET['iminlevel'], 0) : 0;
@@ -65,7 +68,7 @@ $iavaillevel_raw = isset($_GET['iavaillevel']) ? $_GET['iavaillevel'] : (isset($
 $iavaillevel   = sql_int($iavaillevel_raw, 0);
 $ideity        = isset($_GET['ideity']) ? sql_int($_GET['ideity'], 0) : 0;
 
-if ($isearch != "" && $resistError === '') {
+if ($isearch != "" && $searchError === '') {
 	$Query  = "SELECT $tbitems.* FROM ($tbitems";
 
 	if ($DiscoveredItemsOnly == TRUE) {
@@ -112,10 +115,6 @@ if ($isearch != "" && $resistError === '') {
 		}
 		$s = "AND";
 	}
-	if (($imod != "") and ($imodvalue != "")) {
-		$Query .= " $s ($tbitems.$imod $imodcomp $imodvalue)";
-		$s = "AND";
-	}
 	if ($iavailability == 1) // mob dropped
 	{
 		$Query .= " $s $tblootdropentries.item_id=$tbitems.id
@@ -160,11 +159,6 @@ if ($isearch != "" && $resistError === '') {
 	if ($islot > 0) {
 		$slot = 2**$islot;
 		$Query .= " $s ($tbitems.slots   & $slot) ";
-		$s = "AND";
-	}
-	if ($iaugslot > 0) {
-		$AugSlot = pow(2, $iaugslot) / 2;
-		$Query .= " $s ($tbitems.augtype & $AugSlot) ";
 		$s = "AND";
 	}
 	if ($iminlevel > 0) {
@@ -272,23 +266,6 @@ echo "</div>";
 echo "    <input type='text' size='4' name='iresistsvalue' value='" . html_attr($iresistsvalue) . "' placeholder='0' />";
 echo "</div>";
 
-
-
-echo "<div class='form-stat-wrapper'>";
-echo "<div class='select-wrapper'>";
-echo SelectModifiers("imod", $imod);
-echo "</div>";
-echo "<div class='select-wrapper'>";
-echo "    <select name='imodcomp'>";
-echo "      <option value='&gt;='" . ($imodcomp == '>=' ? " selected='1'" : "") . ">&gt;=</option>";
-echo "      <option value='&lt;='" . ($imodcomp == '<=' ? " selected='1'" : "") . ">&lt;=</option>";
-echo "      <option value='='" . ($imodcomp == '='  ? " selected='1'" : "") . ">=</option>";
-echo "      <option value='&lt'" . ($imodcomp == '<' ? " selected='1'" : "") . ">&lt</option>";
-echo "    </select>";
-echo "</div>";
-echo "    <input type='text' size='4' name='imodvalue' value='" . html_attr($imodvalue) . "' placeholder='0' />";
-echo "</div>";
-
 echo "<input type='text' value='" . html_attr($ieffect) . "' size='30' name='ieffect' placeholder='Effect' />";
 echo "<div class='select-wrapper half'>";
 echo SelectLevel("iminlevel", $ServerMaxLevel, $iminlevel);
@@ -320,8 +297,8 @@ echo "</div>";
 echo "<div><input type='submit' value='Search' name='isearch'/> <input type='reset' value='Reset' /></div>";
 echo "</form>";
 
-if ($isearch != "" && $resistError !== '') {
-	echo "<p>$resistError</p>";
+if ($isearch != "" && $searchError !== '') {
+	echo "<p>$searchError</p>";
 }
 
 // Print the query results if any
