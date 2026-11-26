@@ -481,7 +481,7 @@ function SelectStats($name, $stat) {
 	WriteIt("awis", "Wisdom", $stat);
 	WriteIt("damage", "Damage", $stat);
 	WriteIt("delay", "Delay", $stat);
-	WriteIt("ratio", "Ratio", $stat);
+	WriteIt("ratio", "Ratio (Damage / Delay)", $stat);
 	WriteIt("haste", "Haste", $stat);
 	WriteIt("regen", "HP Regen", $stat);
 	WriteIt("manaregen", "Mana Regen", $stat);
@@ -506,15 +506,20 @@ function SelectHeroicStats($name, $stat, $heroic) {
 	WriteIt("heroic_svcorrup", "Heroic Resist Corruption", $heroic);
 	print "</select>\n";
 }
+const ITEM_RESISTS = [
+	'mr' => 'Resist Magic',
+	'fr' => 'Resist Fire',
+	'cr' => 'Resist Cold',
+	'pr' => 'Resist Poison',
+	'dr' => 'Resist Disease',
+];
+
 function SelectResists($name, $resist) {
 	print "<select name=\"$name\">\n";
 	print "  <option value=''>Resists</option>\n";
-	WriteIt("mr", "Resist Magic", $resist);
-	WriteIt("fr", "Resist Fire", $resist);
-	WriteIt("cr", "Resist Cold", $resist);
-	WriteIt("pr", "Resist Poison", $resist);
-	WriteIt("dr", "Resist Disease", $resist);
-	WriteIt("svcorruption", "Resist Corruption", $resist);
+	foreach (ITEM_RESISTS as $column => $label) {
+		WriteIt($column, $label, $resist);
+	}
 	print "</select>\n";
 }
 function SelectModifiers($name, $mod) {

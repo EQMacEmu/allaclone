@@ -26,10 +26,20 @@ $istat1value   = (isset($_GET['istat1value']) && is_numeric($_GET['istat1value']
 $istat2        = isset($_GET['istat2']) ? sql_ident($_GET['istat2'], $item_stat_cols) : '';
 $istat2comp    = isset($_GET['istat2comp']) ? sql_op($_GET['istat2comp'], $item_comps) : '';
 $istat2value   = (isset($_GET['istat2value']) && is_numeric($_GET['istat2value']) ? $_GET['istat2value'] + 0 : '');
-// Form-only; not interpolated into SQL on this page.
-$iresists      = (isset($_GET['iresists']) ? $_GET['iresists'] : '');
-$iresistscomp  = (isset($_GET['iresistscomp']) ? $_GET['iresistscomp'] : '');
-$iresistsvalue = (isset($_GET['iresistsvalue']) ? $_GET['iresistsvalue'] : '');
+$iresists      = sql_ident($_GET['iresists'] ?? '', array_keys(ITEM_RESISTS));
+$iresistscomp  = sql_op($_GET['iresistscomp'] ?? '>=', $item_comps);
+$resistInput   = $_GET['iresistsvalue'] ?? '';
+$iresistsvalue = is_string($resistInput) ? trim($resistInput) : null;
+$resistError   = '';
+if ($iresistsvalue !== '') {
+	if (($_GET['iresists'] ?? '') === 'svcorruption') {
+		$resistError = 'Corruption resistance is unavailable in this database. Choose another resistance.';
+	} elseif ($iresists === '') {
+		$resistError = 'Choose a supported resistance (Magic, Fire, Cold, Poison or Disease).';
+	} elseif ($iresistscomp === '' || filter_var($iresistsvalue, FILTER_VALIDATE_FLOAT) === false) {
+		$resistError = 'Choose a comparison and enter a number for the resist filter.';
+	}
+}
 $iheroics      = (isset($_GET['iheroics']) ? $_GET['iheroics'] : '');
 $iheroicscomp  = (isset($_GET['iheroicscomp']) ? $_GET['iheroicscomp'] : '');
 $iheroicsvalue = (isset($_GET['iheroicsvalue']) ? $_GET['iheroicsvalue'] : '');
@@ -41,7 +51,11 @@ $iaugslot      = isset($_GET['iaugslot']) ? sql_int($_GET['iaugslot'], 0) : 0;
 $ieffect       = (isset($_GET['ieffect']) ? $_GET['ieffect'] : '');
 $ireqlevel     = isset($_GET['ireqlevel']) ? sql_int($_GET['ireqlevel'], 0) : 0;
 $iminlevel     = isset($_GET['iminlevel']) ? sql_int($_GET['iminlevel'], 0) : 0;
-$inodrop       = isset($_GET['inodrop']);
+// A bookmarked "Include No Drop" checkbox (inodrop=on) includes all items.
+$inodrop = $_GET['inodrop'] ?? 'all';
+if (!in_array($inodrop, array('only', 'exclude'), true)) {
+	$inodrop = 'all';
+}
 $iavailability = isset($_GET['iavailability']) ? sql_int($_GET['iavailability'], 0) : 0;
 if (!in_array($iavailability, array(0, 1, 2), true)) {
 	$iavailability = 0;
@@ -51,7 +65,7 @@ $iavaillevel_raw = isset($_GET['iavaillevel']) ? $_GET['iavaillevel'] : (isset($
 $iavaillevel   = sql_int($iavaillevel_raw, 0);
 $ideity        = isset($_GET['ideity']) ? sql_int($_GET['ideity'], 0) : 0;
 
-if ($isearch != "") {
+if ($isearch != "" && $resistError === '') {
 	$Query  = "SELECT $tbitems.* FROM ($tbitems";
 
 	if ($DiscoveredItemsOnly == TRUE) {
@@ -80,23 +94,23 @@ if ($isearch != "") {
 				OR click_s.name LIKE '$effect') ";
 		$s = "AND";
 	}
-	if (($istat1 != "") and ($istat1value != "")) {
-		if ($istat1 == "ratio") {
-			$Query .= " $s ($tbitems.damage/$tbitems.delay $istat1comp $istat1value) AND ($tbitems.damage>0)";
-			$s = "AND";
-		} else {
-			$Query .= " $s ($tbitems.$istat1 $istat1comp $istat1value)";
-			$s = "AND";
+	$stat_filters = [
+		[$istat1, $istat1comp, $istat1value],
+		[$istat2, $istat2comp, $istat2value],
+	];
+	foreach ($stat_filters as [$stat, $comparison, $value]) {
+		if ($stat === '' || $value === '') {
+			continue;
 		}
-	}
-	if (($istat2 != "") and ($istat2value != "")) {
-		if ($istat2 == "ratio") {
-			$Query .= " $s ($tbitems.delay/$tbitems.damage $istat2comp $istat2value) AND ($tbitems.damage>0)";
-			$s = "AND";
+		if ($stat === 'ratio') {
+			$comparison = $comparison ?: '>=';
+			// Compare damage / delay without rounding the quotient.
+			$Query .= " $s ($tbitems.damage > 0 AND $tbitems.delay > 0";
+			$Query .= " AND $tbitems.damage $comparison ($value * $tbitems.delay))";
 		} else {
-			$Query .= " $s ($tbitems.$istat2 $istat2comp $istat2value)";
-			$s = "AND";
+			$Query .= " $s ($tbitems.$stat $comparison $value)";
 		}
+		$s = "AND";
 	}
 	if (($imod != "") and ($imodvalue != "")) {
 		$Query .= " $s ($tbitems.$imod $imodcomp $imodvalue)";
@@ -114,6 +128,10 @@ if ($isearch != "") {
 	}
 	if ($DiscoveredItemsOnly == TRUE) {
 		$Query .= " $s discovered_items.item_id=$tbitems.id";
+		$s = "AND";
+	}
+	if ($iresistsvalue !== '') {
+		$Query .= " $s ($tbitems.$iresists $iresistscomp $iresistsvalue)";
 		$s = "AND";
 	}
 	if ($iname != "") {
@@ -157,8 +175,9 @@ if ($isearch != "") {
 		$Query .= " $s ($tbitems.reqlevel<=$ireqlevel) ";
 		$s = "AND";
 	}
-	if ($inodrop) {
-		$Query .= " $s ($tbitems.nodrop=1)";
+	if ($inodrop !== 'all') {
+		$drop_operator = $inodrop === 'only' ? '=' : '<>';
+		$Query .= " $s ($tbitems.nodrop $drop_operator 0)";
 		$s = "AND";
 	}
 
@@ -178,7 +197,7 @@ if ($isearch != "") {
 		header("Location: item.php?id=" . $row["id"]);
 		exit();
 	}
-} else {
+} elseif ($isearch == "") {
 	$iname = "";
 }
 
@@ -243,10 +262,11 @@ echo SelectResists("iresists", $iresists);
 echo "</div>";
 echo "<div class='select-wrapper'>";
 echo "    <select name='iresistscomp'>";
-echo "      <option value='&gt;='" . ($iresistscomp == '>=' ? " selected='1'" : "") . ">&gt;=</option>";
-echo "      <option value='&lt;='" . ($iresistscomp == '<=' ? " selected='1'" : "") . ">&lt;=</option>";
-echo "      <option value='='" . ($iresistscomp == '='  ? " selected='1'" : "") . ">=</option>";
-echo "      <option value='&lt'" . ($iresistscomp == '<' ? " selected='1'" : "") . ">&lt</option>";
+foreach ($item_comps as $op) {
+	$label = html_attr($op);
+	$selected = $iresistscomp === $op ? " selected" : "";
+	echo "<option value='$label'$selected>$label</option>";
+}
 echo "    </select>";
 echo "</div>";
 echo "    <input type='text' size='4' name='iresistsvalue' value='" . html_attr($iresistsvalue) . "' placeholder='0' />";
@@ -276,11 +296,12 @@ echo "</div>";
 echo "<div class='select-wrapper half'>";
 echo SelectLevel("ireqlevel", $ServerMaxLevel, $ireqlevel);
 echo "</div>";
-echo "<div class='checkbox'>";
-echo "<label class='text' for='inodrop'>Include No Drop</label>";
-echo "<label class='checkbox'>";
-echo "<input type='checkbox' name='inodrop'" . ($inodrop ? " checked='checked'" : "") . "/><span></span>";
-echo "</label>";
+echo "<div class='select-wrapper'>";
+echo "<select name='inodrop' aria-label='No Drop filter'>";
+WriteIt("all", "All items", $inodrop);
+WriteIt("only", "No Drop only", $inodrop);
+WriteIt("exclude", "Exclude No Drop", $inodrop);
+echo "</select>";
 echo "</div>";
 
 echo "<div class='select-wrapper'>";
@@ -298,6 +319,10 @@ echo SelectDeity("ideity", $ideity);
 echo "</div>";
 echo "<div><input type='submit' value='Search' name='isearch'/> <input type='reset' value='Reset' /></div>";
 echo "</form>";
+
+if ($isearch != "" && $resistError !== '') {
+	echo "<p>$resistError</p>";
+}
 
 // Print the query results if any
 if (isset($QueryResult)) {

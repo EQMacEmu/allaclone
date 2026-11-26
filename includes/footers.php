@@ -28,13 +28,6 @@
         			$('select[name=iminlevel] option:lt(1)').html('Min Lvl');
         			$('select[name=ireqlevel] option:lt(1)').html('Req Lvl');
         			$('select[name=iavaillevel] option:lt(1)').html('Available Lvl');
-
-        			var noDrop = $('input[name=inodrop]');
-        			var label = $('label[for=inodrop]');
-
-        			$(label).on('click', function() {
-        				$(noDrop).trigger('click');
-        			})
         		}
 
         	});
