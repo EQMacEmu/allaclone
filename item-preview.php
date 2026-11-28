@@ -5,10 +5,7 @@ include('./includes/config.php');
 include($includes_dir . 'mysql.php');
 include($includes_dir . 'functions.php');
 
-$id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-
-$item=GetItemRow($id);
+$item = GetItemRow($_GET['id'] ?? '', $_GET['name'] ?? '');
 $stats=BuildItemStats($item, 0);
 
 

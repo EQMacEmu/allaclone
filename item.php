@@ -14,10 +14,8 @@ include($includes_dir . 'functions.php');
 include($includes_dir . 'quest_helpers.php');
 include($includes_dir . 'map_helpers.php');
 
-$id   = (isset($_GET['id']) ? addslashes($_GET['id']) : '');
-$name = (isset($_GET['name']) ? addslashes($_GET['name']) : '');
-
-$ItemRow = GetItemRow($id);
+$ItemRow = GetItemRow($_GET['id'] ?? '', $_GET['name'] ?? '');
+$id = $ItemRow["id"];
 $name = $ItemRow["Name"];
 
 /** Here the following stands :

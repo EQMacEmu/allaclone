@@ -970,44 +970,36 @@ function getPetFocus($id)
 	return "";
 }
 
-function GetItemRow($id) {
+function GetItemRow($id, $name = '') {
 	global $db, $tbitems, $DiscoveredItemsOnly, $hide_item_id;
-	if ($id != "" && is_numeric($id)) {
-		if ($DiscoveredItemsOnly == true) {
-			$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.id='" . $id . "' AND discovered_items.item_id=$tbitems.id";
-		} else {
-			$Query = "SELECT * FROM $tbitems WHERE id='" . $id . "'";
-		}
-		foreach ($hide_item_id as $hideme) {
-			$Query .= " AND $tbitems.id != $hideme"; // Block by ID set in config
-		}
-		$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $Query, mysqli_error($db));
-		if (mysqli_num_rows($QueryResult) == 0) {
-			header("Location: items.php");
-			exit();
-		}
-		$ItemRow = mysqli_fetch_array($QueryResult);
-		$name = $ItemRow["Name"];
-	} elseif ($name != "") {
-		if ($DiscoveredItemsOnly == true) {
-			$Query = "SELECT * FROM $tbitems, discovered_items WHERE $tbitems.name like '$name' AND discovered_items.item_id=$tbitems.id";
-		} else {
-			$Query = "SELECT * FROM $tbitems WHERE name like '$name'";
-		}
-		$QueryResult = mysqli_query($db, $Query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
-		if (mysqli_num_rows($QueryResult) == 0) {
-			header("Location: items.php?iname=" . $name . "&isearch=true");
-			exit();
-		} else {
-			$ItemRow = mysqli_fetch_array($QueryResult);
-			$id = $ItemRow["id"];
-			$name = $ItemRow["name"];
-		}
+	$redirect = 'items.php';
+	if (is_numeric($id)) {
+		$column = 'id';
+		$value = (string)$id;
+	} elseif (is_string($name) && $name !== '') {
+		$column = 'Name';
+		$value = str_replace('_', ' ', $name);
+		$redirect .= '?iname=' . rawurlencode($name) . '&isearch=true';
 	} else {
-		header("Location: items.php");
+		header("Location: $redirect");
 		exit();
 	}
-	return $ItemRow;
+
+	$value = mysqli_real_escape_string($db, $value);
+	$query = "SELECT $tbitems.* FROM $tbitems WHERE $tbitems.$column = '$value'";
+	if ($DiscoveredItemsOnly) {
+		$query .= " AND EXISTS (SELECT 1 FROM discovered_items WHERE discovered_items.item_id = $tbitems.id)";
+	}
+	foreach ($hide_item_id as $hiddenId) {
+		$query .= " AND $tbitems.id != " . (int)$hiddenId;
+	}
+	$query .= " LIMIT 2";
+	$result = mysqli_query($db, $query) or message_die('item.php', 'MYSQL_QUERY', $query, mysqli_error($db));
+	if (mysqli_num_rows($result) == 1) {
+		return mysqli_fetch_array($result);
+	}
+	header("Location: $redirect");
+	exit();
 }
 
 // Function to build item stats tables
