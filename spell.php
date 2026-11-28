@@ -120,7 +120,7 @@ $duration = CalcBuffDuration($minlvl, $spell["buffdurationformula"], $spell["buf
 			<?php if ($spell['range']) { ?>
 				<dd><strong>Spell Range:</strong> <?= $spell["range"] . " units" ?></dd>
 			<?php } ?>
-			<dd><strong>Target:</strong> <?= ($dbspelltargets[$spell["targettype"]]) ? $dbspelltargets[$spell["targettype"]] : "Unknown Target ({$spell["targettype"]})" ?></dd>
+			<dd><strong>Target:</strong> <?= !empty($dbspelltargets[$spell["targettype"]]) ? $dbspelltargets[$spell["targettype"]] : "Unknown Target ({$spell["targettype"]})" ?></dd>
 			<dd><strong>Resist:</strong>
 				<?= ($dbspellresists[$spell["resisttype"]]) ? $dbspellresists[$spell["resisttype"]] : "Unspecified" ?>
 				<?= ($spell["ResistDiff"]) ? "(" . $spell["ResistDiff"] . ")" : "(Adjust: 0)" ?>
